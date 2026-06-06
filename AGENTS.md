@@ -1,120 +1,120 @@
-# Pi Agent Web - Development Notes
+# Pi Agent Web - 开发笔记
 
-## Quick Start
+## 快速开始
 
 ```bash
-npm run dev   # port 3030
+npm run dev   # 端口 3030
 ```
 
-Typecheck: `node_modules/.bin/tsc --noEmit`  
-Lint: `node node_modules/next/dist/bin/next lint`  
-**Never run `next build` during dev** — pollutes `.next/` and breaks `npm run dev`.
+类型检查：`node_modules/.bin/tsc --noEmit`
+代码检查：`node node_modules/next/dist/bin/next lint`
+**开发期间切勿运行 `next build`**——会污染 `.next/` 目录并导致 `npm run dev` 崩坏。
 
 ---
 
-## Architecture
+## 架构
 
 ```
-Browser                Next.js Server              AgentSession (in-process)
+浏览器                   Next.js 服务端               AgentSession（进程内）
   │                        │                               │
-  ├─ GET /api/sessions ────▶ reads ~/.pi/agent/sessions/   │
-  ├─ GET /api/sessions/[id] reads .jsonl file directly     │
+  ├─ GET /api/sessions ────▶ 读取 ~/.pi/agent/sessions/    │
+  ├─ GET /api/sessions/[id] 直接读取 .jsonl 文件            │
   │                        │                               │
-  ├─ send message ─────────▶ POST /api/agent/[id]          │
+  ├─ 发送消息 ─────────────▶ POST /api/agent/[id]          │
   │                        │   startRpcSession() ─────────▶│ createAgentSession()
   │                        │   session.send(cmd) ─────────▶│ session.prompt()
   │                        │                               │
-  ├─ SSE connect ──────────▶ GET /api/agent/[id]/events    │
+  ├─ SSE 连接 ─────────────▶ GET /api/agent/[id]/events    │
   │                        │   session.onEvent() ◀─────────│ session.subscribe()
   │◀── data: {...} ─────────│                               │
 ```
 
-**Session browsing** (read-only): reads `.jsonl` files directly via `lib/session-reader.ts` — no AgentSession created.  
-**Sending a message**: `startRpcSession()` in `lib/rpc-manager.ts` creates an AgentSession in-process.
+**浏览会话**（只读）：通过 `lib/session-reader.ts` 直接读取 `.jsonl` 文件——不创建 AgentSession。
+**发送消息**：`lib/rpc-manager.ts` 中的 `startRpcSession()` 在进程内创建 AgentSession。
 
 ---
 
-## File Map
+## 文件地图
 
 ```
 app/api/
-  sessions/route.ts               GET  list all sessions
-  sessions/[id]/route.ts          GET/PATCH/DELETE session
-  sessions/[id]/context/route.ts  GET ?leafId= — context for a specific leaf
-  sessions/new/route.ts           returns 410 (no longer used)
+  sessions/route.ts               GET  列出所有会话
+  sessions/[id]/route.ts          GET/PATCH/DELETE 会话
+  sessions/[id]/context/route.ts  GET ?leafId= — 获取指定叶子节点的上下文
+  sessions/new/route.ts           返回 410（已废弃）
   agent/new/route.ts              POST { cwd, message, toolNames?, provider?, modelId? }
-  agent/[id]/route.ts             GET state | POST any command
-  agent/[id]/events/route.ts      GET SSE stream
-  files/[...path]/route.ts        GET file contents for viewer
+  agent/[id]/route.ts             GET 状态 | POST 任意命令
+  agent/[id]/events/route.ts      GET SSE 流
+  files/[...path]/route.ts        GET 获取文件内容给查看器
   models/route.ts                 GET { models, modelList, defaultModel }
-  models-config/route.ts          GET/POST — read/write ~/.pi/agent/models.json
+  models-config/route.ts          GET/POST — 读写 ~/.pi/agent/models.json
 
 lib/
-  rpc-manager.ts      AgentSessionWrapper + registry + startRpcSession
-  session-reader.ts   parse .jsonl; getModelNameMap/getModelList/getDefaultModel
-  types.ts            shared TypeScript types
-  normalize.ts        normalizeToolCalls() — field name mismatch between file format and our types
-  system-prompt-off.ts  minimal system prompt when all tools are disabled
+  rpc-manager.ts      AgentSessionWrapper + 注册表 + startRpcSession
+  session-reader.ts   解析 .jsonl；getModelNameMap/getModelList/getDefaultModel
+  types.ts            共享的 TypeScript 类型
+  normalize.ts        normalizeToolCalls() — 文件格式与我们的类型之间存在字段名不匹配
+  system-prompt-off.ts  所有工具禁用时的最小化系统提示
 
 components/
-  AppShell.tsx        layout + URL state + tab management
-  SessionSidebar.tsx  session tree + FileExplorer
-  ChatWindow.tsx      messages + streaming + SSE + fork/navigate logic
-  ChatInput.tsx       input bar + model/thinking/tools/compact controls
-  MessageView.tsx     renders one message (user/assistant/toolCall/toolResult)
-  BranchNavigator.tsx in-session branch switcher
-  ChatMinimap.tsx     scroll minimap alongside the message list
-  ToolPanel.tsx       exports PRESET_NONE/DEFAULT/FULL + getPresetFromTools
-  ModelsConfig.tsx    modal for editing models.json (opened from sidebar bottom)
-  FileExplorer.tsx    file tree inside sidebar
-  FileViewer.tsx      file content in a tab
-  TabBar.tsx          tab bar (Chat + open file tabs)
+  AppShell.tsx        布局 + URL 状态 + 标签页管理
+  SessionSidebar.tsx  会话树 + FileExplorer
+  ChatWindow.tsx      消息 + 流式传输 + SSE + fork/navigate 逻辑
+  ChatInput.tsx       输入栏 + 模型/思考/工具/压缩控件
+  MessageView.tsx     渲染单条消息（user/assistant/toolCall/toolResult）
+  BranchNavigator.tsx 会话内分支切换器
+  ChatMinimap.tsx     消息列表旁的滚动缩略图
+  ToolPanel.tsx       导出 PRESET_NONE/DEFAULT/FULL + getPresetFromTools
+  ModelsConfig.tsx    编辑 models.json 的弹窗（从侧边栏底部打开）
+  FileExplorer.tsx    侧边栏内的文件树
+  FileViewer.tsx      标签页中的文件内容
+  TabBar.tsx          标签栏（Chat + 已打开的文件标签页）
 ```
 
 ---
 
-## Key Design Decisions & Traps
+## 关键设计决策与陷阱
 
-### AgentSession lifecycle (`lib/rpc-manager.ts`)
-- One `AgentSessionWrapper` per session id, keyed in `globalThis.__piSessions`
-- `globalThis` survives Next.js hot-reload; plain module-level Map does not
-- Idle timeout: 10 minutes. Concurrent `startRpcSession()` calls share a single start Promise (`globalThis.__piStartLocks`)
+### AgentSession 生命周期（`lib/rpc-manager.ts`）
+- 每个会话 ID 一个 `AgentSessionWrapper`，以键值对形式存储在 `globalThis.__piSessions` 中
+- `globalThis` 在 Next.js 热重载后依然存活；普通的模块级 Map 则会被重置
+- 空闲超时：10 分钟。并发的 `startRpcSession()` 调用共享同一个启动 Promise（`globalThis.__piStartLocks`）
 
-### Fork must destroy the wrapper immediately
-`AgentSession.fork()` **mutates the wrapper's inner state in-place** — after fork, `inner.sessionId` is the *new* session's id. If the wrapper stays alive in the registry under the old id, the next request gets the already-forked state and subsequent forks produce a corrupt `parentSession` chain.
+### Fork 后必须立即销毁 wrapper
+`AgentSession.fork()` **会原地修改 wrapper 的内部状态**——fork 之后，`inner.sessionId` 变成了*新*会话的 ID。如果 wrapper 仍以旧 ID 保留在注册表中，下一次请求会得到已经 fork 过的状态，后续 fork 会生成损坏的 `parentSession` 链路。
 
-**Fix**: `send("fork")` captures `newSessionId`, then calls `this.destroy()` before returning. The next request for the original session reloads a clean AgentSession from the original file.
+**修复方式**：`send("fork")` 捕获 `newSessionId`，然后在返回之前调用 `this.destroy()`。原始会话的下一次请求会从原始文件中重新加载一个干净的 AgentSession。
 
-### Two kinds of branching — don't confuse them
-- **Fork** (Fork button on user message): creates a new independent `.jsonl` file. Shown as a child in the sidebar tree via `parentSession` header field.
-- **In-session branch** (Continue button / BranchNavigator): calls `navigate_tree` within the same file. Multiple entries share the same `parentId`. Switching between them calls `/api/sessions/[id]/context?leafId=`.
+### 两种分支 - 不要混淆
+- **Fork**（用户消息上的 Fork 按钮）：创建一个新的独立 `.jsonl` 文件。通过 `parentSession` 头字段在侧边栏树中显示为子节点。
+- **会话内分支**（Continue 按钮 / BranchNavigator）：在同一个文件内调用 `navigate_tree`。多个条目共享相同的 `parentId`。在它们之间切换调用 `/api/sessions/[id]/context?leafId=`。
 
-### Session files can be fully rewritten
-`parentSession` in the header is **display metadata only** — has zero effect on chat content. Safe to `writeFileSync` the entire file (pi does this itself during migrations). Used when cascade-reparenting children on delete.
+### 会话文件可以完全重写
+头部的 `parentSession` **仅是显示元数据**——对聊天内容没有任何影响。可以安全地用 `writeFileSync` 覆盖整个文件（pi 在迁移过程中会自行执行此操作）。用于删除时级联重新关联子节点。
 
-### ToolCall field normalization
-Pi stores toolCall blocks as `{type:"toolCall", id, name, arguments}` but `ToolCallContent` uses `{toolCallId, toolName, input}`. `normalizeToolCalls()` in `lib/normalize.ts` handles this — called in both `session-reader.ts` (file load) and `ChatWindow.handleAgentEvent()` (streaming).
+### ToolCall 字段规范化
+Pi 将 toolCall 块存储为 `{type:"toolCall", id, name, arguments}`，但 `ToolCallContent` 使用的是 `{toolCallId, toolName, input}`。`lib/normalize.ts` 中的 `normalizeToolCalls()` 处理这种差异——在 `session-reader.ts`（文件加载）和 `ChatWindow.handleAgentEvent()`（流式传输）中均会调用。
 
-### New session tool preset
-Tool names are passed at session creation (`POST /api/agent/new` → `toolNames[]`). For existing sessions, the active preset is inferred on mount via `get_tools` → `getPresetFromTools()`. When tools are fully disabled (`toolNames = []`), `rpc-manager.ts` injects a minimal system prompt via `system-prompt-off.ts` + `DefaultResourceLoader`.
+### 新会话的工具预设
+工具名称在会话创建时传入（`POST /api/agent/new` → `toolNames[]`）。对于已有会话，活跃的预设会在挂载时通过 `get_tools` → `getPresetFromTools()` 推断得出。当工具完全禁用时（`toolNames = []`），`rpc-manager.ts` 通过 `system-prompt-off.ts` + `DefaultResourceLoader` 注入一个最小化系统提示。
 
-### Model defaults for new sessions
-`GET /api/models` returns `defaultModel` read from `~/.pi/agent/settings.json`. `ChatWindow` pre-selects this on mount for new sessions.
+### 新会话的模型默认值
+`GET /api/models` 返回从 `~/.pi/agent/settings.json` 读取的 `defaultModel`。`ChatWindow` 在挂载时会为新会话预选该模型。
 
-### SSE reconnect on page refresh mid-stream
-On `ChatWindow` mount, `GET /api/agent/[id]` is called. If `state.isStreaming === true`, SSE is reconnected automatically. `thinkingLevel` and `isCompacting` are also synced from this response.
+### 页面刷新中途 SSE 重连
+在 `ChatWindow` 挂载时，调用 `GET /api/agent/[id]`。如果 `state.isStreaming === true`，SSE 会自动重连。`thinkingLevel` 和 `isCompacting` 也从该响应中同步。
 
-### Compaction SSE events
-Newer pi emits `compaction_start` / `compaction_end`; older versions emitted `auto_compaction_start` / `auto_compaction_end`. `handleAgentEvent` accepts both sets to keep `isCompacting` in sync. Manual compact is a blocking POST — the button stays disabled until the response returns.
+### 压缩 SSE 事件
+新版 pi 发出 `compaction_start` / `compaction_end`；旧版发出 `auto_compaction_start` / `auto_compaction_end`。`handleAgentEvent` 同时接受这两组事件以保持 `isCompacting` 同步。手动压缩是一个阻塞式 POST——在响应返回之前按钮保持禁用。
 
-### Orphaned sessions
-Sessions whose first line can't be parsed as a valid header are marked `orphaned: true` in the API response — displayed with an "incomplete" badge in the sidebar and not clickable.
+### 孤立会话
+首行无法解析为有效头部的会话在 API 响应中标记为 `orphaned: true`——在侧边栏中显示"不完整"徽章且不可点击。
 
 ---
 
-## Pi Session File Format
+## Pi 会话文件格式
 
-Location: `~/.pi/agent/sessions/<encoded-cwd>/<timestamp>_<uuid>.jsonl`
+位置：`~/.pi/agent/sessions/<encoded-cwd>/<timestamp>_<uuid>.jsonl`
 
 ```jsonl
 {"type":"session","version":3,"id":"<uuid>","timestamp":"...","cwd":"/path","parentSession":"/abs/path/to/parent.jsonl"}
@@ -123,14 +123,14 @@ Location: `~/.pi/agent/sessions/<encoded-cwd>/<timestamp>_<uuid>.jsonl`
 {"type":"message","id":"<8hex>","parentId":"<8hex>","message":{"role":"assistant","content":[...],...}}
 {"type":"message","id":"<8hex>","parentId":"<8hex>","message":{"role":"toolResult","toolCallId":"...","content":[...]}}
 {"type":"compaction","id":"<8hex>","parentId":"<8hex>","summary":"...","firstKeptEntryId":"<8hex>","tokensBefore":N}
-{"type":"session_info","id":"...","parentId":"...","name":"user-defined name"}
+{"type":"session_info","id":"...","parentId":"...","name":"自定义名称"}
 ```
 
-`entryIds[]` in `SessionContext` is a parallel array to `messages[]` — maps each displayed message back to its `.jsonl` entry id, used for fork and navigate_tree calls.
+`SessionContext` 中的 `entryIds[]` 是与 `messages[]` 平行的数组——将每条显示的消息映射回其 `.jsonl` 条目 ID，用于 fork 和 navigate_tree 调用。
 
 ---
 
-## CSS Variables (`app/globals.css`)
+## CSS 变量（`app/globals.css`）
 
 ```
 --bg --bg-panel --bg-hover --bg-selected --border
