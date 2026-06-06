@@ -69,7 +69,7 @@ function Toggle({
           height: 16,
           borderRadius: "50%",
           background: "var(--bg)",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.22)",
+          boxShadow: "0 1px 4px rgba(28,25,23,0.22)",
           transition: "left 0.18s cubic-bezier(.4,0,.2,1)",
         }}
       />
@@ -113,10 +113,10 @@ function SkillDetail({
             flexShrink: 0,
             background:
               label === "project"
-                ? "rgba(99,102,241,0.12)"
+                ? "var(--accent-soft)"
                 : "rgba(120,120,120,0.12)",
             color:
-              label === "project" ? "rgba(99,102,241,0.8)" : "var(--text-dim)",
+              label === "project" ? "var(--accent)" : "var(--text-dim)",
           }}
         >
           {label}
@@ -587,7 +587,7 @@ export function SkillsConfig({
         position: "fixed",
         inset: 0,
         zIndex: 1000,
-        background: "rgba(0,0,0,0.35)",
+        background: "rgba(28,25,23,0.35)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -605,7 +605,7 @@ export function SkillsConfig({
           borderRadius: 10,
           display: "flex",
           flexDirection: "column",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+          boxShadow: "0 8px 32px rgba(28,25,23,0.18)",
           overflow: "hidden",
         }}
       >

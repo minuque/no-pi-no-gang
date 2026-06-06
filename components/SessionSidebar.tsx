@@ -394,7 +394,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 if (!selectedCwd) return;
                 e.currentTarget.style.background = "var(--bg-selected)";
                 e.currentTarget.style.color = "var(--accent)";
-                e.currentTarget.style.borderColor = "rgba(37,99,235,0.35)";
+                e.currentTarget.style.borderColor = "rgba(79,111,143,0.35)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = "var(--bg-hover)";
@@ -426,7 +426,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 if (sessionRefreshDone) return;
                 e.currentTarget.style.background = "var(--bg-selected)";
                 e.currentTarget.style.color = "var(--accent)";
-                e.currentTarget.style.borderColor = "rgba(37,99,235,0.35)";
+                e.currentTarget.style.borderColor = "rgba(79,111,143,0.35)";
               }}
               onMouseLeave={(e) => {
                 if (sessionRefreshDone) return;
@@ -459,8 +459,8 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
               display: "flex",
               alignItems: "center",
               padding: "6px 10px",
-              background: selectedCwd ? "var(--bg-hover)" : "rgba(37,99,235,0.06)",
-              border: selectedCwd ? "1px solid var(--border)" : "1px solid rgba(37,99,235,0.4)",
+              background: selectedCwd ? "var(--bg-hover)" : "rgba(79,111,143,0.06)",
+              border: selectedCwd ? "1px solid var(--border)" : "1px solid rgba(79,111,143,0.4)",
               borderRadius: 7,
               cursor: "pointer",
               fontSize: 12,
@@ -496,7 +496,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 background: "var(--bg)",
                 border: "1px solid var(--border)",
                 borderRadius: 8,
-                boxShadow: "0 6px 20px rgba(0,0,0,0.10)",
+                boxShadow: "0 6px 20px rgba(28,25,23,0.10)",
                 overflow: "hidden",
               }}
             >
@@ -1106,7 +1106,7 @@ function SessionItem({
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = "var(--bg-selected)";
                   e.currentTarget.style.color = "var(--accent)";
-                  e.currentTarget.style.borderColor = "rgba(37,99,235,0.35)";
+                  e.currentTarget.style.borderColor = "rgba(79,111,143,0.35)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = "var(--bg-hover)";
