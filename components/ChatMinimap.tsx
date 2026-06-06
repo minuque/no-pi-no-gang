@@ -10,7 +10,7 @@ interface Props {
   messageRefs: RefObject<(HTMLDivElement | null)[]>;
 }
 
-const MINIMAP_WIDTH = 36;
+export const MINIMAP_WIDTH = 36;
 
 function getMessagePreview(msg: AgentMessage | Partial<AgentMessage>): string {
   if (msg.role === "user") {
@@ -43,7 +43,7 @@ function getMessagePreview(msg: AgentMessage | Partial<AgentMessage>): string {
 
 function getNodeColor(msg: AgentMessage | Partial<AgentMessage>): { bg: string; border: string } {
   if (msg.role === "user") {
-    return { bg: "rgba(37,99,235,0.18)", border: "rgba(37,99,235,0.7)" };
+    return { bg: "rgba(79,111,143,0.65)", border: "rgba(79,111,143,0.7)" };
   }
   return { bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.5)" };
 }
@@ -162,22 +162,29 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
     el.scrollTop = (clamped / (1 - viewportRatio)) * scrollable;
   }, [scrollContainer, viewportRatio]);
 
+  // Refs to avoid stale closure in drag handler's window event listeners
+  const viewportRatioRef = useRef(viewportRatio);
+  viewportRatioRef.current = viewportRatio;
+  const scrollToFnRef = useRef(scrollToMinimapRatio);
+  scrollToFnRef.current = scrollToMinimapRatio;
+
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!visible) return;
 
     draggingRef.current = true;
     const rect = e.currentTarget.getBoundingClientRect();
     const clickRatio = (e.clientY - rect.top) / rect.height;
-    const grabOffset = clickRatio - scrollRatio * (1 - viewportRatio);
-    const insideBox = grabOffset >= 0 && grabOffset <= viewportRatio;
-    const offset = insideBox ? grabOffset : viewportRatio / 2;
+    const vp = viewportRatioRef.current;
+    const grabOffset = clickRatio - scrollRatio * (1 - vp);
+    const insideBox = grabOffset >= 0 && grabOffset <= vp;
+    const offset = insideBox ? grabOffset : vp / 2;
 
-    scrollToMinimapRatio(clickRatio - offset);
+    scrollToFnRef.current(clickRatio - offset);
 
     const onMove = (ev: MouseEvent) => {
       if (!draggingRef.current) return;
       const r = (ev.clientY - rect.top) / rect.height;
-      scrollToMinimapRatio(r - offset);
+      scrollToFnRef.current(r - offset);
     };
     const onUp = () => {
       draggingRef.current = false;
@@ -186,38 +193,12 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
     };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
-  }, [visible, viewportRatio, scrollRatio, scrollToMinimapRatio]);
+  }, [visible, scrollRatio]);
 
 
 
-  // Compute collision-free tooltip positions for all nodes
-  const TOOLTIP_HEIGHT = 22;
-  const TOOLTIP_GAP = 2;
+  const TOOLTIP_HEIGHT = 56;
   const minimapHeightPx = containerRef.current?.clientHeight ?? 600;
-
-  const tooltipPositions = useMemo(() => {
-    if (!minimapHovered || nodes.length === 0) return [];
-    // Initial positions: centered on the dot
-    const positions = nodes.map((node) =>
-      Math.round(node.topRatio * minimapHeightPx - TOOLTIP_HEIGHT / 2)
-    );
-    // Iterative push-apart to resolve overlaps (top-to-bottom pass, then bottom-to-top)
-    for (let pass = 0; pass < 10; pass++) {
-      for (let i = 1; i < positions.length; i++) {
-        const minTop = positions[i - 1] + TOOLTIP_HEIGHT + TOOLTIP_GAP;
-        if (positions[i] < minTop) positions[i] = minTop;
-      }
-      for (let i = positions.length - 2; i >= 0; i--) {
-        const maxTop = positions[i + 1] - TOOLTIP_HEIGHT - TOOLTIP_GAP;
-        if (positions[i] > maxTop) positions[i] = maxTop;
-      }
-    }
-    // Clamp all to minimap bounds
-    for (let i = 0; i < positions.length; i++) {
-      positions[i] = Math.max(0, Math.min(minimapHeightPx - TOOLTIP_HEIGHT, positions[i]));
-    }
-    return positions;
-  }, [minimapHovered, nodes, minimapHeightPx]);
 
   if (!visible) return null;
 
@@ -242,9 +223,10 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
         setMouseYRatio((e.clientY - rect.top) / rect.height);
       }}
       style={{
+        position: "relative",
         width: MINIMAP_WIDTH,
         flexShrink: 0,
-        position: "relative",
+        height: "100%",
         cursor: "default",
         userSelect: "none",
         borderLeft: "1px solid var(--border)",
@@ -298,9 +280,9 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
               style={{
                 width: isUser ? 8 : 6,
                 height: isUser ? 8 : 6,
-                borderRadius: isUser ? 2 : "50%",
+                borderRadius: isUser ? 1 : "50%",
                 background: color.bg,
-                border: `1.5px solid ${color.border}`,
+                border: isUser ? "none" : `1.5px solid ${color.border}`,
                 flexShrink: 0,
                 transition: "transform 0.1s",
                 transform: isNearest ? "scale(1.6)" : "scale(1)",
@@ -326,49 +308,49 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
         }}
       />
 
-      {/* Tooltips for all nodes, collision-free positions */}
-      {minimapHovered && nodes.map((node, i) => {
+      {/* Tooltip: nearest node only */}
+      {minimapHovered && nearestIndex !== null && (() => {
+        const node = nodes[nearestIndex];
         const preview = getMessagePreview(node.msg);
         const color = getNodeColor(node.msg);
-        const isNearest = nearestIndex === node.index;
-        if (!preview || tooltipPositions.length === 0) return null;
+        if (!preview) return null;
+        const top = Math.max(0, Math.min(minimapHeightPx - TOOLTIP_HEIGHT, Math.round(node.topRatio * minimapHeightPx - TOOLTIP_HEIGHT / 2)));
         return (
           <div
-            key={node.index}
             style={{
               position: "absolute",
-              top: tooltipPositions[i],
+              top,
               right: "100%",
               marginRight: 6,
               background: "var(--bg)",
-              borderTop: `1px solid ${isNearest ? color.border : "var(--border)"}`,
-              borderRight: `1px solid ${isNearest ? color.border : "var(--border)"}`,
-              borderBottom: `1px solid ${isNearest ? color.border : "var(--border)"}`,
+              borderTop: `1px solid ${color.border}`,
+              borderRight: `1px solid ${color.border}`,
+              borderBottom: `1px solid ${color.border}`,
               borderLeft: `2px solid ${color.border}`,
               borderRadius: 4,
-              padding: "2px 7px",
+              padding: "4px 8px",
               width: 200,
               zIndex: 100,
               pointerEvents: "none",
-              opacity: isNearest ? 1 : 0.45,
-              transition: "top 0.1s, opacity 0.1s",
+              transition: "top 0.1s",
             }}
           >
             <div
               style={{
-                fontSize: 11,
-                color: isNearest ? "var(--text)" : "var(--text-muted)",
-                lineHeight: 1.4,
-                whiteSpace: "nowrap",
+                fontSize: 13,
+                color: "var(--text)",
+                lineHeight: 1.5,
                 overflow: "hidden",
-                textOverflow: "ellipsis",
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: 2,
               }}
             >
               {preview}
             </div>
           </div>
         );
-      })}
+      })()}
     </div>
   );
 }

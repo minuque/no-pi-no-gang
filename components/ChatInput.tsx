@@ -231,6 +231,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           if (selected) selectCommand(selected.name);
           return;
         }
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const selected = commandFiltered[selectedCommandIndex];
+          if (selected) selectCommand(selected.name);
+          return;
+        }
         if (e.key === 'Escape') {
           e.preventDefault();
           setShowCommands(false);
@@ -375,7 +381,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           e.target.value = "";
         }}
       />
-      <div style={{ maxWidth: 820, margin: "0 auto" }}>
+      <div style={{ maxWidth: 1148, margin: "0 auto" }}>
         {/* Retry banner */}
         {retryInfo && (
           <div style={{
@@ -434,7 +440,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               : "color-mix(in srgb, var(--border) 70%, transparent)"}`,
             borderRadius: 14,
             padding: "10px 10px 10px 14px",
-            boxShadow: "0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -12px rgba(15,23,42,0.10)",
+            boxShadow: "0 1px 2px rgba(28,25,23,0.04), 0 8px 24px -12px rgba(28,25,23,0.08)",
             transition: "border-color 0.15s, background 0.15s, box-shadow 0.15s",
           } as React.CSSProperties}
         >
@@ -510,10 +516,10 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   style={{
                     display: "flex", alignItems: "center", gap: 5,
                     padding: "7px 12px",
-                    background: (value.trim() || attachedImages.length) ? "rgba(129,140,248,0.12)" : "none",
-                    border: "1px solid rgba(129,140,248,0.35)",
+                    background: (value.trim() || attachedImages.length) ? "var(--accent-soft)" : "none",
+                    border: "1px solid var(--accent-border)",
                     borderRadius: 8,
-                    color: (value.trim() || attachedImages.length) ? "rgba(99,102,241,1)" : "var(--text-dim)",
+                    color: (value.trim() || attachedImages.length) ? "var(--accent)" : "var(--text-dim)",
                     cursor: (value.trim() || attachedImages.length) ? "pointer" : "not-allowed",
                     fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em",
                     transition: "background 0.12s",
@@ -544,7 +550,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 fontSize: 13,
                 fontWeight: 600,
                 letterSpacing: "-0.01em",
-                boxShadow: (value.trim() || attachedImages.length) ? "0 1px 3px rgba(37,99,235,0.25)" : "none",
+                boxShadow: (value.trim() || attachedImages.length) ? "0 1px 3px rgba(79,111,143,0.25)" : "none",
                 transition: "background 0.15s, box-shadow 0.15s",
               }}
             >
@@ -559,7 +565,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             <div ref={commandDropdownRef} style={{
               position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0,
               zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
-              borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.10)",
+              borderRadius: 8, boxShadow: "0 -4px 16px rgba(28,25,23,0.10)",
               overflow: "hidden", width: "100%", maxHeight: 240, overflowY: "auto",
             }}>
               {commandFiltered.map((cmd, i) => (
@@ -674,7 +680,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                       position: "fixed",
                       bottom, left: modelDropdownRect.left,
                       zIndex: 500, background: "var(--bg)", border: "1px solid var(--border)",
-                      borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.10)",
+                      borderRadius: 8, boxShadow: "0 -4px 16px rgba(28,25,23,0.10)",
                       overflow: "hidden", width: "max-content", minWidth: modelDropdownRect.width, maxHeight: maxH, overflowY: "auto",
                     }}>
                       {modelsByProvider.map((group, gi) => (
@@ -774,7 +780,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   <div style={{
                     position: "absolute", bottom: "calc(100% + 6px)", right: 0,
                     zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
-                    borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.10)",
+                    borderRadius: 8, boxShadow: "0 -4px 16px rgba(28,25,23,0.10)",
                     overflow: "hidden", minWidth: 180,
                   }}>
                     {THINKING_LEVELS.filter((lvl) => {
@@ -857,7 +863,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   <div style={{
                     position: "absolute", bottom: "calc(100% + 6px)", right: 0,
                     zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
-                    borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.10)",
+                    borderRadius: 8, boxShadow: "0 -4px 16px rgba(28,25,23,0.10)",
                     overflow: "hidden", minWidth: 120,
                   }}>
                     {TOOL_PRESETS.map((lvl) => {
@@ -902,7 +908,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                     background: "#1f2937", color: "#f87171",
                     fontSize: 11, padding: "4px 8px", borderRadius: 5,
                     whiteSpace: "nowrap", pointerEvents: "none",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.2)", zIndex: 50,
+                    boxShadow: "0 2px 8px rgba(28,25,23,0.2)", zIndex: 50,
                   }}>
                     {compactError}
                   </div>

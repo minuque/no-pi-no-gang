@@ -122,10 +122,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const agentRunningRef = useRef(false);
   const handleAgentEventRef = useRef<((event: AgentEvent) => void) | null>(null);
   const initialScrollDoneRef = useRef(false);
-  const lastUserMsgRef = useRef<HTMLDivElement | null>(null);
   const pendingScrollToUserRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const isAtBottomRef = useRef(true);
+  const autoScrollRafRef = useRef<number | null>(null);
 
   const setNewSessionModel = opts.setNewSessionModel ?? setNewSessionModelState;
   const setToolPresetState = opts.setToolPreset ?? setToolPreset;
@@ -354,8 +355,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       role: "user",
       skillCommand: commandName,
       content: imageBlocks?.length
-        ? [...(message.trim() ? [{ type: "text" as const, text: `/${commandName} ${message}` }] : []), ...imageBlocks]
-        : `/${commandName} ${message}`,
+        ? [...(message.trim() ? [{ type: "text" as const, text: `/${commandName} ${message}` }] : [{ type: "text" as const, text: `/${commandName}` }]), ...imageBlocks]
+        : message.trim() ? `/${commandName} ${message}` : `/${commandName}`,
       timestamp: Date.now(),
     };
     setMessages((prev) => [...prev, userMsg]);
@@ -423,7 +424,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const cmdName = cmdMatch[1].slice(1);
       const restMsg = cmdMatch[2];
       if (commands.some((c) => c.name === cmdName)) {
-        return handleCommand(cmdName, restMsg || message, images);
+        return handleCommand(cmdName, restMsg, images);
       }
     }
 
@@ -642,12 +643,22 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     messagesEndRef.current?.scrollIntoView({ behavior });
   }, []);
 
-  const scrollUserMsgToTop = useCallback(() => {
+  const checkAtBottom = useCallback(() => {
     const container = scrollContainerRef.current;
-    const el = lastUserMsgRef.current;
-    if (!container || !el) return;
-    const elAbsTop = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
-    container.scrollTo({ top: elAbsTop - 16, behavior: "smooth" });
+    if (!container) return true;
+    return container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+  }, []);
+
+  const autoScrollLoop = useCallback(() => {
+    if (agentRunningRef.current && isAtBottomRef.current) {
+      const container = scrollContainerRef.current;
+      if (container) {
+        container.scrollTop = container.scrollHeight - container.clientHeight;
+      }
+      autoScrollRafRef.current = requestAnimationFrame(autoScrollLoop);
+    } else {
+      autoScrollRafRef.current = null;
+    }
   }, []);
 
   // Load session on mount
@@ -687,20 +698,59 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange);
   }, [data?.tree, activeLeafId, handleLeafChange, onBranchDataChange]);
 
+  // Scroll event listener for sticky bottom detection
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const atBottom = checkAtBottom();
+      isAtBottomRef.current = atBottom;
+      if (atBottom && agentRunningRef.current && !autoScrollRafRef.current) {
+        autoScrollRafRef.current = requestAnimationFrame(autoScrollLoop);
+      }
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+    };
+  }, [checkAtBottom, autoScrollLoop]);
+
+  // Start/stop rAF auto-scroll when agent running state changes.
+  useEffect(() => {
+    if (agentRunning) {
+      if (isAtBottomRef.current && !autoScrollRafRef.current) {
+        autoScrollRafRef.current = requestAnimationFrame(autoScrollLoop);
+      }
+    } else {
+      if (autoScrollRafRef.current !== null) {
+        cancelAnimationFrame(autoScrollRafRef.current);
+        autoScrollRafRef.current = null;
+      }
+    }
+    return () => {
+      if (autoScrollRafRef.current !== null) {
+        cancelAnimationFrame(autoScrollRafRef.current);
+        autoScrollRafRef.current = null;
+      }
+    };
+  }, [agentRunning, autoScrollLoop]);
+
   useEffect(() => {
     if (messages.length > 0) {
       if (pendingScrollToUserRef.current) {
         pendingScrollToUserRef.current = false;
         initialScrollDoneRef.current = true;
-        scrollUserMsgToTop();
+        scrollToBottom("instant");
       } else if (!initialScrollDoneRef.current) {
         initialScrollDoneRef.current = true;
         scrollToBottom("instant");
-      } else if (!agentRunningRef.current) {
+      } else if (!agentRunning) {
         scrollToBottom("smooth");
       }
     }
-  }, [messages.length, agentRunning, scrollToBottom, scrollUserMsgToTop]);
+  }, [messages.length, agentRunning, scrollToBottom]);
 
   // Load model list
   useEffect(() => {
@@ -745,7 +795,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     isNew,
     // Refs
     sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef,
-    lastUserMsgRef, pendingScrollToUserRef, initialScrollDoneRef,
+    pendingScrollToUserRef, initialScrollDoneRef,
     // Actions
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,

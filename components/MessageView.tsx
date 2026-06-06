@@ -128,7 +128,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
             flex: 1,
             minWidth: 0,
             background: "var(--user-bg)",
-            border: "1px solid rgba(59,130,246,0.2)",
+            border: "1px solid var(--accent-border)",
             borderRadius: 12,
             padding: "8px 12px",
             fontSize: 14,
@@ -157,7 +157,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
                     key={i}
                     src={src}
                     alt=""
-                    style={{ maxWidth: 240, maxHeight: 240, borderRadius: 6, objectFit: "contain", display: "block", border: "1px solid rgba(59,130,246,0.15)" }}
+                    style={{ maxWidth: 240, maxHeight: 240, borderRadius: 6, objectFit: "contain", display: "block", border: "1px solid var(--accent-border)" }}
                   />
                 );
               })}
@@ -169,7 +169,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
                 const rest = content.startsWith(prefix) ? content.slice(prefix.length) : content;
                 return (
                   <>
-                    <span style={{ color: "rgba(99,102,241,0.6)", fontWeight: 500 }}>{prefix}</span>
+                    <span style={{ color: "var(--accent)", fontWeight: 500 }}>{prefix}</span>
                     <span>{rest}</span>
                   </>
                 );
@@ -535,7 +535,7 @@ function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCal
 
 function TextBlock({ block, isStreaming }: { block: TextContent; isStreaming?: boolean }) {
   return (
-    <div className="markdown-body">
+    <div className="markdown-body" style={isStreaming ? { animation: "fade-in-up 0.25s ease both" } : undefined}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{

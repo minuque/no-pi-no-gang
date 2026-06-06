@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentMessage, SessionInfo, SessionTreeNode } from "@/lib/types";
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
-import { ChatMinimap, useMessageRefs } from "./ChatMinimap";
+import { ChatMinimap, MINIMAP_WIDTH, useMessageRefs } from "./ChatMinimap";
 import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
 import { useAudio } from "@/hooks/useAudio";
 import { useDragDrop } from "@/hooks/useDragDrop";
@@ -102,7 +102,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     agentPhase,
     isNew,
     messagesEndRef, scrollContainerRef,
-    lastUserMsgRef,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
     handleToolPresetChange, handleThinkingLevelChange, handleAgentEventRef,
@@ -224,24 +223,24 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       onDrop={handleDrop}
     >
       {isDragOver && (
-        <div className="pointer-events-none absolute inset-0 z-50 flex animate-[drop-zone-in_0.15s_ease_both] items-center justify-center bg-[rgba(37,99,235,0.06)] backdrop-blur-[1px]">
+        <div className="pointer-events-none absolute inset-0 z-50 flex animate-[drop-zone-in_0.15s_ease_both] items-center justify-center bg-[rgba(79,111,143,0.06)] backdrop-blur-[1px]">
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             {[0, 0.8, 1.6].map((delay) => (
               <div
                 key={delay}
-                className="absolute h-[720px] w-[720px] rounded-full border-[1.5px] border-solid border-[rgba(37,99,235,0.5)] animate-[drop-ripple_2.4s_ease-out_infinite_backwards]"
+                className="absolute h-[720px] w-[720px] rounded-full border-[1.5px] border-solid border-[rgba(79,111,143,0.5)] animate-[drop-ripple_2.4s_ease-out_infinite_backwards]"
                 style={{ transformOrigin: "center", animationDelay: `${delay}s` }}
               />
             ))}
           </div>
           <svg
             width="280" height="280" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg"
-            className="drop-shadow-[0_6px_18px_rgba(37,99,235,0.18)]"
+            className="drop-shadow-[0_6px_18px_rgba(79,111,143,0.18)]"
           >
-            <rect x="28" y="44" width="84" height="60" rx="8" fill="rgba(37,99,235,0.08)" stroke="rgba(37,99,235,0.50)" strokeWidth="1.8"/>
-            <path d="M36 100 L54 72 L68 88 L80 74 L104 100Z" fill="rgba(37,99,235,0.16)" stroke="rgba(37,99,235,0.40)" strokeWidth="1.4" strokeLinejoin="round"/>
-            <circle cx="96" cy="58" r="8" fill="rgba(37,99,235,0.22)" stroke="rgba(37,99,235,0.55)" strokeWidth="1.6"/>
-            <g stroke="rgba(37,99,235,0.45)" strokeWidth="1.4" strokeLinecap="round">
+            <rect x="28" y="44" width="84" height="60" rx="8" fill="rgba(79,111,143,0.08)" stroke="rgba(79,111,143,0.50)" strokeWidth="1.8"/>
+            <path d="M36 100 L54 72 L68 88 L80 74 L104 100Z" fill="rgba(79,111,143,0.16)" stroke="rgba(79,111,143,0.40)" strokeWidth="1.4" strokeLinejoin="round"/>
+            <circle cx="96" cy="58" r="8" fill="rgba(79,111,143,0.22)" stroke="rgba(79,111,143,0.55)" strokeWidth="1.6"/>
+            <g stroke="rgba(79,111,143,0.45)" strokeWidth="1.4" strokeLinecap="round">
               <line x1="96" y1="46" x2="96" y2="43"/>
               <line x1="96" y1="70" x2="96" y2="73"/>
               <line x1="84" y1="58" x2="81" y2="58"/>
@@ -257,7 +256,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
       {isEmptyNew ? (
         <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8">
-          <div className="w-full max-w-[820px]">
+          <div className="w-full max-w-[1148px]">
             <div
               className="mb-3"
               style={{
@@ -291,9 +290,9 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         </div>
       ) : (
       <>
-      <div className="relative flex flex-1 overflow-hidden">
+      <div className="flex-1 flex overflow-hidden" style={{ paddingRight: MINIMAP_WIDTH }}>
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-4 [scrollbar-width:none]">
-          <div className="mx-auto max-w-[820px] px-4">
+          <div className="mx-auto max-w-[1148px] px-4">
 
             {(() => {
               const toolResultsMap = new Map<string, import("@/lib/types").ToolResultMessage>();
@@ -301,10 +300,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 if (msg.role === "toolResult") {
                   toolResultsMap.set((msg as import("@/lib/types").ToolResultMessage).toolCallId, msg as import("@/lib/types").ToolResultMessage);
                 }
-              }
-              let lastUserIdx = -1;
-              for (let i = messages.length - 1; i >= 0; i--) {
-                if (messages[i].role === "user") { lastUserIdx = i; break; }
               }
               let refIdx = 0;
               return messages.map((msg, idx) => {
@@ -347,7 +342,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 return (
                   <div key={idx} ref={(el) => {
                     messageRefs.current[currentRefIdx] = el;
-                    if (idx === lastUserIdx) { (lastUserMsgRef as { current: HTMLDivElement | null }).current = el; }
                   }}>
                     {view}
                   </div>
@@ -365,23 +359,23 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
               </div>
             )}
 
-            {agentRunning && (
-              <div style={{ height: scrollContainerRef.current ? scrollContainerRef.current.clientHeight : "80vh" }} />
-            )}
-
             <div ref={messagesEndRef} />
           </div>
         </div>
+      </div>
+
+      <div className="relative">
+        {chatInputElement}
+      </div>
+
+      {/* Minimap — absolutely positioned on right edge, full ChatWindow height */}
+      <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: MINIMAP_WIDTH }}>
         <ChatMinimap
           messages={messages}
           streamingMessage={streamState.streamingMessage}
           scrollContainer={scrollContainerRef}
           messageRefs={messageRefs}
         />
-      </div>
-
-      <div className="relative">
-        {chatInputElement}
       </div>
       </>
       )}
