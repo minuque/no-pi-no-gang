@@ -37,6 +37,7 @@ interface Props {
   retryInfo?: { attempt: number; maxAttempts: number; errorMessage?: string } | null;
   soundEnabled?: boolean;
   onSoundToggle?: () => void;
+  commands?: { name: string; description: string }[];
 }
 
 export interface ChatInputHandle {
@@ -65,7 +66,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   onCompact, onAbortCompaction, isCompacting, compactError, toolPreset, onToolPresetChange,
   thinkingLevel, onThinkingLevelChange, availableThinkingLevels, thinkingLevelMap,
   retryInfo,
-  soundEnabled, onSoundToggle,
+  soundEnabled, onSoundToggle, commands = [],
 }: Props, ref) {
   const [value, setValue] = useState("");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
@@ -73,6 +74,10 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const [toolDropdownOpen, setToolDropdownOpen] = useState(false);
   const [thinkingDropdownOpen, setThinkingDropdownOpen] = useState(false);
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const [showCommands, setShowCommands] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+  const [commandFiltered, setCommandFiltered] = useState<{ name: string; description: string }[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -82,6 +87,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isComposingRef = useRef(false);
   const lastCompositionEndAtRef = useRef(0);
+  const commandDropdownRef = useRef<HTMLDivElement>(null);
 
   useImperativeHandle(ref, () => ({
     insertIfEmpty(text: string) {
@@ -186,8 +192,52 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     if (textareaRef.current) textareaRef.current.style.height = "auto";
   }, [value, attachedImages, onSteer, onFollowUp, clearImages]);
 
+  const selectCommand = useCallback((name: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const cursorPos = ta.selectionStart ?? 0;
+    const val = ta.value;
+    const beforeCursor = val.slice(0, cursorPos);
+    const slashIdx = beforeCursor.lastIndexOf('/');
+    if (slashIdx === -1) return;
+    const newVal = val.slice(0, slashIdx) + '/' + name + ' ' + val.slice(cursorPos);
+    setValue(newVal);
+    setShowCommands(false);
+    requestAnimationFrame(() => {
+      if (!ta) return;
+      const newCursor = slashIdx + name.length + 2;
+      ta.focus();
+      ta.setSelectionRange(newCursor, newCursor);
+    });
+  }, []);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      // Command autocomplete keyboard handling
+      if (showCommands) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSelectedCommandIndex(prev => Math.min(prev + 1, commandFiltered.length - 1));
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSelectedCommandIndex(prev => Math.max(prev - 1, 0));
+          return;
+        }
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          const selected = commandFiltered[selectedCommandIndex];
+          if (selected) selectCommand(selected.name);
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setShowCommands(false);
+          return;
+        }
+      }
+
       const nativeEvent = e.nativeEvent;
       const recentlyComposed = Date.now() - lastCompositionEndAtRef.current < COMPOSITION_END_ENTER_GRACE_MS;
       const isComposing =
@@ -210,7 +260,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         }
       }
     },
-    [isStreaming, onSteer, onFollowUp, sendQueued, handleSend]
+    [isStreaming, onSteer, onFollowUp, sendQueued, handleSend, showCommands, commandFiltered, selectedCommandIndex, selectCommand]
   );
 
   const handleInput = useCallback(() => {
@@ -229,7 +279,30 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     processImageFiles(files);
   }, [processImageFiles]);
 
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    setValue(newValue);
 
+    // Skip command detection during IME composition
+    if (isComposingRef.current) return;
+
+    const cursorPos = e.target.selectionStart ?? 0;
+    const beforeCursor = newValue.slice(0, cursorPos);
+    const slashIdx = beforeCursor.lastIndexOf('/');
+
+    if (slashIdx !== -1 && (slashIdx === 0 || beforeCursor[slashIdx - 1] === ' ')) {
+      const query = beforeCursor.slice(slashIdx + 1);
+      if (!query.includes(' ')) {
+        const filtered = commands.filter(c => c.name.toLowerCase().startsWith(query.toLowerCase()));
+        setCommandFiltered(filtered);
+        setCommandQuery(query);
+        setShowCommands(filtered.length > 0);
+        setSelectedCommandIndex(0);
+        return;
+      }
+    }
+    setShowCommands(false);
+  }, [commands]);
 
   // Build model options: prefer modelList (has provider info), fallback to modelNames
   const modelOptions: ModelOption[] = (() => {
@@ -269,6 +342,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       }
       if (thinkingDropdownRef.current && !thinkingDropdownRef.current.contains(e.target as Node)) {
         setThinkingDropdownOpen(false);
+      }
+      if (commandDropdownRef.current && !commandDropdownRef.current.contains(e.target as Node)) {
+        setShowCommands(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -348,6 +424,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         {/* Main input */}
         <div
           style={{
+            position: "relative",
             display: "flex",
             gap: 8,
             alignItems: "center",
@@ -361,42 +438,44 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             transition: "border-color 0.15s, background 0.15s, box-shadow 0.15s",
           } as React.CSSProperties}
         >
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onCompositionStart={() => {
-              isComposingRef.current = true;
-            }}
-            onCompositionEnd={() => {
-              isComposingRef.current = false;
-              lastCompositionEndAtRef.current = Date.now();
-            }}
-            onInput={handleInput}
-            onPaste={handlePaste}
-            placeholder={
-              isStreaming && (onSteer || onFollowUp)
-                ? "Steer 立即注入 / Follow-up 排队…"
-                : isStreaming ? "Agent is running…"
-                : "Message…"
-            }
-            rows={1}
-            style={{
-              flex: 1,
-              background: "none",
-              border: "none",
-              outline: "none",
-              resize: "none",
-              color: "var(--text)",
-              fontSize: 14,
-              lineHeight: 1.6,
-              fontFamily: "inherit",
-              minHeight: 24,
-              maxHeight: 200,
-              overflow: "auto",
-            }}
-          />
+          <div style={{ flex: 1, display: "flex" }}>
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              onCompositionStart={() => {
+                isComposingRef.current = true;
+              }}
+              onCompositionEnd={() => {
+                isComposingRef.current = false;
+                lastCompositionEndAtRef.current = Date.now();
+              }}
+              onInput={handleInput}
+              onPaste={handlePaste}
+              placeholder={
+                isStreaming && (onSteer || onFollowUp)
+                  ? "Steer 立即注入 / Follow-up 排队…"
+                  : isStreaming ? "Agent is running…"
+                  : "Message…"
+              }
+              rows={1}
+              style={{
+                flex: 1,
+                background: "none",
+                border: "none",
+                outline: "none",
+                resize: "none",
+                color: "var(--text)",
+                fontSize: 14,
+                lineHeight: 1.6,
+                fontFamily: "inherit",
+                minHeight: 24,
+                maxHeight: 200,
+                overflow: "auto",
+              }}
+            />
+          </div>
 
           {isStreaming ? (
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, alignSelf: "flex-end" }}>
@@ -475,6 +554,35 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               </svg>
               Send
             </button>
+          )}
+          {showCommands && commandFiltered.length > 0 && (
+            <div ref={commandDropdownRef} style={{
+              position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0,
+              zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
+              borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.10)",
+              overflow: "hidden", width: "100%", maxHeight: 240, overflowY: "auto",
+            }}>
+              {commandFiltered.map((cmd, i) => (
+                <button
+                  key={cmd.name}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    width: "100%", padding: "7px 12px",
+                    background: i === selectedCommandIndex ? "var(--bg-hover)" : "none",
+                    border: "none",
+                    color: i === selectedCommandIndex ? "var(--text)" : "var(--text-muted)",
+                    cursor: "pointer", fontSize: 12, textAlign: "left",
+                    fontWeight: i === selectedCommandIndex ? 600 : 400,
+                    whiteSpace: "nowrap",
+                  }}
+                  onMouseEnter={() => setSelectedCommandIndex(i)}
+                  onClick={() => selectCommand(cmd.name)}
+                >
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, flexShrink: 0 }}>/{cmd.name}</span>
+                  <span style={{ fontSize: 11, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis" }}>{cmd.description}</span>
+                </button>
+              ))}
+            </div>
           )}
         </div>
 

@@ -163,7 +163,19 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
               })}
             </div>
           )}
-          {content}
+          {message.skillCommand && typeof message.content === "string"
+            ? (() => {
+                const prefix = `/${message.skillCommand}`;
+                const rest = content.startsWith(prefix) ? content.slice(prefix.length) : content;
+                return (
+                  <>
+                    <span style={{ color: "rgba(99,102,241,0.6)", fontWeight: 500 }}>{prefix}</span>
+                    <span>{rest}</span>
+                  </>
+                );
+              })()
+            : content
+          }
         </div>
 
       </div>

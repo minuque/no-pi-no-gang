@@ -24,6 +24,9 @@ interface Props {
 }
 
 function phaseLabel(phase: AgentPhase): string {
+  if (phase?.kind === "running_skill") {
+    return `Running skill: ${phase.skill}...`;
+  }
   if (phase?.kind === "running_tools") {
     const names = phase.tools.map((t) => t.name);
     if (names.length === 0) return "Running tool...";
@@ -92,7 +95,7 @@ function Typewriter({ phrases }: { phrases: string[] }) {
 
 export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange }: Props) {
   const {
-    loading, error, messages, entryIds, streamState,
+    loading, error, messages, entryIds, streamState, commands,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
     retryInfo, contextUsage, forkingEntryId,
     isCompacting, compactError, displayModel: displayModelValue, sessionStats,
@@ -190,6 +193,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       availableThinkingLevels={availableThinkingLevels}
       thinkingLevelMap={currentThinkingLevelMap}
       retryInfo={retryInfo}
+      commands={commands}
       soundEnabled={soundEnabled}
       onSoundToggle={onSoundToggle}
     />

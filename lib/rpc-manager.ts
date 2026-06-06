@@ -222,6 +222,57 @@ export class AgentSessionWrapper {
         return null;
       }
 
+      case "command": {
+        const commandName = command.command as string;
+        const userMessage = command.message as string;
+        const promptImages = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
+
+        // Find the skill matching the command name
+        const { DefaultResourceLoader, getAgentDir } = await import("@earendil-works/pi-coding-agent");
+        const cwd = (this.inner as { cwd?: string }).cwd
+          ?? (this.inner.agent?.state as { cwd?: string } | undefined)?.cwd
+          ?? process.cwd();
+
+        const loader = new DefaultResourceLoader({ cwd, agentDir: getAgentDir() });
+        await loader.reload();
+        const { skills } = loader.getSkills();
+
+        // Match by name (case-insensitive)
+        const skill = skills.find((s: { name: string }) =>
+          s.name.toLowerCase() === commandName.toLowerCase()
+        );
+
+        if (skill) {
+          // Read SKILL.md content
+          const fs = await import("fs");
+          const skillContent = fs.readFileSync(skill.filePath, "utf8");
+          // Strip frontmatter (--- ... ---)
+          const bodyContent = skillContent.replace(/^---[\s\S]*?---\r?\n?/, "").trim();
+
+          // Inject skill instructions into the SYSTEM PROMPT (not user prompt)
+          const originalPrompt = this.inner.agent.state?.systemPrompt ?? "";
+          const skillBlock = `\n\n<system-reminder>\nUse the following skill instructions to help with the user's request:\n\n${bodyContent}\n</system-reminder>`;
+          this.inner.agent.state!.systemPrompt = originalPrompt + skillBlock;
+
+          // Restore original system prompt after this turn completes
+          const restore = () => {
+            if (this.inner.agent.state) {
+              this.inner.agent.state.systemPrompt = originalPrompt;
+            }
+          };
+          const unsub = this.inner.subscribe((event: AgentEvent) => {
+            if (event.type === "agent_end") {
+              restore();
+              unsub();
+            }
+          });
+        }
+
+        // Send user message WITHOUT skill content injection
+        this.inner.prompt(userMessage, promptImages?.length ? { images: promptImages } : undefined).catch(() => {});
+        return null;
+      }
+
       default:
         throw new Error(`Unsupported command: ${type}`);
     }

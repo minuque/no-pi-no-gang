@@ -52,6 +52,7 @@ interface AgentEvent {
 export type AgentPhase =
   | { kind: "waiting_model" }
   | { kind: "running_tools"; tools: { id: string; name: string }[] }
+  | { kind: "running_skill"; skill: string }
   | null;
 
 export interface UseAgentSessionOptions {
@@ -114,6 +115,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [isCompacting, setIsCompacting] = useState(false);
   const [compactError, setCompactError] = useState<string | null>(null);
   const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
+  const [commands, setCommands] = useState<{ name: string; description: string }[]>([]);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
@@ -246,7 +248,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     switch (event.type) {
       case "agent_start":
         setAgentRunning(true);
-        setAgentPhase({ kind: "waiting_model" });
+        setAgentPhase((prev) => {
+          if (prev?.kind === "running_skill") return prev;
+          return { kind: "waiting_model" };
+        });
         dispatch({ type: "start" });
         break;
       case "agent_end":
@@ -275,7 +280,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (msg) {
           dispatch({ type: "update", message: normalizeToolCalls(msg as AgentMessage) });
         }
-        setAgentPhase(null);
+        setAgentPhase((prev) => prev?.kind === "running_skill" ? { kind: "waiting_model" } : null);
         break;
       }
       case "message_end": {
@@ -331,9 +336,96 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, [loadSession, onAgentEnd]);
   handleAgentEventRef.current = handleAgentEvent;
 
+  const fetchCommands = useCallback(async (cwd: string) => {
+    try {
+      const res = await fetch(`/api/skills?cwd=${encodeURIComponent(cwd)}`);
+      if (!res.ok) return;
+      const data = await res.json() as { skills?: { name: string; description: string }[] };
+      setCommands(data.skills?.map((s) => ({ name: s.name, description: s.description })) ?? []);
+    } catch (e) {
+      console.error("Failed to fetch commands:", e);
+    }
+  }, []);
+
+  const handleCommand = useCallback(async (commandName: string, message: string, images?: AttachedImage[]) => {
+    if (agentRunning) return;
+    const imageBlocks = images?.map((img) => ({ type: "image" as const, source: { type: "base64" as const, media_type: img.mimeType, data: img.data } }));
+    const userMsg: AgentMessage = {
+      role: "user",
+      skillCommand: commandName,
+      content: imageBlocks?.length
+        ? [...(message.trim() ? [{ type: "text" as const, text: `/${commandName} ${message}` }] : []), ...imageBlocks]
+        : `/${commandName} ${message}`,
+      timestamp: Date.now(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setAgentRunning(true);
+    setAgentPhase({ kind: "running_skill", skill: commandName });
+    dispatch({ type: "start" });
+    pendingScrollToUserRef.current = true;
+    const piImages = images?.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType }));
+    try {
+      if (isNew && newSessionCwd) {
+        const selectedModel = newSessionModel;
+        if (selectedModel) setPendingModel(selectedModel);
+        const { PRESET_NONE, PRESET_DEFAULT, PRESET_FULL } = await import("@/components/ToolPanel");
+        const toolNames = toolPreset === "none" ? PRESET_NONE : toolPreset === "default" ? PRESET_DEFAULT : PRESET_FULL;
+        const res = await fetch("/api/agent/new", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            cwd: newSessionCwd,
+            type: "command",
+            command: commandName,
+            message,
+            toolNames,
+            ...(piImages?.length ? { images: piImages } : {}),
+            ...(selectedModel ? { provider: selectedModel.provider, modelId: selectedModel.modelId } : {}),
+            ...(thinkingLevel !== "auto" ? { thinkingLevel } : {}),
+          }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const result = await res.json() as { sessionId: string };
+        sessionIdRef.current = result.sessionId;
+        connectEvents(result.sessionId);
+        onSessionCreated?.({
+          id: result.sessionId,
+          path: "",
+          cwd: newSessionCwd,
+          name: undefined,
+          created: new Date().toISOString(),
+          modified: new Date().toISOString(),
+          messageCount: 1,
+          firstMessage: message,
+        });
+      } else if (session) {
+        connectEvents(session.id);
+        await sendAgentCommand(session.id, {
+          type: "command",
+          command: commandName,
+          message,
+          ...(piImages?.length ? { images: piImages } : {}),
+        });
+      }
+    } catch (e) {
+      console.error("Failed to send command:", e);
+      setAgentRunning(false);
+      setAgentPhase(null);
+      dispatch({ type: "end" });
+    }
+  }, [isNew, newSessionCwd, newSessionModel, toolPreset, thinkingLevel, session, agentRunning, connectEvents, onSessionCreated]);
+
   const handleSend = useCallback(async (message: string, images?: AttachedImage[]) => {
     if (!message.trim() && !images?.length) return;
     if (agentRunning) return;
+    const cmdMatch = message.match(/^(\/[a-zA-Z0-9._-]+)\s*(.*)$/);
+    if (cmdMatch) {
+      const cmdName = cmdMatch[1].slice(1);
+      const restMsg = cmdMatch[2];
+      if (commands.some((c) => c.name === cmdName)) {
+        return handleCommand(cmdName, restMsg || message, images);
+      }
+    }
 
     const imageBlocks = images?.map((img) => ({ type: "image" as const, source: { type: "base64" as const, media_type: img.mimeType, data: img.data } }));
     const userMsg: AgentMessage = {
@@ -399,7 +491,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setAgentPhase(null);
       dispatch({ type: "end" });
     }
-  }, [isNew, newSessionCwd, newSessionModel, toolPreset, thinkingLevel, session, agentRunning, connectEvents, onSessionCreated]);
+  }, [isNew, newSessionCwd, newSessionModel, toolPreset, thinkingLevel, session, agentRunning, connectEvents, onSessionCreated, commands, handleCommand]);
 
   const handleAbort = useCallback(async () => {
     const sid = sessionIdRef.current;
@@ -637,9 +729,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     return () => clearTimeout(t);
   }, [compactError]);
 
+  // Fetch available commands (skills) when cwd changes
+  useEffect(() => {
+    const cwd = isNew ? newSessionCwd : session?.cwd;
+    if (cwd) fetchCommands(cwd);
+  }, [isNew, newSessionCwd, session?.cwd, fetchCommands]);
+
   return {
     // State
-    data, loading, error, activeLeafId, messages, entryIds, streamState,
+    data, loading, error, activeLeafId, messages, entryIds, streamState, commands,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, toolPreset, thinkingLevel,
     retryInfo, contextUsage, systemPrompt, forkingEntryId,
     isCompacting, compactError, currentModel, displayModel, sessionStats,
@@ -651,7 +749,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // Actions
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
-    handleToolPresetChange, handleThinkingLevelChange, loadTools, setActiveLeafId, setData, setMessages,
+    handleToolPresetChange, handleThinkingLevelChange, fetchCommands, loadTools, setActiveLeafId, setData, setMessages,
     dispatch, setAgentRunning, setForkingEntryId,
     // Subscriptions
     handleAgentEventRef,

@@ -49,6 +49,8 @@ export interface UserMessage {
   role: "user";
   content: string | (TextContent | ImageContent)[];
   timestamp?: number;
+  /** Skill name when this message is a slash-command invocation (e.g. "/review") */
+  skillCommand?: string;
 }
 
 export interface AssistantMessage {
