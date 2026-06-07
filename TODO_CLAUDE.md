@@ -32,13 +32,16 @@
 
 ## UI 视觉打磨
 
-- [ ] **输入区精简** — 底部栏控件过多（模型 / thinking / tools / compact / sound），收进弹出菜单，只保留常用项。对齐 Claude Desktop 极简输入区
-- [ ] **模型选择器位置** — 从底部栏上移到输入框上方，更显眼，对齐 Claude Desktop
-- [ ] **消息视觉层级** — User 有气泡背景，Assistant 无背景纯文本，层次不均衡。给 Assistant 加轻微背景或增大区分度
-- [ ] **消息间距呼吸感** — 连续 assistant 块（文本 → tool call → result → 文本）之间间距偏紧
-- [ ] **Thinking 块动态边框** — 当前朴素灰框，streaming 中加 pulsing 左边框或渐变动画
-- [ ] **Minimap 尺寸** — 当前 36px 太窄、节点太小难点击，加宽到 44px + 节点增大 + hover tooltip 更醒目
-- [ ] **空状态品质感** — 首页仅文字 + typewriter，加 pi logo 图形和背景图案
-- [ ] **滚动条抖动** — `scrollbar-width:none` 导致有无滚动条时宽度跳变，改用 `scrollbar-gutter: stable`
-- [ ] **暗色代码对比度** — vscDarkPlus 在暗色背景上部分 token 颜色偏暗
-- [ ] **过渡动画统一** — 部分交互有 transition（按钮 hover），部分没有（tool call / thinking 展开），统一加 150-200ms ease
+- [x] **输入区精简** — 移除 Tools/Compact/Sound 控件，重构底部栏。左下 Attach，右下 Model + Thinking + Usage donut gauge
+- [x] **模型选择器位置** — **跳过。**底部栏右下角保留模型选择器作为交互入口
+- [x] **消息视觉层级** — **跳过。**User 气泡 + Assistant 纯文本的当前方案暂不动
+- [x] **消息间距呼吸感** — `marginBottom: 16` → `24`
+- [x] **Tool call 视觉轻量化** — 默认折叠单行，去绿/红色统一灰色边框，展开后保留卡片内容，fadeInUp 入场动画
+- [x] **Thinking 块动态边框** — streaming 中左边框 3px pulsing，完成后回 1px 灰框。展开 fadeInUp 入场
+- [x] **Minimap 尺寸** — **跳过。**36px 保持不变
+- [x] **空状态品质感** — **跳过。**当前文字 + typewriter 暂不动
+- [x] **滚动条抖动** — html/body `scrollbar-gutter: stable`，ChatWindow `scrollbar-width: none` 避免与 minimap 重叠
+- [x] **暗色代码对比度** — **跳过。**暂不调整 vscDarkPlus
+- [x] **过渡动画统一** — tool call / thinking 展开用 `@keyframes fadeInUp` 200ms ease 入场动画
+- [x] **Usage limits donut gauge** — Claude Desktop 风格双层 donut + 智能变色 + 悬浮卡片式进度条
+- [x] **Markdown 内容间距** — p/ul/ol/table 底部间距 `8px` → `16px`
