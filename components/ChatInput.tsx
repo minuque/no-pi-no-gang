@@ -17,8 +17,6 @@ interface ModelOption {
 interface Props {
   onSend: (message: string, images?: AttachedImage[]) => void;
   onAbort: () => void;
-  onSteer?: (message: string, images?: AttachedImage[]) => void;
-  onFollowUp?: (message: string, images?: AttachedImage[]) => void;
   isStreaming: boolean;
   model?: { provider: string; modelId: string } | null;
   modelNames?: Record<string, string>;
@@ -31,6 +29,13 @@ interface Props {
   retryInfo?: { attempt: number; maxAttempts: number; errorMessage?: string } | null;
   contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null;
   commands?: { name: string; description: string }[];
+  currentProject?: string;
+  activeBranch?: string;
+  branchOptions?: { id: string; label: string }[];
+  onDirectoryChange?: () => void;
+  onBranchChange?: (id: string) => void;
+  streamingTokens?: number;
+  streamingTps?: number | null;
 }
 
 export interface ChatInputHandle {
@@ -53,10 +58,17 @@ const THINKING_LEVEL_DESC: Record<typeof THINKING_LEVELS[number], string> = {
 };
 
 export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
-  onSend, onAbort, onSteer, onFollowUp, isStreaming, model, modelNames, modelList, onModelChange,
+  onSend, onAbort, isStreaming, model, modelNames, modelList, onModelChange,
   thinkingLevel, onThinkingLevelChange, availableThinkingLevels, thinkingLevelMap,
   retryInfo,
   contextUsage, commands = [],
+  currentProject,
+  activeBranch,
+  branchOptions,
+  onDirectoryChange,
+  onBranchChange,
+  streamingTokens,
+  streamingTps,
 }: Props, ref) {
   const [value, setValue] = useState("");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
@@ -68,6 +80,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandFiltered, setCommandFiltered] = useState<{ name: string; description: string }[]>([]);
   const [focused, setFocused] = useState(false);
+  const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -77,6 +90,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const isComposingRef = useRef(false);
   const lastCompositionEndAtRef = useRef(0);
   const commandDropdownRef = useRef<HTMLDivElement>(null);
+  const branchDropdownRef = useRef<HTMLDivElement>(null);
   const sentHistoryRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
   const historyDraftRef = useRef("");
@@ -178,18 +192,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     }
   }, [value, attachedImages, isStreaming, onSend, clearImages]);
 
-  const sendQueued = useCallback((mode: "steer" | "followup") => {
-    const msg = value.trim();
-    if (!msg && !attachedImages.length) return;
-    if (mode === "steer" && onSteer) {
-      onSteer(msg, attachedImages.length ? attachedImages : undefined);
-    } else if (mode === "followup" && onFollowUp) {
-      onFollowUp(msg, attachedImages.length ? attachedImages : undefined);
-    }
-    setValue("");
-    clearImages();
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
-  }, [value, attachedImages, onSteer, onFollowUp, clearImages]);
 
   const selectCommand = useCallback((name: string) => {
     const ta = textareaRef.current;
@@ -309,15 +311,10 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        if (isStreaming && (onSteer || onFollowUp)) {
-          // Default Enter sends as steer if available, else followup
-          sendQueued(onSteer ? "steer" : "followup");
-        } else {
-          handleSend();
-        }
+        if (!isStreaming) handleSend();
       }
     },
-    [isStreaming, onSteer, onFollowUp, sendQueued, handleSend, showCommands, commandFiltered, selectedCommandIndex, selectCommand]
+    [isStreaming, handleSend, showCommands, commandFiltered, selectedCommandIndex, selectCommand]
   );
 
   const handleInput = useCallback(() => {
@@ -402,6 +399,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       if (commandDropdownRef.current && !commandDropdownRef.current.contains(e.target as Node)) {
         setShowCommands(false);
       }
+      if (branchDropdownRef.current && !branchDropdownRef.current.contains(e.target as Node)) {
+        setBranchDropdownOpen(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -477,6 +477,35 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           </div>
         )}
 
+        {/* Streaming status line */}
+        {isStreaming && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6,
+            marginBottom: 6, fontSize: 11, color: "var(--text-dim)",
+            fontFamily: "var(--font-body)",
+          }}>
+            {/* Pi favicon */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/favicon.ico" alt="" style={{ width: 14, height: 14, flexShrink: 0 }} />
+            {streamingTps != null && streamingTps > 0 && (() => {
+              const bg = streamingTps >= 50 ? "var(--accent)" : streamingTps >= 30 ? "var(--success)" : streamingTps >= 15 ? "var(--warn)" : "var(--danger)";
+              return (
+                <span style={{ padding: "1px 5px", borderRadius: 4, background: bg, color: "var(--accent-on)", fontSize: 10, fontWeight: 500 }}>
+                  {streamingTps.toFixed(1)} t/s
+                </span>
+              );
+            })()}
+            {streamingTokens !== undefined && streamingTokens > 0 && (
+              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="5" y1="1.5" x2="5" y2="8.5" /><polyline points="2 6 5 8.5 8 6" />
+                </svg>
+                {streamingTokens}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Main input */}
         <div
           style={{
@@ -485,8 +514,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             gap: 8,
             alignItems: "center",
             background: "var(--bg)",
-            border: `1px solid ${isStreaming && (onSteer || onFollowUp)
-              ? "color-mix(in oklab, var(--warn), transparent 60%)"
+            border: `1px solid ${isStreaming
+              ? "color-mix(in oklab, var(--danger), transparent 60%)"
               : focused
                 ? "var(--accent-border)"
                 : "color-mix(in srgb, var(--border) 70%, transparent)"}`,
@@ -498,7 +527,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             transition: "border-color 0.15s, background 0.15s, box-shadow 0.2s",
           } as React.CSSProperties}
         >
-          <div style={{ flex: 1, display: "flex" }}>
+          <div style={{ flex: 1, position: "relative", display: "flex" }}>
             <textarea
               ref={textareaRef}
               value={value}
@@ -516,10 +545,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
               placeholder={
-                isStreaming && (onSteer || onFollowUp)
-                  ? "Steer 立即注入 / Follow-up 排队…"
-                  : isStreaming ? "Agent is running…"
-                  : "Message…"
+                isStreaming ? "Agent is running…"
+                  : "Describe a task or ask a question"
               }
               rows={1}
               style={{
@@ -535,88 +562,52 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 minHeight: 24,
                 maxHeight: 200,
                 overflow: "auto",
+                paddingRight: 24,
               }}
             />
+            {/* ↵ icon — visual hint that Enter sends */}
+            {!isStreaming && (
+              <span style={{
+                position: "absolute",
+                right: 6,
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "var(--text-dim)",
+                fontSize: 14,
+                pointerEvents: "none",
+                fontFamily: "var(--font-mono)",
+                lineHeight: 1,
+                opacity: 0.5,
+              }}>↵</span>
+            )}
           </div>
 
-          {isStreaming ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, alignSelf: "flex-end" }}>
-              {onSteer && (
-                <button
-                  onClick={() => sendQueued("steer")}
-                  disabled={!value.trim() && !attachedImages.length}
-                  title="打断 Agent 当前运行，立即注入消息"
-                  style={{
-                    display: "flex", alignItems: "center", gap: 5,
-                    padding: "7px 12px",
-                    background: (value.trim() || attachedImages.length) ? "color-mix(in oklab, var(--warn), transparent 88%)" : "none",
-                    border: "1px solid color-mix(in oklab, var(--warn), transparent 65%)",
-                    borderRadius: 8,
-                    color: (value.trim() || attachedImages.length) ? "var(--warn)" : "var(--text-dim)",
-                    cursor: (value.trim() || attachedImages.length) ? "pointer" : "not-allowed",
-                    fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em",
-                    transition: "background 0.12s",
-                  }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M5 1 L9 5 L5 9" /><line x1="1" y1="5" x2="9" y2="5" />
-                  </svg>
-                  Steer
-                </button>
-              )}
-              {onFollowUp && (
-                <button
-                  onClick={() => sendQueued("followup")}
-                  disabled={!value.trim() && !attachedImages.length}
-                  title="在 Agent 完成后排队发送"
-                  style={{
-                    display: "flex", alignItems: "center", gap: 5,
-                    padding: "7px 12px",
-                    background: (value.trim() || attachedImages.length) ? "var(--accent-soft)" : "none",
-                    border: "1px solid var(--accent-border)",
-                    borderRadius: 8,
-                    color: (value.trim() || attachedImages.length) ? "var(--accent)" : "var(--text-dim)",
-                    cursor: (value.trim() || attachedImages.length) ? "pointer" : "not-allowed",
-                    fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em",
-                    transition: "background 0.12s",
-                  }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="5" y1="1" x2="5" y2="6" /><polyline points="2.5 3.5 5 1 7.5 3.5" />
-                    <line x1="2" y1="9" x2="8" y2="9" />
-                  </svg>
-                  Follow-up
-                </button>
-              )}
-            </div>
-          ) : (
+          {isStreaming && (
             <button
-              onClick={handleSend}
-              disabled={!value.trim() && !attachedImages.length}
+              onClick={onAbort}
+              title="停止 Agent"
               style={{
-                flexShrink: 0,
-                alignSelf: "flex-end",
+                flexShrink: 0, alignSelf: "flex-end",
                 display: "flex", alignItems: "center", gap: 6,
                 padding: "7px 14px",
-                background: (value.trim() || attachedImages.length) ? "var(--accent)" : "var(--bg-panel)",
-                border: "none",
+                background: "color-mix(in oklab, var(--danger), transparent 90%)",
+                border: "1px solid color-mix(in oklab, var(--danger), transparent 65%)",
                 borderRadius: 8,
-                color: (value.trim() || attachedImages.length) ? "var(--bg)" : "var(--text-dim)",
-                cursor: (value.trim() || attachedImages.length) ? "pointer" : "not-allowed",
-                fontSize: 13,
-                fontWeight: 600,
-                letterSpacing: "-0.01em",
-                boxShadow: (value.trim() || attachedImages.length) ? "0 1px 3px color-mix(in oklab, var(--accent), transparent 75%)" : "none",
-                transition: "background 0.15s, box-shadow 0.15s",
+                color: "var(--danger)",
+                cursor: "pointer",
+                fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em",
+                transition: "background 0.12s",
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in oklab, var(--danger), transparent 82%)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "color-mix(in oklab, var(--danger), transparent 90%)"; }}
             >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="2" y1="7" x2="11" y2="7" />
-                <polyline points="7.5 3 12 7 7.5 11" />
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <rect x="1.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor" />
               </svg>
-              Send
+              Stop
             </button>
           )}
+
           {showCommands && commandFiltered.length > 0 && (
             <div ref={commandDropdownRef} style={{
               position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0,
@@ -648,22 +639,128 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           )}
         </div>
 
-        {/* Bottom bar: left | center (context) | right */}
+        {/* Bottom bar: left | spacer | right */}
         <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
 
-          {/* LEFT: attach image */}
-          <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 2 }}>
+          {/* LEFT: project | branch | attach */}
+          <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 6 }}>
+
+            {/* 📂 Project pill */}
+            <button
+              onClick={() => onDirectoryChange?.()}
+              disabled={isStreaming}
+              title="Switch project directory"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 4,
+                padding: "4px 10px", height: 28,
+                background: "none", border: "1px solid var(--border)", borderRadius: 9999,
+                color: "var(--text-muted)", cursor: isStreaming ? "not-allowed" : "pointer",
+                fontSize: 11, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
+                opacity: isStreaming ? 0.5 : 1,
+                transition: "background 0.12s, color 0.12s",
+              }}
+              onMouseEnter={(e) => {
+                if (isStreaming) return;
+                e.currentTarget.style.background = "var(--bg-hover)";
+                e.currentTarget.style.color = "var(--text)";
+              }}
+              onMouseLeave={(e) => {
+                if (isStreaming) return;
+                e.currentTarget.style.background = "none";
+                e.currentTarget.style.color = "var(--text-muted)";
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              </svg>
+              {currentProject || "pi-web"}
+            </button>
+
+            {/* 🌿 Branch pill */}
+            <div ref={branchDropdownRef} style={{ position: "relative" }}>
+              <button
+                onClick={() => { if (!isStreaming && branchOptions && branchOptions.length > 0) setBranchDropdownOpen(v => !v); }}
+                disabled={isStreaming}
+                title="Switch branch"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "4px 10px", height: 28,
+                  background: branchDropdownOpen ? "var(--bg-hover)" : "none",
+                  border: "1px solid var(--border)", borderRadius: 9999,
+                  color: branchDropdownOpen ? "var(--text)" : "var(--text-muted)",
+                  cursor: isStreaming ? "not-allowed" : "pointer",
+                  fontSize: 11, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
+                  opacity: isStreaming ? 0.5 : 1,
+                  transition: "background 0.12s, color 0.12s",
+                }}
+                onMouseEnter={(e) => {
+                  if (isStreaming) return;
+                  e.currentTarget.style.background = "var(--bg-hover)";
+                  e.currentTarget.style.color = "var(--text)";
+                }}
+                onMouseLeave={(e) => {
+                  if (isStreaming) return;
+                  e.currentTarget.style.background = branchDropdownOpen ? "var(--bg-hover)" : "none";
+                  e.currentTarget.style.color = "var(--text-muted)";
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <line x1="6" y1="3" x2="6" y2="15" />
+                  <circle cx="18" cy="6" r="3" />
+                  <circle cx="6" cy="18" r="3" />
+                  <path d="M18 9a9 9 0 0 1-9 9" />
+                </svg>
+                {activeBranch || "main"}
+              </button>
+              {branchDropdownOpen && branchOptions && branchOptions.length > 0 && (
+                <div style={{
+                  position: "absolute", bottom: "calc(100% + 6px)", left: 0,
+                  zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
+                  borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
+                  overflow: "hidden", minWidth: 140,
+                }}>
+                  {branchOptions.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => { onBranchChange?.(opt.id); setBranchDropdownOpen(false); }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 8,
+                        width: "100%", padding: "7px 12px",
+                        background: opt.id === activeBranch ? "var(--bg-selected)" : "none",
+                        border: "none",
+                        color: opt.id === activeBranch ? "var(--text)" : "var(--text-muted)",
+                        cursor: "pointer", fontSize: 12, textAlign: "left" as const,
+                        fontWeight: opt.id === activeBranch ? 600 : 400,
+                        whiteSpace: "nowrap",
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = opt.id === activeBranch ? "var(--bg-selected)" : "none"; }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <line x1="6" y1="3" x2="6" y2="15" />
+                        <circle cx="18" cy="6" r="3" />
+                        <circle cx="6" cy="18" r="3" />
+                        <path d="M18 9a9 9 0 0 1-9 9" />
+                      </svg>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 🖼️ Attach pill */}
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isStreaming}
               title="Attach image"
               style={{
-                flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                width: 32, height: 32, padding: 0,
-                background: "none", border: "none",
-                borderRadius: 9,
+                display: "inline-flex", alignItems: "center", gap: 4,
+                padding: "4px 10px", height: 28,
+                background: "none", border: "1px solid var(--border)", borderRadius: 9999,
                 color: attachedImages.length ? "var(--accent)" : "var(--text-muted)",
                 cursor: isStreaming ? "not-allowed" : "pointer",
+                fontSize: 11, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
                 opacity: isStreaming ? 0.5 : 1,
                 transition: "background 0.12s, color 0.12s",
               }}
@@ -673,24 +770,27 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 e.currentTarget.style.color = attachedImages.length ? "var(--accent)" : "var(--text)";
               }}
               onMouseLeave={(e) => {
+                if (isStreaming) return;
                 e.currentTarget.style.background = "none";
                 e.currentTarget.style.color = attachedImages.length ? "var(--accent)" : "var(--text-muted)";
               }}
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                 <circle cx="8.5" cy="8.5" r="1.5" />
                 <polyline points="21 15 16 10 5 21" />
               </svg>
+              Attach
             </button>
+
           </div>
 
           {/* spacer */}
           <div style={{ flex: 1 }} />
 
-          {/* RIGHT: model + thinking + usage (idle) | Stop (streaming) */}
-          <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 2 }}>
-            {/* Model selector — always visible, disabled during streaming */}
+          {/* RIGHT: model + thinking level + status ring */}
+          <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 6 }}>
+            {/* Model selector — pill style, always visible */}
             {modelOptions.length > 0 && currentName && onModelChange && (
                 <div ref={dropdownRef} style={{ position: "relative" }}>
                   <button
@@ -701,18 +801,19 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                     }}
                     disabled={isStreaming}
                     style={{
-                      display: "flex", alignItems: "center", gap: 6,
-                      padding: "8px 12px",
-                      height: 32,
-                      maxWidth: 220, overflow: "hidden",
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      padding: "4px 10px",
+                      height: 28,
+                      maxWidth: 260, overflow: "hidden",
                       background: modelDropdownOpen ? "var(--bg-hover)" : "none",
-                      border: "none",
-                      borderRadius: 9,
+                      border: "1px solid var(--border)",
+                      borderRadius: 9999,
                       color: "var(--text-muted)",
                       cursor: isStreaming ? "not-allowed" : "pointer",
-                      fontSize: 12,
+                      fontSize: 11,
                       opacity: isStreaming ? 0.5 : 1,
                       transition: "background 0.12s, color 0.12s",
+                      fontFamily: "var(--font-body)",
                     }}
                     onMouseEnter={(e) => {
                       if (isStreaming) return;
@@ -724,7 +825,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                       e.currentTarget.style.color = "var(--text-muted)";
                     }}
                   >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                       <rect x="4" y="4" width="16" height="16" rx="2" />
                       <rect x="9" y="9" width="6" height="6" />
                       <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
@@ -733,6 +834,13 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                       <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
                     </svg>
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{currentName}</span>
+                    {contextUsage?.contextWindow != null && (
+                      <span style={{ color: "var(--text-dim)", whiteSpace: "nowrap" }}>
+                        ({contextUsage.contextWindow >= 1_000_000
+                          ? `${(contextUsage.contextWindow / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`
+                          : `${Math.round(contextUsage.contextWindow / 1000)}k`})
+                      </span>
+                    )}
                   </button>
                   {modelDropdownOpen && modelDropdownRect && (() => {
                     const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
@@ -798,17 +906,18 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   disabled={isStreaming}
                   title="切换推理强度"
                   style={{
-                    display: "flex", alignItems: "center", gap: 5,
-                    padding: "8px 12px",
-                    height: 32,
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    padding: "4px 10px",
+                    height: 28,
                     background: thinkingDropdownOpen ? "var(--bg-hover)" : "none",
-                    border: "none",
-                    borderRadius: 9,
+                    border: "1px solid var(--border)",
+                    borderRadius: 9999,
                     color: "var(--text-muted)",
                     cursor: isStreaming ? "not-allowed" : "pointer",
-                    fontSize: 12,
+                    fontSize: 11,
                     opacity: isStreaming ? 0.5 : 1,
                     transition: "background 0.12s, color 0.12s",
+                    fontFamily: "var(--font-body)",
                   }}
                   onMouseEnter={(e) => {
                     if (isStreaming) return;
@@ -820,7 +929,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                     e.currentTarget.style.color = "var(--text-muted)";
                   }}
                 >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                     <path d="M9.5 2A5.5 5.5 0 0 0 4 7.5c0 1.7.78 3.21 2 4.21V14a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-2.29c1.22-1 2-2.51 2-4.21A5.5 5.5 0 0 0 9.5 2z" />
                     <line x1="7" y1="18" x2="12" y2="18" />
                     <line x1="8" y1="21" x2="11" y2="21" />
@@ -882,10 +991,10 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               </div>
             )}
 
-            {/* Context usage donut gauge */}
+            {/* Context % pill */}
             {contextUsage != null && (
               <div
-                style={{ position: "relative", display: "flex", alignItems: "center" }}
+                style={{ position: "relative", display: "flex" }}
                 onMouseEnter={(e) => {
                   const el = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement;
                   if (el) el.style.opacity = '1';
@@ -895,35 +1004,19 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   if (el) el.style.opacity = '0';
                 }}
               >
-                <svg width="26" height="26" viewBox="0 0 26 26" style={{ display: "block" }}>
-                  {/* Background track */}
-                  <circle cx="13" cy="13" r="9.5" fill="none" stroke="var(--border)" strokeWidth="2" />
-                  {/* Foreground arc — used portion */}
-                  {(() => {
-                    const pct = contextUsage.percent;
-                    if (pct == null) return null;
-                    const r = 9.5;
-                    const circ = 2 * Math.PI * r;
-                    const used = (pct / 100) * circ;
-                    // Color shifts from accent to warning as usage increases
-                    const strokeColor = pct > 90 ? "var(--danger)" : pct > 75 ? "var(--warn)" : "var(--accent)";
-                    return (
-                      <circle
-                        cx="13" cy="13" r={r}
-                        fill="none" stroke={strokeColor} strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeDasharray={`${used} ${circ - used}`}
-                        transform="rotate(-90 13 13)"
-                        style={{ transition: "stroke-dasharray 0.4s ease, stroke 0.4s ease" }}
-                      />
-                    );
-                  })()}
-                  {/* Percentage text */}
-                  <text x="13" y="13" textAnchor="middle" dominantBaseline="central"
-                    fill="var(--text-muted)" fontSize="8.5" fontFamily="var(--font-mono)" fontWeight="600">
-                    {contextUsage.percent != null ? Math.round(contextUsage.percent) : "?"}
-                  </text>
-                </svg>
+                <span style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "4px 10px", height: 28,
+                  background: "none", border: "1px solid var(--border)", borderRadius: 9999,
+                  color: "var(--text-muted)", cursor: "default",
+                  fontSize: 11, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
+                }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  {contextUsage.percent != null ? Math.round(contextUsage.percent) + "%" : "—"}
+                </span>
                 <div data-tooltip style={{
                   position: "absolute", bottom: "calc(100% + 8px)", right: 0,
                   background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8,
@@ -951,38 +1044,28 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   )}
                   <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-dim)", fontSize: 11, fontFamily: "var(--font-mono)" }}>
                     <span>{contextUsage.tokens != null ? `${(contextUsage.tokens / 1000).toFixed(1).replace(/\.0$/, "")}k tokens` : "—"}</span>
-                    <span>{contextUsage.contextWindow != null ? `${(contextUsage.contextWindow / 1000).toFixed(0)}k window` : "—"}</span>
+                    <span>{contextUsage.contextWindow != null
+                      ? (contextUsage.contextWindow >= 1_000_000
+                        ? `${(contextUsage.contextWindow / 1_000_000).toFixed(1).replace(/\.0$/, "")}M window`
+                        : `${(contextUsage.contextWindow / 1000).toFixed(0)}k window`)
+                      : "—"}</span>
                   </div>
                 </div>
               </div>
             )}
 
-            {isStreaming && (
-              <button
-                onClick={onAbort}
-                title="停止 Agent"
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "8px 14px",
-                  height: 32,
-                  background: "color-mix(in oklab, var(--danger), transparent 92%)",
-                  border: "1px solid color-mix(in oklab, var(--danger), transparent 70%)",
-                  borderRadius: 9,
-                  color: "var(--danger)",
-                  cursor: "pointer",
-                  fontSize: 12, fontWeight: 600,
-                  whiteSpace: "nowrap", letterSpacing: "-0.01em",
-                  transition: "background 0.12s",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in oklab, var(--danger), transparent 84%)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "color-mix(in oklab, var(--danger), transparent 92%)"; }}
-              >
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                  <rect x="1.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor" />
-                </svg>
-                Stop
-              </button>
-            )}
+            {/* Status ring */}
+            <span style={{
+              display: "block",
+              width: 7, height: 7,
+              borderRadius: "50%",
+              background: isStreaming ? "var(--warn)" : "var(--success)",
+              boxShadow: isStreaming
+                ? "0 0 6px color-mix(in oklab, var(--warn), transparent 40%)"
+                : "0 0 6px color-mix(in oklab, var(--success), transparent 50%)",
+              flexShrink: 0,
+            }} />
+
           </div>
 
         </div>

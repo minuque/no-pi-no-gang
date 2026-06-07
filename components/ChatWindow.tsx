@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { AgentMessage, SessionInfo, SessionTreeNode } from "@/lib/types";
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
@@ -94,16 +95,18 @@ function Typewriter({ phrases }: { phrases: string[] }) {
 }
 
 export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange }: Props) {
+  const router = useRouter();
   const {
-    loading, error, messages, entryIds, streamState, commands,
+    data, loading, error, messages, entryIds, streamState, commands,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, thinkingLevel,
     retryInfo, contextUsage, forkingEntryId,
     displayModel: displayModelValue, sessionStats,
     agentPhase, showScrollButton,
+    activeLeafId,
     isNew,
     messagesEndRef, scrollContainerRef,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
-    handleSteer, handleFollowUp, handleThinkingLevelChange, handleAgentEventRef,
+    handleThinkingLevelChange, handleAgentEventRef,
     scrollToBottom,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
@@ -173,13 +176,102 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     ? (modelThinkingLevelMaps[`${displayModelValue.provider}:${displayModelValue.modelId}`] ?? null)
     : null;
 
+  const cwd = session?.cwd ?? newSessionCwd;
+  const projectName = cwd ? cwd.split(/[/\\]/).pop() : undefined;
+
+  const branchOptions = useMemo(() => {
+    const options: { id: string; label: string }[] = [];
+    const tree = data?.tree;
+    if (!tree) return options;
+    function walk(nodes: SessionTreeNode[]) {
+      for (const node of nodes) {
+        if (node.children.length > 1) {
+          for (const child of node.children) {
+            if (child.label) options.push({ id: child.entry.id, label: child.label });
+          }
+        }
+        walk(node.children);
+      }
+    }
+    walk(tree);
+    return options;
+  }, [data?.tree]);
+
+  const activeBranch = useMemo(() => {
+    const tree = data?.tree;
+    if (!tree || !activeLeafId) return undefined;
+    function find(nodes: SessionTreeNode[]): string | undefined {
+      for (const node of nodes) {
+        if (node.entry.id === activeLeafId) return node.label;
+        const found = find(node.children);
+        if (found) return found;
+      }
+      return undefined;
+    }
+    return find(tree);
+  }, [data?.tree, activeLeafId]);
+
+  const handleDirectoryChange = useCallback(async () => {
+    try {
+      const handle = await (window as any).showDirectoryPicker({ mode: "read" });
+      const currentCwd = session?.cwd ?? newSessionCwd;
+      if (currentCwd) {
+        const parent = currentCwd.replace(/[/\\][^/\\]+$/, "");
+        const newCwd = `${parent}/${handle.name}`;
+        router.replace(`/?cwd=${encodeURIComponent(newCwd)}`);
+      } else {
+        console.log("Selected directory:", handle.name);
+      }
+    } catch {
+      // user cancelled or API not available
+    }
+  }, [session?.cwd, newSessionCwd, router]);
+
+  // Streaming metrics — token count + TPS
+  const streamStartRef = useRef<number | null>(null);
+  const [streamingTokens, setStreamingTokens] = useState<number>(0);
+  const [streamingTps, setStreamingTps] = useState<number | null>(null);
+  const streamStateRef = useRef(streamState);
+  streamStateRef.current = streamState;
+
+  useEffect(() => {
+    if (!agentRunning) {
+      streamStartRef.current = null;
+      setStreamingTokens(0);
+      setStreamingTps(null);
+      return;
+    }
+    const tick = () => {
+      const msg = streamStateRef.current.streamingMessage;
+      if (!msg) return;
+      const content = msg.content;
+      if (!content) return;
+      let chars = 0;
+      if (typeof content === "string") {
+        chars = content.length;
+      } else if (Array.isArray(content)) {
+        for (const b of content) {
+          if (b.type === "text") chars += (b as { text?: string }).text?.length ?? 0;
+          else if (b.type === "thinking") chars += (b as { thinking?: string }).thinking?.length ?? 0;
+          else if (b.type === "toolCall") chars += JSON.stringify((b as { input?: unknown }).input ?? {}).length;
+        }
+      }
+      const est = Math.round(chars / 4);
+      setStreamingTokens(est);
+      const now = Date.now();
+      if (streamStartRef.current === null) streamStartRef.current = now;
+      const elapsed = (now - streamStartRef.current) / 1000;
+      if (elapsed > 0.5) setStreamingTps(est / elapsed);
+    };
+    const id = setInterval(tick, 300);
+    return () => clearInterval(id);
+  }, [agentRunning]);
+
   const chatInputElement = (
     <ChatInput
       ref={chatInputRef}
       onSend={handleSend}
       onAbort={handleAbort}
-      onSteer={agentRunning ? handleSteer : undefined}
-      onFollowUp={agentRunning ? handleFollowUp : undefined}
       isStreaming={agentRunning}
       model={displayModelValue}
       modelNames={modelNames}
@@ -192,6 +284,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       retryInfo={retryInfo}
       commands={commands}
       contextUsage={contextUsage}
+      currentProject={projectName}
+      activeBranch={activeBranch}
+      branchOptions={branchOptions}
+      onDirectoryChange={handleDirectoryChange}
+      onBranchChange={handleNavigate}
+      streamingTokens={streamingTokens}
+      streamingTps={streamingTps}
     />
   );
 
