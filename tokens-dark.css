@@ -260,6 +260,14 @@ html.dark {
   /* --- 表单 placeholder --- */
   --ui-placeholder:        var(--muted);
 
+  /* --- TPS 速度指示 badge --- */
+  --ui-tps-high-bg:        color-mix(in oklab, var(--accent), transparent 88%);
+  --ui-tps-high-fg:        var(--accent);
+  --ui-tps-mid-bg:         color-mix(in oklab, var(--success), transparent 88%);
+  --ui-tps-mid-fg:         var(--success);
+  --ui-tps-low-bg:         color-mix(in oklab, var(--warn), transparent 88%);
+  --ui-tps-low-fg:         var(--warn);
+
   /* --- 工具栏 / 快捷操作 --- */
   --ui-toolbar-bg:         var(--surface);
   --ui-toolbar-hover:      var(--surface-raised);

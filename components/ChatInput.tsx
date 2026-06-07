@@ -81,6 +81,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const [commandFiltered, setCommandFiltered] = useState<{ name: string; description: string }[]>([]);
   const [focused, setFocused] = useState(false);
   const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
+  const [contextTooltipOpen, setContextTooltipOpen] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -444,7 +445,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
               <path d="M3 3v5h5" />
             </svg>
-            Retrying ({retryInfo.attempt}/{retryInfo.maxAttempts})…{retryInfo.errorMessage && <span style={{ opacity: 0.7, marginLeft: 4 }}>— {retryInfo.errorMessage}</span>}
+            Retrying ({retryInfo.attempt}/{retryInfo.maxAttempts})…{retryInfo.errorMessage && <span style={{ opacity: 0.7, marginLeft: 4 }}>- {retryInfo.errorMessage}</span>}
           </div>
         )}
         {/* Image previews */}
@@ -480,24 +481,29 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         {/* Streaming status line */}
         {isStreaming && (
           <div style={{
-            display: "flex", alignItems: "center", gap: 6,
-            marginBottom: 6, fontSize: 11, color: "var(--text-dim)",
+            display: "flex", alignItems: "center", gap: 10,
+            marginBottom: 8, fontSize: 12, color: "var(--text-dim)",
             fontFamily: "var(--font-body)",
           }}>
             {/* Pi favicon */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/favicon.ico" alt="" style={{ width: 14, height: 14, flexShrink: 0 }} />
+            <img src="/favicon.ico" alt="" style={{ width: 20, height: 20, flexShrink: 0 }} />
             {streamingTps != null && streamingTps > 0 && (() => {
-              const bg = streamingTps >= 50 ? "var(--accent)" : streamingTps >= 30 ? "var(--success)" : streamingTps >= 15 ? "var(--warn)" : "var(--danger)";
+              const tier = streamingTps >= 50 ? "high" : streamingTps >= 20 ? "mid" : "low";
               return (
-                <span style={{ padding: "1px 5px", borderRadius: 4, background: bg, color: "var(--accent-on)", fontSize: 10, fontWeight: 500 }}>
+                <span style={{
+                  padding: "2px 7px", borderRadius: 5,
+                  background: `var(--ui-tps-${tier}-bg)`,
+                  color: `var(--ui-tps-${tier}-fg)`,
+                  fontSize: 13, fontWeight: 500,
+                }}>
                   {streamingTps.toFixed(1)} t/s
                 </span>
               );
             })()}
             {streamingTokens !== undefined && streamingTokens > 0 && (
-              <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+              <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <svg width="14" height="14" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="5" y1="1.5" x2="5" y2="8.5" /><polyline points="2 6 5 8.5 8 6" />
                 </svg>
                 {streamingTokens}
@@ -995,14 +1001,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             {contextUsage != null && (
               <div
                 style={{ position: "relative", display: "flex" }}
-                onMouseEnter={(e) => {
-                  const el = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement;
-                  if (el) el.style.opacity = '1';
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget.querySelector('[data-tooltip]') as HTMLElement;
-                  if (el) el.style.opacity = '0';
-                }}
+                onMouseEnter={() => setContextTooltipOpen(true)}
+                onMouseLeave={() => setContextTooltipOpen(false)}
               >
                 <span style={{
                   display: "inline-flex", alignItems: "center", gap: 4,
@@ -1017,11 +1017,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   </svg>
                   {contextUsage.percent != null ? Math.round(contextUsage.percent) + "%" : "—"}
                 </span>
-                <div data-tooltip style={{
+                <div style={{
                   position: "absolute", bottom: "calc(100% + 8px)", right: 0,
                   background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8,
                   padding: "10px 14px", fontSize: 12, color: "var(--text)",
-                  whiteSpace: "nowrap", pointerEvents: "none", opacity: 0,
+                  whiteSpace: "nowrap", pointerEvents: "none",
+                  opacity: contextTooltipOpen ? 1 : 0,
                   transition: "opacity 0.15s", zIndex: 100,
                   boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
                   display: "flex", flexDirection: "column", gap: 8, minWidth: 200,
