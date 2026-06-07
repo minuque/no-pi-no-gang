@@ -6,12 +6,11 @@
 
 ## 高优先级 — 直接影响日常使用
 
-- [ ] **多行输入** — 目前 Enter 直接发送，无法输入多行。改为 Enter 发送、Shift+Enter 换行，对齐 Claude Desktop
-- [ ] **输入历史回溯** — 空输入框按 ↑/↓ 导航本次会话已发送的消息，对齐 Claude Desktop
-- [ ] **流式光标** — streaming 时消息末尾闪烁块状光标 ▍，结束后消失。Claude Desktop 流式体验的核心视觉锚点，目前缺失
-- [ ] **滚动到底按钮** — streaming 中用户上滚查看历史时，右下角浮现 ↓ 按钮；点击回到底部并恢复自动跟随。对齐 Claude Desktop
-- [ ] **重新生成** — 最后一条 assistant 消息旁显示重试按钮，用同一 prompt 重新请求。区别于 fork（新会话）和 navigate_tree（分支内回退）
-- [ ] **编辑后重发** — 用户消息 hover 出现编辑按钮，原地编辑后重新发送。对齐 Claude Desktop
+- [x] **多行输入** — Shift+Enter 换行，Enter 发送，对齐 Claude Desktop。`ChatInput.tsx`
+- [x] **输入历史回溯** — 空输入框按 ↑/↓ 导航本次会话已发送的消息。`ChatInput.tsx`
+- [x] **滚动到底按钮** — 视口不在底部时，输入框上方居中浮现 ↓ 按钮，点击回到底部。`ChatWindow.tsx` + `useAgentSession.ts`
+- [x] **重新生成** — 最后一条 assistant 消息 hover 显示 Retry 按钮，用同一 prompt 重新请求。`ChatWindow.tsx` + `MessageView.tsx`
+- [x] **编辑后重发** — 用户消息 hover 显示 Edit 按钮，原地编辑后重新发送。`ChatWindow.tsx` + `MessageView.tsx`
 
 ## 中优先级 — 显著提升效率
 

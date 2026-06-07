@@ -32,6 +32,8 @@ interface Props {
   onEditContent?: (content: string) => void;
   showTimestamp?: boolean;
   prevTimestamp?: number;
+  onRetry?: () => void;
+  onEditResend?: (content: string) => void;
 }
 
 function formatTime(ts?: number): string | null {
@@ -66,12 +68,12 @@ function copyText(text: string): Promise<void> {
   }
 }
 
-export function MessageView({ message, isStreaming, toolResults, modelNames, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, showTimestamp, prevTimestamp }: Props) {
+export function MessageView({ message, isStreaming, toolResults, modelNames, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, showTimestamp, prevTimestamp, onRetry, onEditResend }: Props) {
   if (message.role === "user") {
-    return <UserMessageView message={message as UserMessage} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} />;
+    return <UserMessageView message={message as UserMessage} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onEditResend={onEditResend} />;
   }
   if (message.role === "assistant") {
-    return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} />;
+    return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} onRetry={onRetry} />;
   }
   if (message.role === "toolResult") {
     // Rendered inline under its toolCall — skip standalone rendering if paired
@@ -80,7 +82,7 @@ export function MessageView({ message, isStreaming, toolResults, modelNames, ent
   return null;
 }
 
-function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent }: {
+function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend }: {
   message: UserMessage;
   entryId?: string;
   onFork?: (entryId: string) => void;
@@ -88,9 +90,13 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
   onNavigate?: (entryId: string) => void;
   prevAssistantEntryId?: string;
   onEditContent?: (content: string) => void;
+  onEditResend?: (content: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const content =
     typeof message.content === "string"
@@ -116,13 +122,100 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
     });
   };
 
+  const startEdit = () => {
+    setEditValue(content);
+    setEditing(true);
+  };
+
+  const saveEdit = () => {
+    const trimmed = editValue.trim();
+    if (trimmed && onEditResend) {
+      onEditResend(trimmed);
+    }
+    setEditing(false);
+  };
+
+  const cancelEdit = () => {
+    setEditing(false);
+  };
+
+  // Auto-focus textarea when entering edit mode
+  useEffect(() => {
+    if (editing && editTextareaRef.current) {
+      const ta = editTextareaRef.current;
+      ta.focus();
+      ta.style.height = "auto";
+      ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }
+  }, [editing]);
+
   return (
     <div
       style={{ marginBottom: 24, display: "flex", flexDirection: "column", alignItems: "flex-end" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: "85%" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: "85%", width: "100%" }}>
+        {editing ? (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <textarea
+              ref={editTextareaRef}
+              value={editValue}
+              onChange={(e) => {
+                setEditValue(e.target.value);
+                e.currentTarget.style.height = "auto";
+                e.currentTarget.style.height = `${Math.min(e.currentTarget.scrollHeight, 200)}px`;
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); }
+                if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
+              }}
+              style={{
+                width: "100%",
+                background: "var(--bg)",
+                border: "1px solid var(--accent-border)",
+                borderRadius: 12,
+                padding: "8px 12px",
+                fontSize: 14,
+                lineHeight: 1.6,
+                color: "var(--text)",
+                resize: "none",
+                fontFamily: "inherit",
+                minHeight: 36,
+                maxHeight: 200,
+                outline: "none",
+              }}
+            />
+            <div style={{ display: "flex", gap: 6, marginTop: 4, justifyContent: "flex-end" }}>
+              <button
+                onClick={cancelEdit}
+                style={{
+                  padding: "3px 10px", height: 24,
+                  background: "none", border: "1px solid var(--border)",
+                  borderRadius: 5, color: "var(--text-dim)", cursor: "pointer",
+                  fontSize: 11,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={!editValue.trim()}
+                style={{
+                  padding: "3px 10px", height: 24,
+                  background: editValue.trim() ? "var(--accent)" : "var(--bg-panel)",
+                  border: "none",
+                  borderRadius: 5, color: editValue.trim() ? "#fff" : "var(--text-dim)",
+                  cursor: editValue.trim() ? "pointer" : "not-allowed",
+                  fontSize: 11, fontWeight: 600,
+                }}
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        ) : (
         <div
           style={{
             flex: 1,
@@ -177,6 +270,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
             : content
           }
         </div>
+        )}
 
       </div>
 
@@ -192,6 +286,31 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
             pointerEvents: hovered ? "auto" : "none",
             transition: "opacity 0.12s",
           }}>
+            {onEditResend && (
+              <button
+                onClick={startEdit}
+                title="Edit and resend"
+                style={{
+                  display: "flex", alignItems: "center", gap: 4,
+                  padding: "3px 8px", height: 22,
+                  background: "none", border: "none",
+                  borderRadius: 5,
+                  color: "var(--text-dim)",
+                  cursor: "pointer",
+                  fontSize: 11, fontWeight: 400,
+                  whiteSpace: "nowrap",
+                  transition: "color 0.12s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                Edit
+              </button>
+            )}
             <button
               onClick={copyContent}
               title="Copy message"
@@ -298,6 +417,7 @@ function AssistantMessageView({
   modelNames,
   showTimestamp,
   prevTimestamp,
+  onRetry,
 }: {
   message: AssistantMessage;
   isStreaming?: boolean;
@@ -305,6 +425,7 @@ function AssistantMessageView({
   modelNames?: Record<string, string>;
   showTimestamp?: boolean;
   prevTimestamp?: number;
+  onRetry?: () => void;
 }) {
   const time = showTimestamp ? formatTime(message.timestamp) : null;
   const blocks = message.content ?? [];
@@ -475,6 +596,33 @@ function AssistantMessageView({
           <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
             {formatUsage(message.usage)}
           </div>
+        )}
+        {onRetry && !isStreaming && (
+          <button
+            onClick={onRetry}
+            title="Retry with the same prompt"
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              padding: "3px 8px", height: 22,
+              background: "none", border: "none",
+              borderRadius: 5,
+              color: "var(--text-dim)",
+              cursor: "pointer",
+              fontSize: 11, fontWeight: 400,
+              whiteSpace: "nowrap",
+              opacity: hovered ? 1 : 0,
+              pointerEvents: hovered ? "auto" : "none",
+              transition: "opacity 0.12s, color 0.12s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 4 23 10 17 10" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+            Retry
+          </button>
         )}
         {textContent && !isStreaming && (
           <button

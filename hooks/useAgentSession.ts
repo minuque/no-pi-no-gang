@@ -116,6 +116,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [compactError, setCompactError] = useState<string | null>(null);
   const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
   const [commands, setCommands] = useState<{ name: string; description: string }[]>([]);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
@@ -710,6 +711,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const handleScroll = () => {
       const atBottom = checkAtBottom();
       isAtBottomRef.current = atBottom;
+      // Update scroll-to-bottom button immediately on scroll
+      const el = messagesEndRef.current;
+      const container = scrollContainerRef.current;
+      if (el && container) {
+        setShowScrollButton(el.getBoundingClientRect().bottom > container.getBoundingClientRect().bottom + 32);
+      }
       if (atBottom && agentRunningRef.current && !autoScrollRafRef.current) {
         autoScrollRafRef.current = requestAnimationFrame(autoScrollLoop);
       }
@@ -756,6 +763,16 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, [messages.length, agentRunning, scrollToBottom]);
 
+  // Show scroll-to-bottom button when scrolled away from bottom — always active, not just streaming.
+  // No deps → runs after every render; only triggers state change when value flips.
+  useEffect(() => {
+    const el = messagesEndRef.current;
+    const container = scrollContainerRef.current;
+    if (!el || !container) return;
+    const isBelow = el.getBoundingClientRect().bottom > container.getBoundingClientRect().bottom + 32;
+    setShowScrollButton(isBelow);
+  });
+
   // Load model list
   useEffect(() => {
     fetch("/api/models").then((r) => r.json()).then((d: { models: Record<string, string>; modelList?: { id: string; name: string; provider: string }[]; defaultModel?: { provider: string; modelId: string } | null; thinkingLevels?: Record<string, string[]>; thinkingLevelMaps?: Record<string, Record<string, string | null>> }) => {
@@ -795,7 +812,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, toolPreset, thinkingLevel,
     retryInfo, contextUsage, systemPrompt, forkingEntryId,
     isCompacting, compactError, currentModel, displayModel, sessionStats,
-    agentPhase,
+    agentPhase, showScrollButton,
     isNew,
     // Refs
     sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef,
@@ -804,7 +821,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
     handleToolPresetChange, handleThinkingLevelChange, fetchCommands, loadTools, setActiveLeafId, setData, setMessages,
-    dispatch, setAgentRunning, setForkingEntryId,
+    dispatch, setAgentRunning, setForkingEntryId, scrollToBottom,
     // Subscriptions
     handleAgentEventRef,
   };

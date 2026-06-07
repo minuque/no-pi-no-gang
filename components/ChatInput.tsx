@@ -67,6 +67,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const [commandQuery, setCommandQuery] = useState("");
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandFiltered, setCommandFiltered] = useState<{ name: string; description: string }[]>([]);
+  const [focused, setFocused] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -76,6 +77,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const isComposingRef = useRef(false);
   const lastCompositionEndAtRef = useRef(0);
   const commandDropdownRef = useRef<HTMLDivElement>(null);
+  const sentHistoryRef = useRef<string[]>([]);
+  const historyIndexRef = useRef(-1);
+  const historyDraftRef = useRef("");
 
   useImperativeHandle(ref, () => ({
     insertIfEmpty(text: string) {
@@ -159,6 +163,13 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     const msg = value.trim();
     if (!msg && !attachedImages.length) return;
     if (isStreaming) return;
+    // Save to input history (dedupe consecutive identical messages)
+    if (msg) {
+      const h = sentHistoryRef.current;
+      if (h.length === 0 || h[h.length - 1] !== msg) h.push(msg);
+    }
+    historyIndexRef.current = -1;
+    historyDraftRef.current = "";
     onSend(msg, attachedImages.length ? attachedImages : undefined);
     setValue("");
     clearImages();
@@ -232,6 +243,58 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         }
       }
 
+      // Shift+Enter: insert newline (browser default)
+      if (e.key === "Enter" && e.shiftKey) {
+        return;
+      }
+
+      // Input history navigation — empty input ↑/↓ (matches Claude Desktop)
+      if (!showCommands) {
+        const ta = textareaRef.current;
+        const currentVal = ta?.value ?? "";
+
+        if (e.key === "ArrowUp" && !currentVal) {
+          e.preventDefault();
+          const h = sentHistoryRef.current;
+          if (!h.length) return;
+          if (historyIndexRef.current === -1) historyDraftRef.current = "";
+          const idx = historyIndexRef.current === -1 ? h.length - 1 : Math.max(0, historyIndexRef.current - 1);
+          historyIndexRef.current = idx;
+          setValue(h[idx]);
+          requestAnimationFrame(() => {
+            const ta = textareaRef.current;
+            if (ta) {
+              ta.style.height = "auto";
+              ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+              ta.setSelectionRange(ta.value.length, ta.value.length);
+            }
+          });
+          return;
+        }
+
+        if (e.key === "ArrowDown" && historyIndexRef.current >= 0) {
+          e.preventDefault();
+          const h = sentHistoryRef.current;
+          const nextIdx = historyIndexRef.current + 1;
+          if (nextIdx < h.length) {
+            historyIndexRef.current = nextIdx;
+            setValue(h[nextIdx]);
+          } else {
+            historyIndexRef.current = -1;
+            setValue(historyDraftRef.current);
+          }
+          requestAnimationFrame(() => {
+            const ta = textareaRef.current;
+            if (ta) {
+              ta.style.height = "auto";
+              ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+              ta.setSelectionRange(ta.value.length, ta.value.length);
+            }
+          });
+          return;
+        }
+      }
+
       const nativeEvent = e.nativeEvent;
       const recentlyComposed = Date.now() - lastCompositionEndAtRef.current < COMPOSITION_END_ENTER_GRACE_MS;
       const isComposing =
@@ -276,6 +339,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     setValue(newValue);
+    // Any manual edit cancels history navigation
+    if (historyIndexRef.current >= 0) historyIndexRef.current = -1;
 
     // Skip command detection during IME composition
     if (isComposingRef.current) return;
@@ -422,11 +487,15 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             background: "var(--bg)",
             border: `1px solid ${isStreaming && (onSteer || onFollowUp)
               ? "rgba(234,179,8,0.4)"
-              : "color-mix(in srgb, var(--border) 70%, transparent)"}`,
+              : focused
+                ? "var(--accent-border)"
+                : "color-mix(in srgb, var(--border) 70%, transparent)"}`,
             borderRadius: 14,
             padding: "10px 10px 10px 14px",
-            boxShadow: "0 1px 2px rgba(28,25,23,0.04), 0 8px 24px -12px rgba(28,25,23,0.08)",
-            transition: "border-color 0.15s, background 0.15s, box-shadow 0.15s",
+            boxShadow: focused
+              ? "0 0 0 3px var(--accent-soft), 0 1px 2px rgba(28,25,23,0.06), 0 8px 24px -12px rgba(28,25,23,0.12)"
+              : "0 1px 2px rgba(28,25,23,0.04), 0 8px 24px -12px rgba(28,25,23,0.08)",
+            transition: "border-color 0.15s, background 0.15s, box-shadow 0.2s",
           } as React.CSSProperties}
         >
           <div style={{ flex: 1, display: "flex" }}>
@@ -444,6 +513,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               }}
               onInput={handleInput}
               onPaste={handlePaste}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
               placeholder={
                 isStreaming && (onSteer || onFollowUp)
                   ? "Steer 立即注入 / Follow-up 排队…"
@@ -530,7 +601,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 background: (value.trim() || attachedImages.length) ? "var(--accent)" : "var(--bg-panel)",
                 border: "none",
                 borderRadius: 8,
-                color: (value.trim() || attachedImages.length) ? "#fff" : "var(--text-dim)",
+                color: (value.trim() || attachedImages.length) ? "var(--bg)" : "var(--text-dim)",
                 cursor: (value.trim() || attachedImages.length) ? "pointer" : "not-allowed",
                 fontSize: 13,
                 fontWeight: 600,
