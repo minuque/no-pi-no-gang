@@ -206,7 +206,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
                   padding: "3px 10px", height: 24,
                   background: editValue.trim() ? "var(--accent)" : "var(--bg-panel)",
                   border: "none",
-                  borderRadius: 5, color: editValue.trim() ? "#fff" : "var(--text-dim)",
+                  borderRadius: 5, color: editValue.trim() ? "var(--accent-on)" : "var(--text-dim)",
                   cursor: editValue.trim() ? "pointer" : "not-allowed",
                   fontSize: 11, fontWeight: 600,
                 }}
@@ -568,9 +568,9 @@ function AssistantMessageView({
                     {est}
                   </span>
                   {tps !== null && (() => {
-                    const bg = tps >= 50 ? "#53b3cb" : tps >= 30 ? "#9bc53d" : tps >= 15 ? "#f9c22e" : "#e01a4f";
+                    const bg = tps >= 50 ? "var(--accent)" : tps >= 30 ? "var(--success)" : tps >= 15 ? "var(--warn)" : "var(--danger)";
                     return (
-                      <span style={{ marginLeft: 6, padding: "1px 6px", borderRadius: 4, background: bg, color: "#fff", fontSize: 11, fontWeight: 400 }}>
+                      <span style={{ marginLeft: 6, padding: "1px 6px", borderRadius: 4, background: bg, color: "var(--accent-on)", fontSize: 11, fontWeight: 400 }}>
                         {tps.toFixed(1)} t/s
                       </span>
                     );
@@ -1012,7 +1012,7 @@ function PairedResult({ text, isEmpty, isError }: {
         style={{
           margin: 0,
           padding: "8px 10px",
-          color: isError ? "#f87171" : (isEmpty ? "var(--text-dim)" : "var(--text-muted)"),
+          color: isError ? "var(--danger)" : (isEmpty ? "var(--text-dim)" : "var(--text-muted)"),
           fontSize: 12,
           lineHeight: 1.5,
           overflow: "auto",

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../tokens-dark.css";
 
 @theme {
   --color-bg: var(--bg);
@@ -31,40 +32,24 @@
   --text-dim: #a09b95;
   --accent: #4f6f8f;
   --accent-hover: #3d5a75;
-  --accent-soft: rgba(79,111,143,0.08);
-  --accent-border: rgba(79,111,143,0.25);
+  --accent-soft: color-mix(in oklab, var(--accent), transparent 92%);
+  --accent-subtle: color-mix(in oklab, var(--accent), transparent 94%);
+  --accent-border: color-mix(in oklab, var(--accent), transparent 75%);
+  --accent-ring: color-mix(in oklab, var(--accent), transparent 50%);
   --user-bg: #eff4f8;
   --assistant-bg: #fafaf9;
   --tool-bg: #f5f4f1;
   --bg-subtle: rgba(0,0,0,0.025);
+  --accent-on: #ffffff;
+  --success: #34d399;
+  --warn: #fbbf24;
+  --danger: #f87171;
   --shadow-xs: 0 1px 2px rgba(28,25,23,0.04);
   --shadow-sm: 0 1px 3px rgba(28,25,23,0.06), 0 1px 2px rgba(28,25,23,0.04);
   --shadow-md: 0 4px 12px rgba(28,25,23,0.06), 0 2px 4px rgba(28,25,23,0.04);
   --shadow-lg: 0 8px 24px rgba(28,25,23,0.08), 0 2px 6px rgba(28,25,23,0.04);
 }
 
-html.dark {
-  --bg: #141414;
-  --bg-panel: #1e1e1e;
-  --bg-hover: #2a2a2a;
-  --bg-selected: #353535;
-  --border: #3a3a3a;
-  --text: #ececec;
-  --text-muted: #999;
-  --text-dim: #737373;
-  --accent: #8db8d8;
-  --accent-hover: #a8cfe6;
-  --accent-soft: rgba(141,184,216,0.12);
-  --accent-border: rgba(141,184,216,0.30);
-  --user-bg: #1a2430;
-  --assistant-bg: #141414;
-  --tool-bg: #1e1e1e;
-  --bg-subtle: rgba(255,255,255,0.04);
-  --shadow-xs: 0 1px 2px rgba(0,0,0,0.25);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.20);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.40), 0 2px 4px rgba(0,0,0,0.25);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.50), 0 2px 6px rgba(0,0,0,0.30);
-}
 
 /* Theme toggle: circular wipe via View Transitions API.
    Disable the UA cross-fade; the actual clip-path animation is driven by
@@ -298,7 +283,7 @@ pre, code {
   top: 1px;
   width: 4px;
   height: 7px;
-  border: solid #fff;
+  border: solid var(--accent-on);
   border-width: 0 1.5px 1.5px 0;
   transform: rotate(45deg);
 }
@@ -430,7 +415,7 @@ span.linenumber {
   z-index: 9999;
   padding: 8px 16px;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-on);
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
@@ -508,9 +493,9 @@ span.linenumber {
 }
 
 @keyframes saved-pop {
-  0%   { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55); }
-  40%  { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(74, 222, 128, 0.25); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+  0%   { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in oklab, var(--success), transparent 45%); }
+  40%  { transform: scale(1.08); box-shadow: 0 0 0 6px color-mix(in oklab, var(--success), transparent 75%); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in oklab, var(--success), transparent 100%); }
 }
 
 @keyframes saved-check-draw {

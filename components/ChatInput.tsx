@@ -436,8 +436,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         {retryInfo && (
           <div style={{
             marginBottom: 8, padding: "5px 10px",
-            background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.25)",
-            borderRadius: 6, fontSize: 12, color: "rgba(180,130,0,0.9)",
+            background: "color-mix(in oklab, var(--warn), transparent 92%)", border: "1px solid color-mix(in oklab, var(--warn), transparent 75%)",
+            borderRadius: 6, fontSize: 12, color: "var(--warn)",
             display: "flex", alignItems: "center", gap: 6,
           }}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -486,7 +486,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             alignItems: "center",
             background: "var(--bg)",
             border: `1px solid ${isStreaming && (onSteer || onFollowUp)
-              ? "rgba(234,179,8,0.4)"
+              ? "color-mix(in oklab, var(--warn), transparent 60%)"
               : focused
                 ? "var(--accent-border)"
                 : "color-mix(in srgb, var(--border) 70%, transparent)"}`,
@@ -549,10 +549,10 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   style={{
                     display: "flex", alignItems: "center", gap: 5,
                     padding: "7px 12px",
-                    background: (value.trim() || attachedImages.length) ? "rgba(234,179,8,0.12)" : "none",
-                    border: "1px solid rgba(234,179,8,0.35)",
+                    background: (value.trim() || attachedImages.length) ? "color-mix(in oklab, var(--warn), transparent 88%)" : "none",
+                    border: "1px solid color-mix(in oklab, var(--warn), transparent 65%)",
                     borderRadius: 8,
-                    color: (value.trim() || attachedImages.length) ? "rgba(180,130,0,1)" : "var(--text-dim)",
+                    color: (value.trim() || attachedImages.length) ? "var(--warn)" : "var(--text-dim)",
                     cursor: (value.trim() || attachedImages.length) ? "pointer" : "not-allowed",
                     fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em",
                     transition: "background 0.12s",
@@ -606,7 +606,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 fontSize: 13,
                 fontWeight: 600,
                 letterSpacing: "-0.01em",
-                boxShadow: (value.trim() || attachedImages.length) ? "0 1px 3px rgba(79,111,143,0.25)" : "none",
+                boxShadow: (value.trim() || attachedImages.length) ? "0 1px 3px color-mix(in oklab, var(--accent), transparent 75%)" : "none",
                 transition: "background 0.15s, box-shadow 0.15s",
               }}
             >
@@ -906,7 +906,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                     const circ = 2 * Math.PI * r;
                     const used = (pct / 100) * circ;
                     // Color shifts from accent to warning as usage increases
-                    const strokeColor = pct > 90 ? "#ef4444" : pct > 75 ? "#f59e0b" : "var(--accent)";
+                    const strokeColor = pct > 90 ? "var(--danger)" : pct > 75 ? "var(--warn)" : "var(--accent)";
                     return (
                       <circle
                         cx="13" cy="13" r={r}
@@ -944,7 +944,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                       <div style={{
                         height: "100%", borderRadius: 2,
                         width: `${contextUsage.percent}%`,
-                        background: contextUsage.percent > 90 ? "#ef4444" : contextUsage.percent > 75 ? "#f59e0b" : "var(--accent)",
+                        background: contextUsage.percent > 90 ? "var(--danger)" : contextUsage.percent > 75 ? "var(--warn)" : "var(--accent)",
                         transition: "width 0.4s ease",
                       }} />
                     </div>
@@ -965,17 +965,17 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   display: "flex", alignItems: "center", gap: 6,
                   padding: "8px 14px",
                   height: 32,
-                  background: "rgba(239,68,68,0.08)",
-                  border: "1px solid rgba(239,68,68,0.3)",
+                  background: "color-mix(in oklab, var(--danger), transparent 92%)",
+                  border: "1px solid color-mix(in oklab, var(--danger), transparent 70%)",
                   borderRadius: 9,
-                  color: "#ef4444",
+                  color: "var(--danger)",
                   cursor: "pointer",
                   fontSize: 12, fontWeight: 600,
                   whiteSpace: "nowrap", letterSpacing: "-0.01em",
                   transition: "background 0.12s",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.16)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in oklab, var(--danger), transparent 84%)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "color-mix(in oklab, var(--danger), transparent 92%)"; }}
               >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                   <rect x="1.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor" />
