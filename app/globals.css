@@ -89,7 +89,7 @@ html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  background: var(--bg);
+  background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-geist), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
@@ -128,51 +128,240 @@ pre, code {
   font-family: var(--font-mono);
 }
 
-/* react-markdown output styles */
+/* ── markdown-body: chat message content typography ── */
+/* Reference: Codex / Claude chat rendering conventions — clear heading
+   hierarchy, comfortable vertical rhythm, subtle blockquote/table tints. */
+
 .markdown-body {
   font-size: 14px;
-  line-height: 1.7;
+  line-height: 1.72;
   color: var(--text);
   word-break: break-word;
+  text-rendering: optimizeLegibility;
 }
-.markdown-body p { margin: 0 0 16px; text-wrap: pretty; }
+/* Custom text selection — tinted to the accent instead of browser default blue */
+.markdown-body ::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* ── Paragraphs ── */
+.markdown-body p {
+  margin: 0 0 14px;
+  text-wrap: pretty;
+}
 .markdown-body p:last-child { margin-bottom: 0; }
+
+/* ── Headings ── */
 .markdown-body h1, .markdown-body h2, .markdown-body h3,
 .markdown-body h4, .markdown-body h5, .markdown-body h6 {
   font-weight: 600;
-  margin: 10px 0 4px;
+  margin: 18px 0 6px;
   color: var(--text);
   text-wrap: balance;
-  line-height: 1.3;
+  line-height: 1.35;
 }
-.markdown-body h1 { font-size: 1.15em; }
-.markdown-body h2 { font-size: 1.05em; }
-.markdown-body h3 { font-size: 0.95em; }
+/* Collapse top margin when heading is the first child */
+.markdown-body > h1:first-child,
+.markdown-body > h2:first-child,
+.markdown-body > h3:first-child,
+.markdown-body > h4:first-child,
+.markdown-body > h5:first-child,
+.markdown-body > h6:first-child {
+  margin-top: 0;
+}
+
+.markdown-body h1 { font-size: 1.35em; }
+.markdown-body h2 { font-size: 1.18em; }
+.markdown-body h3 { font-size: 1.05em; }
+.markdown-body h4 { font-size: 1em; }
+.markdown-body h5 { font-size: 0.92em; color: var(--text-muted); }
+.markdown-body h6 { font-size: 0.85em; color: var(--text-muted); }
+
+/* ── Lists ── */
 .markdown-body ul, .markdown-body ol {
-  padding-left: 20px;
-  margin: 4px 0 16px;
+  padding-left: 1.5em;
+  margin: 6px 0 14px;
 }
-.markdown-body li { margin: 2px 0; }
-.markdown-body a { color: var(--accent); text-decoration: underline; }
+.markdown-body li { margin: 0; }
+.markdown-body li + li { margin-top: 4px; }
+/* Nested list: tighter spacing */
+.markdown-body li > ul,
+.markdown-body li > ol {
+  margin: 2px 0 4px;
+}
+
+/* ── Links ── */
+.markdown-body a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.markdown-body a:hover { color: var(--accent-hover); }
+
+/* ── Strong / Emphasis ── */
+.markdown-body strong { font-weight: 600; color: var(--text); }
+.markdown-body em { font-style: italic; }
+
+/* ── Blockquote ── */
 .markdown-body blockquote {
-  border-left: 3px solid var(--border);
-  margin: 4px 0;
-  padding: 2px 10px;
+  border-left: 3px solid var(--accent-border);
+  margin: 10px 0;
+  padding: 6px 12px;
   color: var(--text-muted);
+  background: var(--bg-subtle);
+  border-radius: 0 6px 6px 0;
 }
+.markdown-body blockquote p:last-child { margin-bottom: 0; }
+
+/* ── Horizontal rule ── */
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 16px 0;
+}
+
+/* ── Tables ── */
 .markdown-body table {
   border-collapse: collapse;
   width: 100%;
-  margin: 16px 0;
+  margin: 14px 0;
   font-size: 13px;
-}
-.markdown-body th, .markdown-body td {
+  overflow: hidden;
+  border-radius: 6px;
   border: 1px solid var(--border);
-  padding: 5px 10px;
-  text-align: left;
 }
-.markdown-body th { background: var(--bg-panel); font-weight: 600; }
-.markdown-body hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+.markdown-body th {
+  background: var(--bg-panel);
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.markdown-body tbody tr:nth-child(even) { background: var(--bg-subtle); }
+
+/* ── Images ── */
+.markdown-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 8px 0;
+}
+
+/* ── Inline code (base; CodeBlock handles fenced blocks) ── */
+.markdown-body :not(pre) > code {
+  background: var(--bg-selected);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--text);
+}
+
+/* ── List markers (bullets / numbers) ── */
+.markdown-body ::marker {
+  color: var(--text-dim);
+}
+.markdown-body ol {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── GFM task list checkboxes ── */
+.markdown-body input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 13px;
+  height: 13px;
+  margin: 0 6px 0 0;
+  border: 1.5px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  cursor: default;
+  vertical-align: text-bottom;
+  position: relative;
+  flex-shrink: 0;
+}
+.markdown-body input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.markdown-body input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  width: 4px;
+  height: 7px;
+  border: solid #fff;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+/* Wrap checkbox + text on the same line */
+.markdown-body li:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: baseline;
+}
+
+/* ── Keyboard shortcuts ── */
+.markdown-body kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  line-height: 1.5;
+  color: var(--text-muted);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 1px 0 var(--border);
+}
+
+/* ── Superscript / Subscript ── */
+.markdown-body sup, .markdown-body sub {
+  font-size: 0.78em;
+}
+.markdown-body sup { vertical-align: super; }
+.markdown-body sub { vertical-align: sub; }
+
+/* ── Highlight ── */
+.markdown-body mark {
+  background: var(--accent-soft);
+  color: var(--text);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+/* ── Abbreviation ── */
+.markdown-body abbr[title] {
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: help;
+}
+
+/* ── Definition lists ── */
+.markdown-body dl { margin: 10px 0; }
+.markdown-body dt { font-weight: 600; margin-top: 8px; color: var(--text); }
+.markdown-body dd { margin-left: 1.2em; margin-top: 2px; color: var(--text-muted); }
+
+/* ── Details / Summary (collapsible sections) ── */
+.markdown-body details {
+  margin: 10px 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+.markdown-body summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-muted);
+}
 
 .mermaid-block {
   padding: 12px;
@@ -253,17 +442,7 @@ span.linenumber {
   transform: translateY(0);
 }
 
-/* Noise overlay for surface depth */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 99999;
-  pointer-events: none;
-  opacity: 0.025;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 256px 256px;
-}
+
 
 @keyframes drop-zone-in {
   from { opacity: 0; transform: scale(0.97); }
@@ -303,6 +482,29 @@ body::after {
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Session loading animations ── */
+@keyframes session-load-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes session-load-breathe {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+/* ── Message entrance stagger ── */
+@keyframes message-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes saved-pop {
