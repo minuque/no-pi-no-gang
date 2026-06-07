@@ -44,3 +44,5 @@
 - [x] **过渡动画统一** — tool call / thinking 展开用 `@keyframes fadeInUp` 200ms ease 入场动画
 - [x] **Usage limits donut gauge** — Claude Desktop 风格双层 donut + 智能变色 + 悬浮卡片式进度条
 - [x] **Markdown 内容间距** — p/ul/ol/table 底部间距 `8px` → `16px`
+- [ ] **皮影戏 π 点阵背景** — `PiCoworkBackground.tsx`：40px 固定网格暗色点阵 + 大尺寸 π 字符镂空透光，暗幕遮罩 + 呼吸动画。仅 `PiLoading.tsx` 加载界面使用；`ChatWindow.tsx` 聊天界面已移除（效果不理想）
+- [ ] **Loading 动画升级** — `PiLoading.tsx`：π 符号呼吸 + 双环旋转 + 轨道数字粒子 + 点阵背景，替换原简陋 "Loading session..." 文本
