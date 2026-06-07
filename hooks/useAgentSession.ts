@@ -648,12 +648,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     messagesEndRef.current?.scrollIntoView({ behavior });
   }, []);
 
-  const checkAtBottom = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return true;
-    return container.scrollHeight - container.scrollTop - container.clientHeight < 80;
-  }, []);
-
   const autoScrollLoop = useCallback(() => {
     if (agentRunningRef.current && isAtBottomRef.current) {
       const container = scrollContainerRef.current;
@@ -703,30 +697,36 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange);
   }, [data?.tree, activeLeafId, handleLeafChange, onBranchDataChange]);
 
-  // Scroll event listener for sticky bottom detection
+  // IntersectionObserver on the sentinel — industry-standard way to detect
+  // scroll-away-from-bottom. Handles scroll, resize, and content changes
+  // natively, without forced reflows (unlike getBoundingClientRect).
+  // hasMessages ensures the observer is re-created when the view transitions
+  // from empty-new/loading → messages (refs become available).
+  const hasMessages = messages.length > 0;
   useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
+    const sentinel = messagesEndRef.current;
+    const root = scrollContainerRef.current;
+    if (!sentinel || !root) return;
 
-    const handleScroll = () => {
-      const atBottom = checkAtBottom();
-      isAtBottomRef.current = atBottom;
-      // Update scroll-to-bottom button immediately on scroll
-      const el = messagesEndRef.current;
-      const container = scrollContainerRef.current;
-      if (el && container) {
-        setShowScrollButton(el.getBoundingClientRect().bottom > container.getBoundingClientRect().bottom + 32);
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const atBottom = entry.isIntersecting;
+        isAtBottomRef.current = atBottom;
+        setShowScrollButton(!atBottom);
+        if (atBottom && agentRunningRef.current && !autoScrollRafRef.current) {
+          autoScrollRafRef.current = requestAnimationFrame(autoScrollLoop);
+        }
+      },
+      {
+        root,
+        rootMargin: "0px 0px 32px 0px", // 32px threshold from bottom
+        threshold: 0,
       }
-      if (atBottom && agentRunningRef.current && !autoScrollRafRef.current) {
-        autoScrollRafRef.current = requestAnimationFrame(autoScrollLoop);
-      }
-    };
+    );
+    observer.observe(sentinel);
 
-    container.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      container.removeEventListener("scroll", handleScroll);
-    };
-  }, [checkAtBottom, autoScrollLoop]);
+    return () => observer.disconnect();
+  }, [autoScrollLoop, hasMessages]);
 
   // Start/stop rAF auto-scroll when agent running state changes.
   useEffect(() => {
@@ -763,15 +763,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, [messages.length, agentRunning, scrollToBottom]);
 
-  // Show scroll-to-bottom button when scrolled away from bottom — always active, not just streaming.
-  // No deps → runs after every render; only triggers state change when value flips.
-  useEffect(() => {
-    const el = messagesEndRef.current;
-    const container = scrollContainerRef.current;
-    if (!el || !container) return;
-    const isBelow = el.getBoundingClientRect().bottom > container.getBoundingClientRect().bottom + 32;
-    setShowScrollButton(isBelow);
-  });
+  // (scroll-button visibility is handled by the unified scroll+resize listener above)
 
   // Load model list
   useEffect(() => {
