@@ -156,7 +156,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: "85%", width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: "85%" }}>
         {editing ? (
           <div style={{ flex: 1, minWidth: 0 }}>
             <textarea
@@ -218,7 +218,6 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
         ) : (
         <div
           style={{
-            flex: 1,
             minWidth: 0,
             background: "var(--user-bg)",
             border: "1px solid var(--accent-border)",
@@ -592,11 +591,6 @@ function AssistantMessageView({
       <div style={{
         display: "flex", alignItems: "center", gap: 8, marginTop: 4,
       }}>
-        {message.usage && !isStreaming && (
-          <div style={{ fontSize: 11, color: "var(--text-dim)" }}>
-            {formatUsage(message.usage)}
-          </div>
-        )}
         {onRetry && !isStreaming && (
           <button
             onClick={onRetry}
@@ -809,8 +803,8 @@ function MermaidBlock({ code, isStreaming }: { code: string; isStreaming?: boole
     <div
       style={{
         position: "relative",
-        marginTop: 4,
-        marginBottom: 4,
+        marginTop: 10,
+        marginBottom: 10,
         borderRadius: 6,
         overflow: "hidden",
         border: "1px solid var(--border)",
@@ -843,54 +837,69 @@ function ThinkingBlock({ block, duration, isStreaming }: { block: ThinkingConten
     if (!document.getElementById('think-pulse-style')) {
       const style = document.createElement('style');
       style.id = 'think-pulse-style';
-      style.innerHTML = `@keyframes think-pulse { 0%, 100% { border-left-color: var(--border); } 50% { border-left-color: var(--accent); } } @keyframes fadeInUp { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }`;
+      style.innerHTML = [
+        `@keyframes think-pulse { 0%,100%{opacity:.45} 50%{opacity:1} }`,
+        `@keyframes think-collapse-in { from{opacity:0;max-height:0;margin-top:0} to{opacity:1;max-height:600px;margin-top:8px} }`,
+        `@keyframes fadeInUp { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }`,
+      ].join('');
       document.head.appendChild(style);
     }
   }, []);
 
   return (
-    <div
-      style={{
-        border: "1px solid var(--border)",
-        borderRadius: 6,
-        overflow: "hidden",
-        fontSize: 13,
-        borderLeft: isStreaming ? "3px solid var(--accent)" : "1px solid var(--border)",
-        ...(isStreaming ? { animation: "think-pulse 2s ease-in-out infinite" } : {}),
-      }}
-    >
+    <div>
+      {/* ── Thin trigger row ── */}
       <button
         onClick={() => setExpanded((v) => !v)}
         style={{
-          display: "flex",
+          display: "inline-flex",
           alignItems: "center",
           gap: 6,
-          width: "100%",
-          padding: "6px 10px",
-          background: "var(--bg-panel)",
+          padding: "3px 10px",
+          background: "var(--bg-subtle)",
           border: "none",
-          color: "var(--text-muted)",
+          borderRadius: 14,
+          color: "var(--text-dim)",
           cursor: "pointer",
           fontSize: 12,
-          textAlign: "left",
+          lineHeight: "20px",
+          transition: "color 0.15s, background 0.15s",
+          ...(isStreaming ? { animation: "think-pulse 1.8s ease-in-out infinite" } : {}),
         }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "var(--bg-subtle)"; }}
       >
-        <span>Thinking</span>
-        {duration !== undefined && (
-          <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
+        <span>{expanded ? "Thinking" : "Thinking"}</span>
+        {isStreaming && (
+          <span style={{ display: "flex", gap: 2, alignItems: "flex-end", height: 12 }}>
+            <span style={{ width: 3, height: 3, borderRadius: "50%", background: "currentColor", animation: "think-pulse 1.2s ease-in-out infinite", animationDelay: "0s" }} />
+            <span style={{ width: 3, height: 3, borderRadius: "50%", background: "currentColor", animation: "think-pulse 1.2s ease-in-out infinite", animationDelay: "0.2s" }} />
+            <span style={{ width: 3, height: 3, borderRadius: "50%", background: "currentColor", animation: "think-pulse 1.2s ease-in-out infinite", animationDelay: "0.4s" }} />
+          </span>
         )}
+        {duration !== undefined && (
+          <span style={{ fontSize: 11, fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
+        )}
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+          <polyline points="2 3.5 5 6.5 8 3.5" />
+        </svg>
       </button>
+
+      {/* ── Expandable thinking content ── */}
       {expanded && (
         <div
           style={{
-            padding: "8px 10px",
+            padding: "8px 12px",
+            marginTop: 6,
             color: "var(--text-muted)",
             fontSize: 12,
             lineHeight: 1.6,
             whiteSpace: "pre-wrap",
-            background: "var(--bg-panel)",
-            borderTop: "1px solid var(--border)",
-            animation: "fadeInUp 200ms ease",
+            background: "var(--bg-subtle)",
+            borderRadius: 8,
+            borderLeft: "2px solid var(--border)",
+            animation: "think-collapse-in 250ms ease both",
+            overflow: "hidden",
           }}
         >
           {block.thinking}
@@ -1039,22 +1048,6 @@ function getToolPreview(block: ToolCallContent): string {
   return String(first).slice(0, 120);
 }
 
-function formatUsage(usage: {
-  input: number;
-  output: number;
-  cacheRead: number;
-  cacheWrite: number;
-  cost: { total: number };
-}): string {
-  const parts = [];
-  if (usage.input) parts.push(`${usage.input.toLocaleString()} in`);
-  if (usage.output) parts.push(`${usage.output.toLocaleString()} out`);
-  if (usage.cacheRead) parts.push(`${usage.cacheRead.toLocaleString()} cache`);
-  if (usage.cost?.total) parts.push(`$${usage.cost.total.toFixed(4)}`);
-  return parts.join(" · ");
-}
-
-
 
 function CodeBlock({ code, lang, headerAction }: { code: string; lang: string; headerAction?: ReactNode }) {
   const { isDark } = useTheme();
@@ -1071,8 +1064,8 @@ function CodeBlock({ code, lang, headerAction }: { code: string; lang: string; h
     <div
       style={{
         position: "relative",
-        marginTop: 4,
-        marginBottom: 4,
+        marginTop: 10,
+        marginBottom: 10,
         borderRadius: 6,
         overflow: "hidden",
         border: "1px solid var(--border)",
