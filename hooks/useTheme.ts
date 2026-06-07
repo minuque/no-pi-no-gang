@@ -14,12 +14,12 @@ function subscribe(cb: () => void): () => void {
 }
 
 function getSnapshot(): Theme {
-  if (typeof document === "undefined") return "light";
+  if (typeof document === "undefined") return "dark";
   return document.documentElement.classList.contains("dark") ? "dark" : "light";
 }
 
 function getServerSnapshot(): Theme {
-  return "light";
+  return "dark";
 }
 
 type ToggleOrigin = { x: number; y: number };
