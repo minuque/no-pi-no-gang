@@ -118,7 +118,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
 
   return (
     <div
-      style={{ marginBottom: 16, display: "flex", flexDirection: "column", alignItems: "flex-end" }}
+      style={{ marginBottom: 24, display: "flex", flexDirection: "column", alignItems: "flex-end" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -410,7 +410,7 @@ function AssistantMessageView({
 
   return (
     <div
-      style={{ marginBottom: 16 }}
+      style={{ marginBottom: 24 }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -522,7 +522,7 @@ function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCal
     return <TextBlock block={block as TextContent} isStreaming={isStreaming} />;
   }
   if (block.type === "thinking") {
-    return <ThinkingBlock block={block as ThinkingContent} duration={streamingDuration} />;
+    return <ThinkingBlock block={block as ThinkingContent} duration={streamingDuration} isStreaming={isStreaming} />;
   }
   if (block.type === "toolCall") {
     const tc = block as ToolCallContent;
@@ -688,8 +688,18 @@ function MermaidBlock({ code, isStreaming }: { code: string; isStreaming?: boole
   );
 }
 
-function ThinkingBlock({ block, duration }: { block: ThinkingContent; duration?: number }) {
+function ThinkingBlock({ block, duration, isStreaming }: { block: ThinkingContent; duration?: number; isStreaming?: boolean }) {
   const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!document.getElementById('think-pulse-style')) {
+      const style = document.createElement('style');
+      style.id = 'think-pulse-style';
+      style.innerHTML = `@keyframes think-pulse { 0%, 100% { border-left-color: var(--border); } 50% { border-left-color: var(--accent); } } @keyframes fadeInUp { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }`;
+      document.head.appendChild(style);
+    }
+  }, []);
+
   return (
     <div
       style={{
@@ -697,6 +707,8 @@ function ThinkingBlock({ block, duration }: { block: ThinkingContent; duration?:
         borderRadius: 6,
         overflow: "hidden",
         fontSize: 13,
+        borderLeft: isStreaming ? "3px solid var(--accent)" : "1px solid var(--border)",
+        ...(isStreaming ? { animation: "think-pulse 2s ease-in-out infinite" } : {}),
       }}
     >
       <button
@@ -730,6 +742,7 @@ function ThinkingBlock({ block, duration }: { block: ThinkingContent; duration?:
             whiteSpace: "pre-wrap",
             background: "var(--bg-panel)",
             borderTop: "1px solid var(--border)",
+            animation: "fadeInUp 200ms ease",
           }}
         >
           {block.thinking}
@@ -757,8 +770,8 @@ function ToolCallBlock({ block, result, isRunning, duration }: { block: ToolCall
         borderRadius: 7,
         overflow: "hidden",
         fontSize: 12,
-        border: isError ? "1px solid rgba(248,113,113,0.45)" : "1px solid rgba(34,197,94,0.25)",
-        background: isError ? "rgba(248,113,113,0.05)" : "rgba(34,197,94,0.04)",
+        border: "1px solid var(--border)",
+        background: "var(--bg-panel)",
       }}
     >
       {/* ── Tool call header ── */}
@@ -779,7 +792,7 @@ function ToolCallBlock({ block, result, isRunning, duration }: { block: ToolCall
           minWidth: 0,
         }}
       >
-        <span style={{ color: isError ? "#f87171" : "#16a34a", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 11, flexShrink: 0 }}>
+        <span style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 11, flexShrink: 0 }}>
           {block.toolName}
         </span>
         <span style={{ color: "var(--text-dim)", fontFamily: "var(--font-mono)", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
@@ -793,8 +806,9 @@ function ToolCallBlock({ block, result, isRunning, duration }: { block: ToolCall
         </svg>
       </button>
 
-      {/* ── Expanded: input args ── */}
+      {/* ── Expanded: input args + paired result ── */}
       {expanded && (
+        <div style={{ animation: "fadeInUp 200ms ease" }}>
         <pre
           style={{
             margin: 0,
@@ -804,22 +818,22 @@ function ToolCallBlock({ block, result, isRunning, duration }: { block: ToolCall
             lineHeight: 1.5,
             overflow: "auto",
             background: "var(--bg-subtle)",
-            borderTop: isError ? "1px solid rgba(248,113,113,0.25)" : "1px solid rgba(34,197,94,0.2)",
+            borderTop: "1px solid var(--border)",
             whiteSpace: "pre-wrap",
             wordBreak: "break-all",
           }}
         >
           {inputStr}
         </pre>
-      )}
 
-      {/* ── Paired result — only shown when expanded ── */}
-      {expanded && result && (
-        <PairedResult
-          text={resultText ?? ""}
-          isEmpty={resultIsEmpty}
-          isError={isError}
-        />
+        {result && (
+          <PairedResult
+            text={resultText ?? ""}
+            isEmpty={resultIsEmpty}
+            isError={isError}
+          />
+        )}
+        </div>
       )}
     </div>
   );
@@ -833,8 +847,8 @@ function PairedResult({ text, isEmpty, isError }: {
   return (
     <div
       style={{
-        borderTop: `1px solid ${isError ? "rgba(248,113,113,0.3)" : "rgba(34,197,94,0.15)"}`,
-        background: isError ? "rgba(248,113,113,0.04)" : "var(--bg-subtle)",
+        borderTop: "1px solid var(--border)",
+        background: "var(--bg-panel)",
       }}
     >
       <pre
