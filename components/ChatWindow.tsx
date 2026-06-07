@@ -414,7 +414,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 border: "1px solid var(--border)",
                 cursor: "pointer",
                 color: "var(--text-muted)",
-                boxShadow: "0 2px 12px rgba(28,25,23,0.15)",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.30)",
                 transition: "background 0.15s, color 0.15s, transform 0.15s",
               }}
               onMouseEnter={(e) => {

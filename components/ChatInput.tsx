@@ -493,8 +493,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             borderRadius: 14,
             padding: "10px 10px 10px 14px",
             boxShadow: focused
-              ? "0 0 0 3px var(--accent-soft), 0 1px 2px rgba(28,25,23,0.06), 0 8px 24px -12px rgba(28,25,23,0.12)"
-              : "0 1px 2px rgba(28,25,23,0.04), 0 8px 24px -12px rgba(28,25,23,0.08)",
+              ? "0 0 0 3px var(--accent-soft), 0 1px 2px rgba(0,0,0,0.25), 0 8px 24px -12px rgba(0,0,0,0.35)"
+              : "0 1px 2px rgba(0,0,0,0.18), 0 8px 24px -12px rgba(0,0,0,0.25)",
             transition: "border-color 0.15s, background 0.15s, box-shadow 0.2s",
           } as React.CSSProperties}
         >
@@ -621,7 +621,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             <div ref={commandDropdownRef} style={{
               position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0,
               zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
-              borderRadius: 8, boxShadow: "0 -4px 16px rgba(28,25,23,0.10)",
+              borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
               overflow: "hidden", width: "100%", maxHeight: 240, overflowY: "auto",
             }}>
               {commandFiltered.map((cmd, i) => (
@@ -743,7 +743,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                       position: "fixed",
                       bottom, left: modelDropdownRect.left,
                       zIndex: 500, background: "var(--bg)", border: "1px solid var(--border)",
-                      borderRadius: 8, boxShadow: "0 -4px 16px rgba(28,25,23,0.10)",
+                      borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
                       overflow: "hidden", width: "max-content", minWidth: modelDropdownRect.width, maxHeight: maxH, overflowY: "auto",
                     }}>
                       {modelsByProvider.map((group, gi) => (
@@ -836,7 +836,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   <div style={{
                     position: "absolute", bottom: "calc(100% + 6px)", right: 0,
                     zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
-                    borderRadius: 8, boxShadow: "0 -4px 16px rgba(28,25,23,0.10)",
+                    borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
                     overflow: "hidden", minWidth: 180,
                   }}>
                     {THINKING_LEVELS.filter((lvl) => {

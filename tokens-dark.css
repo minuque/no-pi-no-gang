@@ -39,7 +39,7 @@ html.dark {
    * ════════════════════════════════════════════════════════════════════ */
   --fg:            #d4d4e0;
   --fg-2:          #a0a0b0;
-  --muted:         #787890;
+  --muted:         #8a8aa2;
   --meta:          #5c5c72;
 
   /* ════════════════════════════════════════════════════════════════════
@@ -257,6 +257,9 @@ html.dark {
   /* --- 分割线 --- */
   --ui-divider:            1px solid var(--border-soft);
 
+  /* --- 表单 placeholder --- */
+  --ui-placeholder:        var(--muted);
+
   /* --- 工具栏 / 快捷操作 --- */
   --ui-toolbar-bg:         var(--surface);
   --ui-toolbar-hover:      var(--surface-raised);
@@ -279,8 +282,8 @@ html.dark {
   --assistant-bg:     var(--bg);
   --tool-bg:          var(--surface);
   --bg-subtle:        rgba(255, 255, 255, 0.04);
-  --shadow-xs:        0 1px 2px rgba(0, 0, 0, 0.25);
-  --shadow-sm:        0 1px 3px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.20);
-  --shadow-md:        0 4px 12px rgba(0, 0, 0, 0.40), 0 2px 4px rgba(0, 0, 0, 0.25);
-  --shadow-lg:        0 8px 24px rgba(0, 0, 0, 0.50), 0 2px 6px rgba(0, 0, 0, 0.30);
+  --shadow-xs:        0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-sm:        0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md:        0 4px 12px rgba(0, 0, 0, 0.50), 0 2px 4px rgba(0, 0, 0, 0.30);
+  --shadow-lg:        0 8px 24px rgba(0, 0, 0, 0.60), 0 2px 6px rgba(0, 0, 0, 0.35);
 }

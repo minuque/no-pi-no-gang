@@ -248,9 +248,9 @@ function DiffView({ oldContent, newContent }: { oldContent: string; newContent: 
                 display: "flex",
                 background: bg,
                 borderLeft: line.type === "added"
-                  ? "3px solid #4ade80"
+                  ? "3px solid var(--success)"
                   : line.type === "removed"
-                  ? "3px solid #f87171"
+                  ? "3px solid var(--danger)"
                   : "3px solid transparent",
               }}
             >
@@ -383,7 +383,7 @@ function ImageViewer({ filePath, cwd }: { filePath: string; cwd?: string }) {
               borderRadius: "50%",
               background: watching ? "var(--success)" : "var(--border)",
               display: "inline-block",
-              boxShadow: watching ? "0 0 4px #4ade80" : "none",
+              boxShadow: watching ? "0 0 4px var(--success)" : "none",
             }}
           />
           {watching ? "live" : "static"}
@@ -420,7 +420,7 @@ function ImageViewer({ filePath, cwd }: { filePath: string; cwd?: string }) {
               maxWidth: "100%",
               maxHeight: "100%",
               objectFit: "contain",
-              boxShadow: "0 2px 8px rgba(28,25,23,0.15)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.30)",
             }}
           />
         )}
@@ -517,7 +517,7 @@ function AudioViewer({ filePath, cwd }: { filePath: string; cwd?: string }) {
               borderRadius: "50%",
               background: watching ? "var(--success)" : "var(--border)",
               display: "inline-block",
-              boxShadow: watching ? "0 0 4px #4ade80" : "none",
+              boxShadow: watching ? "0 0 4px var(--success)" : "none",
             }}
           />
           {watching ? "live" : "static"}
@@ -651,7 +651,7 @@ function DocumentViewer({ filePath, cwd }: { filePath: string; cwd?: string }) {
               borderRadius: "50%",
               background: watching ? "var(--success)" : "var(--border)",
               display: "inline-block",
-              boxShadow: watching ? "0 0 4px #4ade80" : "none",
+              boxShadow: watching ? "0 0 4px var(--success)" : "none",
             }}
           />
           {watching ? "live" : "static"}
@@ -668,7 +668,7 @@ function DocumentViewer({ filePath, cwd }: { filePath: string; cwd?: string }) {
             src={previewUrl}
             sandbox={isPdf ? undefined : ""}
             title={`Preview ${getFileName(filePath)}`}
-            style={{ width: "100%", height: "100%", border: "none", background: isPdf ? "var(--bg)" : "#eef1f5" }}
+            style={{ width: "100%", height: "100%", border: "none", background: isPdf ? "var(--bg)" : "var(--bg-panel)" }}
           />
         )}
       </div>
@@ -834,7 +834,7 @@ function TextFileViewer({ filePath, cwd }: Props) {
               borderRadius: "50%",
               background: watching ? "var(--success)" : "var(--border)",
               display: "inline-block",
-              boxShadow: watching ? "0 0 4px #4ade80" : "none",
+              boxShadow: watching ? "0 0 4px var(--success)" : "none",
             }}
           />
           {watching ? "live" : "static"}

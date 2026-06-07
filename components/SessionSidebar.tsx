@@ -496,7 +496,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                 background: "var(--bg)",
                 border: "1px solid var(--border)",
                 borderRadius: 8,
-                boxShadow: "0 6px 20px rgba(28,25,23,0.10)",
+                boxShadow: "0 6px 20px rgba(0,0,0,0.30)",
                 overflow: "hidden",
               }}
             >
@@ -632,7 +632,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
                   {customPathError && (
                     <div style={{
                       marginTop: 5,
-                      color: "#dc2626",
+                      color: "var(--danger)",
                       fontSize: 11,
                       lineHeight: 1.35,
                       overflowWrap: "anywhere",
@@ -690,7 +690,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
           </div>
         )}
         {error && (
-          <div style={{ padding: "12px 14px", color: "#f87171", fontSize: 12 }}>
+          <div style={{ padding: "12px 14px", color: "var(--danger)", fontSize: 12 }}>
             {error}
           </div>
         )}
