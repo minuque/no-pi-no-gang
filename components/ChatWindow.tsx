@@ -5,6 +5,7 @@ import type { AgentMessage, SessionInfo, SessionTreeNode } from "@/lib/types";
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, MINIMAP_WIDTH, useMessageRefs } from "./ChatMinimap";
+import { SessionLoading } from "./SessionLoading";
 import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
 import { useDragDrop } from "@/hooks/useDragDrop";
 
@@ -195,11 +196,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   );
 
   if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center text-text-muted">
-        Loading session...
-      </div>
-    );
+    return <SessionLoading />;
   }
 
   if (error) {
@@ -251,7 +248,10 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       )}
 
       {isEmptyNew ? (
-        <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8">
+        <div
+          className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8"
+          style={{ animation: "fade-in-up 0.4s ease both" }}
+        >
           <div className="w-full max-w-[1148px]">
             <div
               className="mb-3"
@@ -286,7 +286,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         </div>
       ) : (
       <>
-      <div className="flex-1 flex overflow-hidden" style={{ paddingRight: MINIMAP_WIDTH }}>
+      <div className="flex-1 flex overflow-hidden" style={{ paddingRight: MINIMAP_WIDTH, animation: "fade-in-up 0.35s ease both" }}>
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-4 [scrollbar-width:none]">
           <div className="mx-auto max-w-[1148px] px-4">
 
@@ -345,10 +345,22 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                   />
                 );
                 if (!isVisible) return view;
+                const msgIdxForDelay = refIdx - 1; // 0-based for visible messages
                 return (
-                  <div key={idx} ref={(el) => {
-                    messageRefs.current[currentRefIdx] = el;
-                  }}>
+                  <div
+                    key={idx}
+                    ref={(el) => {
+                      messageRefs.current[currentRefIdx] = el;
+                    }}
+                    style={{
+                      animation: isNew || session
+                        ? `message-enter 0.3s ease both`
+                        : undefined,
+                      animationDelay: isNew || session
+                        ? `${Math.min(msgIdxForDelay * 50, 800)}ms`
+                        : undefined,
+                    }}
+                  >
                     {view}
                   </div>
                 );
