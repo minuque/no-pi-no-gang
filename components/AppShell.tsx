@@ -27,6 +27,36 @@ export function AppShell() {
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const SIDEBAR_MIN = 180;
+  const SIDEBAR_MAX = 480;
+  const [sidebarWidth, setSidebarWidth] = useState(260);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const sidebarWidthRef = useRef(sidebarWidth);
+  // Restore saved sidebar width from localStorage after hydration (avoids SSR mismatch)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("pi-sidebar-width");
+      if (saved) {
+        const w = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, parseInt(saved, 10)));
+        setSidebarWidth(w);
+      }
+    } catch {}
+  }, []);
+  // Right panel drag-to-resize
+  const RIGHT_PANEL_MIN = 300;
+  const [rightPanelWidth, setRightPanelWidth] = useState(RIGHT_PANEL_MIN);
+  const rightPanelRef = useRef<HTMLDivElement>(null);
+  const rightPanelWidthRef = useRef(rightPanelWidth);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("pi-right-panel-width");
+      if (saved) {
+        setRightPanelWidth(Math.max(RIGHT_PANEL_MIN, parseInt(saved, 10)));
+      } else {
+        setRightPanelWidth(Math.round(window.innerWidth * 0.42));
+      }
+    } catch { setRightPanelWidth(Math.round(window.innerWidth * 0.42)); }
+  }, []);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
   const topBarRef = useRef<HTMLDivElement>(null);
 
@@ -83,6 +113,58 @@ export function AppShell() {
     ro.observe(topBarRef.current);
     return () => ro.disconnect();
   }, [activeTopPanel]);
+
+  // Sidebar drag-to-resize
+  useEffect(() => { sidebarWidthRef.current = sidebarWidth; }, [sidebarWidth]);
+
+  const dragState = useRef({ active: false, startX: 0, startWidth: 0 });
+  const handleDragStart = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    dragState.current = { active: true, startX: e.clientX, startWidth: sidebarWidth };
+    if (sidebarRef.current) sidebarRef.current.style.transition = 'none';
+  }, [sidebarWidth]);
+  const handleDragMove = useCallback((e: React.PointerEvent) => {
+    if (!dragState.current.active) return;
+    const w = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, dragState.current.startWidth + e.clientX - dragState.current.startX));
+    const el = sidebarRef.current;
+    if (el) { el.style.width = `${w}px`; el.style.minWidth = `${w}px`; }
+    sidebarWidthRef.current = w;
+  }, []);
+  const handleDragEnd = useCallback(() => {
+    if (!dragState.current.active) return;
+    dragState.current.active = false;
+    if (sidebarRef.current) sidebarRef.current.style.transition = '';
+    setSidebarWidth(sidebarWidthRef.current);
+    try { localStorage.setItem("pi-sidebar-width", String(sidebarWidthRef.current)); } catch {}
+  }, []);
+
+  // Right panel drag-to-resize
+  useEffect(() => { rightPanelWidthRef.current = rightPanelWidth; }, [rightPanelWidth]);
+
+  const rightDragState = useRef({ active: false, startX: 0, startWidth: 0 });
+  const handleRightDragStart = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    rightDragState.current = { active: true, startX: e.clientX, startWidth: rightPanelWidth };
+    if (rightPanelRef.current) rightPanelRef.current.style.transition = 'none';
+  }, [rightPanelWidth]);
+  const handleRightDragMove = useCallback((e: React.PointerEvent) => {
+    if (!rightDragState.current.active) return;
+    const maxW = Math.max(RIGHT_PANEL_MIN, window.innerWidth - sidebarWidthRef.current - 400);
+    const delta = rightDragState.current.startX - e.clientX;
+    const w = Math.min(maxW, Math.max(RIGHT_PANEL_MIN, rightDragState.current.startWidth + delta));
+    const el = rightPanelRef.current;
+    if (el) { el.style.width = `${w}px`; el.style.minWidth = `${w}px`; }
+    rightPanelWidthRef.current = w;
+  }, []);
+  const handleRightDragEnd = useCallback(() => {
+    if (!rightDragState.current.active) return;
+    rightDragState.current.active = false;
+    if (rightPanelRef.current) rightPanelRef.current.style.transition = '';
+    setRightPanelWidth(rightPanelWidthRef.current);
+    try { localStorage.setItem("pi-right-panel-width", String(rightPanelWidthRef.current)); } catch {}
+  }, []);
 
   // Right panel — file tabs only
   const [fileTabs, setFileTabs] = useState<Tab[]>([]);
@@ -314,17 +396,36 @@ export function AppShell() {
 
       {/* Left sidebar */}
       <div
+        ref={sidebarRef}
         className={`sidebar-container${sidebarOpen ? " sidebar-open" : " sidebar-closed"}`}
         style={{
           background: "var(--bg-panel)",
-          borderRight: "1px solid var(--border)",
+          borderRight: sidebarOpen ? "1px solid var(--border)" : "none",
           display: "flex",
           flexDirection: "column",
           flexShrink: 0,
           zIndex: 200,
+          width: sidebarOpen ? sidebarWidth : 0,
+          minWidth: sidebarOpen ? sidebarWidth : 0,
         }}
       >
         {sidebarContent}
+        <div
+          style={{
+            position: "absolute",
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: 4,
+            cursor: "col-resize",
+            zIndex: 10,
+            touchAction: "none",
+          }}
+          onPointerDown={handleDragStart}
+          onPointerMove={handleDragMove}
+          onPointerUp={handleDragEnd}
+          onLostPointerCapture={handleDragEnd}
+        />
       </div>
 
       {/* Center: chat */}
@@ -592,12 +693,15 @@ export function AppShell() {
 
       {/* Right panel: file viewer — always mounted, width animated via CSS */}
       <div
+        ref={rightPanelRef}
         className={`right-panel-container${rightPanelOpen ? " right-panel-open" : " right-panel-closed"}`}
         style={{
           display: "flex",
           flexDirection: "column",
-          borderLeft: "1px solid var(--border)",
+          borderLeft: rightPanelOpen ? "1px solid var(--border)" : "none",
           background: "var(--bg)",
+          width: rightPanelOpen ? rightPanelWidth : 0,
+          minWidth: rightPanelOpen ? rightPanelWidth : 0,
         }}
       >
         {/* Right panel tab bar */}
@@ -623,6 +727,22 @@ export function AppShell() {
             </div>
           )}
         </div>
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 4,
+            cursor: "col-resize",
+            zIndex: 10,
+            touchAction: "none",
+          }}
+          onPointerDown={handleRightDragStart}
+          onPointerMove={handleRightDragMove}
+          onPointerUp={handleRightDragEnd}
+          onLostPointerCapture={handleRightDragEnd}
+        />
       </div>
     </div>
     {/* File panel toggle — always visible at top-right */}
