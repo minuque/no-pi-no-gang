@@ -6,7 +6,6 @@ import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, MINIMAP_WIDTH, useMessageRefs } from "./ChatMinimap";
 import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
-import { useAudio } from "@/hooks/useAudio";
 import { useDragDrop } from "@/hooks/useDragDrop";
 
 interface Props {
@@ -96,38 +95,20 @@ function Typewriter({ phrases }: { phrases: string[] }) {
 export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange }: Props) {
   const {
     loading, error, messages, entryIds, streamState, commands,
-    agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
+    agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, thinkingLevel,
     retryInfo, contextUsage, forkingEntryId,
-    isCompacting, compactError, displayModel: displayModelValue, sessionStats,
+    displayModel: displayModelValue, sessionStats,
     agentPhase,
     isNew,
     messagesEndRef, scrollContainerRef,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
-    handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
-    handleToolPresetChange, handleThinkingLevelChange, handleAgentEventRef,
+    handleSteer, handleFollowUp, handleThinkingLevelChange, handleAgentEventRef,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange,
   });
 
-  const { soundEnabled, onSoundToggle, playDoneSound } = useAudio();
-  const playDoneSoundRef = useRef(playDoneSound);
-  playDoneSoundRef.current = playDoneSound;
-  const soundEnabledRef = useRef(soundEnabled);
-  soundEnabledRef.current = soundEnabled;
-
-  // Wrap agent event handler to play sound on agent_end
-  const origHandler = handleAgentEventRef.current;
-  useEffect(() => {
-    handleAgentEventRef.current = (event) => {
-      if (event.type === "agent_end" && soundEnabledRef.current) {
-        playDoneSoundRef.current();
-      }
-      origHandler?.(event);
-    };
-  }, [origHandler, handleAgentEventRef]);
-
-  // Push session stats up to AppShell for the top bar.
+  // Push session stats up to AppShell for the top bar. up to AppShell for the top bar.
   // Compare scalar fields to avoid loops from new object identity each render.
   const statsKey = sessionStats
     ? `${sessionStats.tokens.input}|${sessionStats.tokens.output}|${sessionStats.tokens.cacheRead}|${sessionStats.tokens.cacheWrite}|${sessionStats.cost ?? 0}`
@@ -181,20 +162,13 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       modelNames={modelNames}
       modelList={modelList}
       onModelChange={handleModelChange}
-      onCompact={session || isNew ? handleCompact : undefined}
-      onAbortCompaction={handleAbortCompaction}
-      isCompacting={isCompacting}
-      compactError={compactError}
-      toolPreset={toolPreset}
-      onToolPresetChange={session || isNew ? handleToolPresetChange : undefined}
       thinkingLevel={thinkingLevel}
       onThinkingLevelChange={session || isNew ? handleThinkingLevelChange : undefined}
       availableThinkingLevels={availableThinkingLevels}
       thinkingLevelMap={currentThinkingLevelMap}
       retryInfo={retryInfo}
       commands={commands}
-      soundEnabled={soundEnabled}
-      onSoundToggle={onSoundToggle}
+      contextUsage={contextUsage}
     />
   );
 

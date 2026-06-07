@@ -179,6 +179,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (!d.agentState?.state?.thinkingLevel && d.context.thinkingLevel && d.context.thinkingLevel !== "off") {
         setThinkingLevel(d.context.thinkingLevel as ThinkingLevelOption);
       }
+      // Sync context usage from session state
+      if (d.agentState?.state?.contextUsage !== undefined) {
+        setContextUsage(d.agentState.state.contextUsage ?? null);
+      }
       return d.agentState ?? null;
     } catch (e) {
       setError(String(e));
