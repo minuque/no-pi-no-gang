@@ -1,148 +1,145 @@
 /* ─────────────────────────────────────────────────────────────────────────
- * Agent WebUI Dark Theme — v3 "VSCode Dark+"
+ * Agent WebUI Light Theme — v1 "VSCode Light+"
  *
- * 基于 VSCode Dark+ (default dark) 色彩系统的完整重建。
- * 上一版偏蓝灰 (R/G 差 B 10–24 通道)，这一版用纯中性灰 — 跟 VSCode
- * 编辑器、侧栏、终端同源色板。
+ * 与 tokens-dark.css (v3 VSCode Dark+) 的完整 light 对应版本。
+ * 基于 VSCode Light+ (default light) 色彩系统，加 2–8 通道轻微蓝偏移，
+ * 保持编辑器/侧栏/终端同源色板，同时提供冷调 white-space 感。
  *
- * VSCode Dark+ 核心色:
- *   editor  #1e1e1e  ─→ --bg
- *   sidebar #252526  ─→ --surface
- *   tab     #2d2d2d  ─→ --surface-raised
- *   status  #007acc  ─→ --accent
- *   text    #d4d4d4  ─→ --fg
- *   border  #3e3e42  ─→ --border
+ * VSCode Light+ 核心色:
+ *   editor  #ffffff  ─→ --bg     (加冷: #fafbfc)
+ *   sidebar #f3f3f3  ─→ --surface (加冷: #f2f3f6)
+ *   tab     #ececec  ─→ --surface-raised (加冷: #e9eaf0)
+ *   accent  #007acc  ─→ --accent (跨主题一致)
+ *   text    #1f1f1f  ─→ --fg
+ *   border  #d9d9d9  ─→ --border
  *
- * 哲学：
- *   — 纯中性灰，不偏蓝不偏暖（R=G=B）
- *   — 表面层级只用亮度差区分，不靠色调
- *   — 蓝色 accent 仅出现在状态栏/链接/按钮/选中态
- *   — 无发光、无渐变、无 color-mix 运算
- *   — 严谨克制的开发者工具美学
+ * 冷色调哲学：
+ *   — 所有中性灰 R=G, B 偏多 2–8 通道 (极轻微蓝偏)
+ *   — 不暖色泄漏: 无米黄/暖灰/奶油底色
+ *   — Accent 蓝 #007acc 与 dark 主题一致，跨主题换肤无突变
+ *   — 文字/边框保持中性 (R=G=B) 确保可读性
+ *   — 语义色为冷调适配: success 冷绿, warn 深琥珀, danger 冷红
  *
- * 使用方式: 由 globals.css @import 引入，html.dark 下生效
+ * 使用方式: 与 tokens-dark.css 并排放置，
+ *           由 globals.css 根据 html.light / html.dark 切换加载。
+ *           html.light 下引用本文件。
  * ──────────────────────────────────────────────────────────────────────── */
 
-html.dark {
+html.light {
   /* ════════════════════════════════════════════════════════════════════
-   * SURFACE — 三层表面系统 (VSCode 原生)
+   * SURFACE — 三层表面系统 (VSCode Light+ 原生 + 冷调偏移)
    *
-   * VSCode 用亮度递进区分层级:
-   *   #1e1e1e  editor / panel    (最暗)
-   *   #252526  sidebar / tabs    (中)
-   *   #2d2d2d  inactive tab      (最亮)
-   *   #333333  activity bar      (特殊: 图标列最深)
+   * VSCode Light+ 用亮度递进区分层级:
+   *   #ffffff  editor / panel
+   *   #f3f3f3  sidebar / tabs
+   *   #ececec  inactive tab
+   *   #2c2c2c  activity bar (VSCode 原版保持暗色)
+   *
+   * 冷调版: 每个底色加 2–8 蓝通道偏移，营造"冷感白空间"。
    *
    * 映射:
    *   --bg             = editor 背景 → 主工作区
    *   --surface        = sidebar 背景 → 面板/卡片
    *   --surface-raised = inactive tab → 弹窗/hover 面板
-   *   --surface-deep   = activity bar → 最深层 (图标列/窄侧栏)
+   *   --surface-deep   = 最深亮色 → 图标列/窄侧栏
    * ════════════════════════════════════════════════════════════════════ */
-  --bg: #1e1e1e;
-  /* editor.background */
-  --surface: #252526;
-  /* sideBar.background */
-  --surface-raised: #2d2d2d;
-  /* tab.inactiveBackground */
-  --surface-deep: #333333;
-  /* activityBar.background — 图标专用深色 */
+  --bg: #fafbfc;
+  /* editor.background + 冷: R=250 G=251 B=252 (+2) */
+  --surface: #f2f3f6;
+  /* sideBar.background + 冷: R=242 G=243 B=246 (+4) */
+  --surface-raised: #e9eaf0;
+  /* tab.inactiveBackground + 冷: R=233 G=234 B=240 (+7) */
+  --surface-deep: #e0e1e8;
+  /* activityBar 等价最深亮色 + 冷: R=224 G=225 B=232 (+8) */
   --surface-warm: var(--surface);
-  /* schema 兼容 */
+  /* schema 兼容 — 无暖色调需要，别名到 surface */
 
   /* ════════════════════════════════════════════════════════════════════
-   * FOREGROUND — 四级文字色阶 (VSCode 原生)
+   * FOREGROUND — 四级文字色阶 (VSCode Light+ 原生)
    *
-   * VSCode 文字色严格中性 (R=G=B):
-   *   #d4d4d4  editor.foreground — 主体代码/文字
-   *   #bbbbbb  sideBarTitle.foreground — 面板标题
-   *   #858585  editorLineNumber.foreground — 行号
-   *   #6a6a6a  — 更深一级元信息
+   * 文字色保持纯中性 (R=G=B)，不参与冷调偏移
+   * — 冷调染文字在亮底上会显"脏"。
    *
-   * 对照 VSCode Dark+ 对比度:
-   *   #d4d4d4 / #1e1e1e = 10.4:1 (AAA)
-   *   #bbbbbb / #1e1e1e =  7.7:1 (AAA)
-   *   #858585 / #1e1e1e =  3.7:1 (不足 AA — VSCode 行号就是如此)
-   *   #6a6a6a / #1e1e1e =  2.5:1 (装饰性文字)
+   * 对照 VSCode Light+ 对比度:
+   *   #1e1e1e / #fafbfc = 15.6:1 (AAA)
+   *   #3b3b3b / #fafbfc =  8.5:1 (AAA)
+   *   #616161 / #fafbfc =  4.9:1 (AA)
+   *   #8a8a8a / #fafbfc =  3.1:1 (装饰性)
    * ════════════════════════════════════════════════════════════════════ */
-  --fg: #d4d4d4;
-  --fg-2: #bbbbbb;
-  --muted: #858585;
-  --meta: #6a6a6a;
+  --fg: #1e1e1e;
+  --fg-2: #3b3b3b;
+  --muted: #616161;
+  --meta: #8a8a8a;
 
   /* ════════════════════════════════════════════════════════════════════
-   * BORDER — 两级边框 (VSCode 原生)
+   * BORDER — 两级边框 (VSCode Light+ 原生)
    *
-   * VSCode 边框是固定色值，不是从 fg/bg 运算:
-   *   #3e3e42  panel.border / editorGroup.border
-   *   #474747  tab.border
-   *   #333333  用于更细微的分隔 (如终端分割线)
+   * 边框略带冷调:
+   *   #d4d4d8  panel.border + 冷 (+4)
+   *   #e5e5e9  更细分隔 + 冷 (+4)
    * ════════════════════════════════════════════════════════════════════ */
-  --border: #3e3e42;
-  --border-soft: #333333;
+  --border: #d4d4d8;
+  --border-soft: #e5e5e9;
 
   /* ════════════════════════════════════════════════════════════════════
-   * ACCENT — VSCode 蓝 #007acc
+   * ACCENT — VSCode 蓝 #007acc (跨主题一致)
    *
-   * 来源: statusBar.background / focusBorder (#007fd4 焦点时稍亮)
+   * Accent 色在 dark/light 间保持不变 — 这是 VSCode 的设计惯例。
+   * 亮底需要更浅的选中/悬停变体。
    *
-   * VSCode 不用 color-mix 生成变体 — 每种状态用独立色值:
    *   accent         #007acc — 状态栏、链接、活动指示
-   *   accent-hover   #0e639c — button.background (深一度)
-   *   accent-active  #094771 — list.activeSelectionBackground
-   *   accent-focus   #007fd4 — focusBorder
+   *   accent-hover   #106ebe — button hover (比 dark 亮)
+   *   accent-active  #005a9e — list.activeSelectionBackground
+   *   accent-focus   #005fb8 — focusBorder
+   *   accent-soft    #e8f4fd — 选中底色 (极浅蓝)
+   *   accent-subtle  #d0e8f7 — list.focusBackground (浅蓝)
+   *   accent-border  #add6ff — 选中边框 (selection)
+   *   accent-ring    #005fb8 — 同 focusBorder
    *
    * 使用策略:
-   *   — accent 最多 2 处: 主要 action + 选中态标识
-   *   — 图标未激活 = #858585 (muted), 激活 = #ffffff (跟 VSCode activityBar 一致)
-   *   — 不发光、不加 glow — VSCode 纯粹靠色值区分状态
+   *   — 主 accent 最多 2 处可见
+   *   — 图标未激活 = #616161 (muted), 激活 = #1e1e1e (fg)
+   *   — 不发光 — VSCode 纯粹靠色值区分状态
    * ════════════════════════════════════════════════════════════════════ */
   --accent: #007acc;
   --accent-on: #ffffff;
-  --accent-hover: #0e639c;
-  /* button.background */
-  --accent-active: #094771;
+  --accent-hover: #106ebe;
+  /* button.background — 亮底需要稍亮 */
+  --accent-active: #005a9e;
   /* list.activeSelectionBackground */
-  --accent-focus: #007fd4;
+  --accent-focus: #005fb8;
   /* focusBorder */
-  /* 保留 schema 兼容的变体名 — VSCode 风格用固定色，不运算 */
   --accent-glow: none;
-  --accent-soft: #094771;
-  /* 深蓝选中底色 */
-  --accent-subtle: #062f4a;
-  /* list.focusBackground — 更深的蓝色 */
-  --accent-border: #264f78;
+  --accent-soft: #e8f4fd;
+  /* 浅蓝选中底色 */
+  --accent-subtle: #d0e8f7;
+  /* list.focusBackground — 稍深蓝 */
+  --accent-border: #add6ff;
   /* 选中/焦点边框 */
-  --accent-ring: #007fd4;
+  --accent-ring: #005fb8;
   /* 同 focusBorder */
 
   /* ════════════════════════════════════════════════════════════════════
-   * SEMANTIC — 状态色 (终端/编辑器原生)
+   * SEMANTIC — 状态色 (冷调适配版)
    *
-   * 取自 VSCode 终端 ANSI 色 + 编辑器诊断色:
-   *   #4ec9b0  终端亮绿 (ANSI bright green)
-   *   #cca700  编辑器警告波浪线
-   *   #f44747  终端亮红 / 编辑器错误
+   * 为冷调亮底调整饱和度和亮度:
+   *   #0a7e3e  冷绿 — terminal ANSI bright green (加深适配亮底)
+   *   #946800  深琥珀 — 亮底需要更深的警告色保证对比度
+   *   #d1242f  冷红 — terminal 红 (比暖红 #ff4444 更克制)
    * ════════════════════════════════════════════════════════════════════ */
-  --success: #4ec9b0;
-  --warn: #cca700;
-  --danger: #f44747;
+  --success: #0a7e3e;
+  --warn: #946800;
+  --danger: #d1242f;
 
   /* ════════════════════════════════════════════════════════════════════
-   * TYPOGRAPHY — VSCode 字体栈
+   * TYPOGRAPHY — 与 dark 主题相同字体栈
    *
-   * VSCode 默认用系统等宽/UI 字体。
-   * editor.fontFamily = "Cascadia Code, Consolas, ..."
-   * UI 字体 = -apple-system / Segoe UI 系列
-   *
-   * 对于 agent webUI: 代码/消息用等宽过于极端 —
-   * 保留 sans 做 UI 文字，mono 用于代码块/markdown code span。
+   * 亮底不需要改字体 — 同一套栈在亮/暗下表现都稳定。
    * ════════════════════════════════════════════════════════════════════ */
   --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+  --font-mono: 'JetBrains Mono', "Cascadia Code", Consolas, "Courier New", monospace;
 
-  /* VSCode 编辑器的字号范围：11-14px 为主体，最小 9px */
   --text-xs: 10px;
   --text-sm: 12px;
   --text-base: 13px;
@@ -156,7 +153,7 @@ html.dark {
   --tracking-display: 0;
 
   /* ════════════════════════════════════════════════════════════════════
-   * SPACING — 4px 基础单位
+   * SPACING — 与 dark 主题一致 (4px 基础单位)
    * ════════════════════════════════════════════════════════════════════ */
   --space-1: 4px;
   --space-2: 8px;
@@ -169,54 +166,36 @@ html.dark {
   --space-20: 80px;
 
   /* ════════════════════════════════════════════════════════════════════
-   * RADIUS — VSCode 几乎不用圆角
-   *
-   * VSCode 全界面钝角: 输入框 0-2px，按钮 0-2px，下拉 4px。
-   * 少数 rounded 按钮用 4px。这里保持工具型克制。
+   * RADIUS — 与 dark 一致 (VSCode 钝角)
    * ════════════════════════════════════════════════════════════════════ */
   --radius-sm: 2px;
   --radius-md: 4px;
   --radius-lg: 6px;
   --radius-pill: 9999px;
-  /* 保留给 badge/chip，但 VSCode 几乎不出现 */
 
   /* ════════════════════════════════════════════════════════════════════
-   * ELEVATION — VSCode 几乎无阴影
+   * ELEVATION — 亮底阴影
    *
-   * VSCode 主要靠色值区分层级，弹窗用 widget.shadow (#00000036)。
-   * 不用 blur shadow 做卡片/面板层级。
+   * 亮底阴影比暗底更轻、更透明。VSCode Light+ 同样几乎不用阴影。
    * ════════════════════════════════════════════════════════════════════ */
   --elev-flat: none;
   --elev-ring: 0 0 0 1px var(--border);
-  --elev-raised: 0 2px 8px rgba(0, 0, 0, 0.36);
+  --elev-raised: 0 2px 8px rgba(0, 0, 0, 0.08);
 
   /* ════════════════════════════════════════════════════════════════════
-   * FOCUS RING — focusBorder 风格
-   *
-   * VSCode 用 1px solid #007fd4 做焦点边框，不 blur。
+   * FOCUS RING — 1px solid accent-focus (与 dark 一致)
    * ════════════════════════════════════════════════════════════════════ */
   --focus-ring: 0 0 0 1px var(--accent-focus);
 
   /* ════════════════════════════════════════════════════════════════════
-   * MOTION — VSCode 即有即时反馈，无过渡动画
-   *
-   * VSCode 几乎不做 CSS transition，所有状态切换瞬时发生。
-   * 保留最小 motion 给 hover 微交互。
+   * MOTION — 与 dark 一致 (极短过渡)
    * ════════════════════════════════════════════════════════════════════ */
   --motion-fast: 80ms;
   --motion-base: 120ms;
   --ease-standard: ease-out;
 
   /* ════════════════════════════════════════════════════════════════════
-   * LAYOUT — 三栏布局 (VSCode 比例感)
-   *
-   * VSCode 的宽度分配:
-   *   activityBar  48px (纯图标列)
-   *   sidebar      ~300px (文件树/搜索)
-   *   editor       剩余全部 (无 max-width — VSCode 从不居中)
-   *
-   * 对 agent webUI 的适配:
-   *   图标列 48px → 对话列表 280px → 聊天区 剩余宽度 (max 820px)
+   * LAYOUT — 与 dark 主题相同布局比例
    * ════════════════════════════════════════════════════════════════════ */
   --nav-collapsed: 48px;
   --nav-expanded: 240px;
@@ -224,25 +203,24 @@ html.dark {
   --content-max: 820px;
 
   /* ════════════════════════════════════════════════════════════════════
-   * AGENT UI — 专用 token
+   * AGENT UI — 专用 token (亮底版)
    *
-   * 命名: `ui-<区域>-<属性>`，全部映射到 VSCode 原生色。
+   * 命名: `ui-<区域>-<属性>`，全部映射到 VSCode Light+ 冷调色。
+   * 与 tokens-dark.css 同结构、同名 token — 换文件即换肤。
    * ════════════════════════════════════════════════════════════════════ */
 
   /* --- 顶部导航 ---
-   * 配合 VSCode editorGroupHeader / titleBar:
-   *   活跃标签 = editor 背景 #1e1e1e
-   *   非活跃标签 = #2d2d2d
-   *   标题栏 = #323233 (VSCode 原生 titleBar.activeBackground)
-   * 这里用 inactive tab 色做导航底色，用 border 区分。
+   * 等价 VSCode title bar / inactive tab:
+   *   #f3f3f7 — 比主底略深 + 冷调
+   *   底部 0.5px border 区隔
    */
-  --ui-topnav-bg: #2d2d2d;
+  --ui-topnav-bg: #f3f3f7;
   --ui-topnav-border: 0.5px solid var(--border);
   --ui-topnav-height: 40px;
 
   /* --- 侧边栏 ---
-   * activityBar 最深 (#333333)，sideBar 次之 (#252526)。
-   * 窄图标列用 activityBar 色，展开面板用 sideBar 色。
+   * activityBar 等价: surface-deep (最深亮色)
+   * sideBar 展开面板: surface
    */
   --ui-sidebar-bg: var(--surface-deep);
   --ui-sidebar-expanded-bg: var(--surface);
@@ -251,95 +229,89 @@ html.dark {
   --ui-sidebar-divider: 1px solid var(--border);
 
   /* --- 侧边栏图标 ---
-   * VSCode activityBar:
-   *   未激活图标 = #ffffff80 (白色半透)
-   *   激活图标   = #ffffff (纯白)
-   *   不染色 — 靠白色透明度区分状态
-   *
-   * 对 agent webUI: 保留 accent 色做激活态的额外选择，默认跟随 VSCode 白。
+   * VSCode activityBar light:
+   *   未激活图标 = rgba(0,0,0,0.38) (黑色半透)
+   *   激活图标   = #1e1e1e (fg)
+   *   备选 accent = #007acc (VSCode 状态栏蓝)
    */
-  --ui-icon-default: rgba(255, 255, 255, 0.48);
-  --ui-icon-hover: rgba(255, 255, 255, 0.72);
-  --ui-icon-active: #ffffff;
+  --ui-icon-default: rgba(0, 0, 0, 0.38);
+  --ui-icon-hover: rgba(0, 0, 0, 0.60);
+  --ui-icon-active: #1e1e1e;
   --ui-icon-active-accent: var(--accent);
-  /* 备选: 像 VSCode 状态栏一样的蓝色 */
   --ui-icon-size: 20px;
- 
+
   /* --- 对话列表 ---
-   * sideBar 底色，hover/active 对应 VSCode 列表状态:
-   *   list.hoverBackground         = #2a2d2e
-   *   list.activeSelectionBackground = #094771
-   *   list.inactiveSelectionBackground = #37373d
+   * sideBar 底色，hover/active:
+   *   list.hoverBackground             = #e8e8eb (微深灰 + 冷)
+   *   list.activeSelectionBackground   = #e0edf9 (浅蓝选中)
+   *   list.inactiveSelectionBackground = #e4e6f1 (失焦选中 + 冷)
    */
   --ui-chatlist-bg: var(--surface);
   --ui-chatlist-width: var(--chat-list);
-  --ui-chatlist-item-hover: #2a2d2e;
-  --ui-chatlist-item-active: #094771;
+  --ui-chatlist-item-hover: #e8e8eb;
+  --ui-chatlist-item-active: #e0edf9;
 
   /* --- 消息流 ---
-   * VSCode 没有"消息泡"概念。用编辑器/输入区底色做区分:
-   *   用户消息   = input.background #3c3c3c — 微提亮表示"发言"
-   *   Agent 消息 = editor 主底、左边 accent 线 (VSCode 差异高亮的做法)
+   * 亮底消息区分:
+   *   用户消息   = #ebebf2 — 微冷灰底标示"我的发言"
+   *   Agent 消息 = 主底色、左边 accent 蓝线区分
    */
-  --ui-msg-user-bg: #3c3c3c;
+  --ui-msg-user-bg: #ebebf2;
   --ui-msg-user-border: none;
   --ui-msg-agent-accent-line: 2px solid var(--accent);
   --ui-msg-padding: 14px;
   --ui-msg-radius: 0;
-  /* VSCode 没有圆角气泡 */
 
   /* --- 代码块 ---
-   * terminal.background = editor.background = #1e1e1e
-   * 代码块底色跟主背景一致，用微妙的边框区分，行号列略深。
+   * terminal.background = 略深于 editor 的冷灰
+   * 代码块底色稍微暗于主底，细边框 + 左 accent 线区分。
    */
-  --ui-code-bg: #1e1e1e;
+  --ui-code-bg: #f5f5f8;
   --ui-code-border: 1px solid var(--border);
   --ui-code-accent-stripe: 2px solid var(--accent);
-  --ui-code-gutter: #1a1a1a;
+  --ui-code-gutter: #ececf0;
   --ui-code-radius: 0;
 
   /* --- 输入框区域 ---
-   * input.background = #3c3c3c
-   * 比主底亮的独立输入区，focus 用 accent-focus 边框 + 微光环。
+   * input.background = #ffffff (纯白，最亮输入区)
+   * border = #cecece (VSCode 原生输入框边框)
+   * focus = accent-focus 1px solid + 微光环
    */
   --ui-input-area-bg: var(--surface);
-  --ui-input-bg: #3c3c3c;
-  --ui-input-border: 1px solid #3c3c3c;
-  /* input.border 与 bg 同色 */
+  --ui-input-bg: #ffffff;
+  --ui-input-border: 1px solid #cecece;
   --ui-input-border-focus: 1px solid var(--accent-focus);
-  --ui-input-focus-ring: 0 0 0 3px rgba(0, 127, 212, 0.22);
-  --ui-input-streaming-ring: 0 0 0 3px rgba(244, 71, 71, 0.22);
+  --ui-input-focus-ring: 0 0 0 3px rgba(0, 127, 212, 0.18);
+  --ui-input-streaming-ring: 0 0 0 3px rgba(209, 36, 47, 0.18);
   --ui-input-radius: 0;
-  /* VSCode 输入框无圆角 */
 
   /* --- 按钮 ---
-   * button.background = #0e639c, foreground = #ffffff
-   * 二次按钮 = combo box / dropdown 风格: 透明底 + border
+   * button.background = #0078d4 (VSCode 亮底按钮)
+   * 二次按钮 = 透明底 + 边框
    */
-  --ui-btn-primary-bg: #0e639c;
+  --ui-btn-primary-bg: #0078d4;
   --ui-btn-primary-fg: #ffffff;
-  --ui-btn-primary-hover-bg: #1177bb;
+  --ui-btn-primary-hover-bg: #106ebe;
   --ui-btn-secondary-bg: transparent;
   --ui-btn-secondary-fg: var(--fg);
   --ui-btn-secondary-border: 1px solid var(--border);
   --ui-btn-radius: 0;
 
   /* --- 滚动条 ---
-   * scrollbarSlider.background = #79797966 (~ #424242 ~40%)
-   * scrollbarSlider.hoverBackground = #646464b3
+   * scrollbarSlider.background = #c8c8c8 (亮底滚动条)
+   * scrollbarSlider.hoverBackground = #a0a0a0
    */
-  --ui-scrollbar-thumb: #424242;
-  --ui-scrollbar-hover: #555555;
+  --ui-scrollbar-thumb: #c8c8c8;
+  --ui-scrollbar-hover: #a0a0a0;
   --ui-scrollbar-track: transparent;
 
   /* --- 选中文字 ---
-   * editor.selectionBackground = #264f78
+   * editor.selectionBackground = #add6ff (VSCode 亮底选中蓝)
    */
-  --ui-selection-bg: #264f78;
+  --ui-selection-bg: #add6ff;
   --ui-selection-fg: var(--fg);
 
   /* --- 分割线 ---
-   * 同 panel.border / sash hover
    */
   --ui-divider: 1px solid var(--border);
 
@@ -349,93 +321,90 @@ html.dark {
   --ui-placeholder: #767676;
 
   /* --- Badge / pill ---
-   * badge.background = #4d4d4d, badge.foreground = #ffffff
+   * badge.background = #c4c4c4, badge.foreground = #333333
    */
-  --ui-badge-bg: #4d4d4d;
-  --ui-badge-fg: #ffffff;
+  --ui-badge-bg: #c4c4c4;
+  --ui-badge-fg: #333333;
 
   /* --- TPS 速率 badge (ChatInput 流式速度指示) ---
    * high (≥50 t/s)  accent 蓝底  中 (20–50)  成功绿底  低 (<20)  警告琥珀底
-   * VSCode 风格: 深色微染底 + 语义色前景，不发光不渐变
    */
-  --ui-tps-high-bg: #0e2a3d;
+  --ui-tps-high-bg: #e8f4fd;
   --ui-tps-high-fg: var(--accent);
-  --ui-tps-mid-bg:  #0d2f29;
+  --ui-tps-mid-bg:  #e6f7ee;
   --ui-tps-mid-fg:  var(--success);
-  --ui-tps-low-bg:  #332a0d;
+  --ui-tps-low-bg:  #fef3d5;
   --ui-tps-low-fg:  var(--warn);
 
   /* --- 工具栏 / 快捷操作 ---
-   * editorGroup.emptyBackground = 同 editor
-   * toolbar hover = menubar.selectionBackground = #3c3c3c
+   * toolbar hover = #e8e8eb (微深冷灰)
    */
   --ui-toolbar-bg: var(--bg);
-  --ui-toolbar-hover: #3c3c3c;
+  --ui-toolbar-hover: #e8e8eb;
 
   /* --- Tooltip / popover ---
-   * editorHoverWidget.background = #252526
-   * editorHoverWidget.border = #454545
+   * editorHoverWidget.background = #ffffff
+   * editorHoverWidget.border = #c8c8c8
    */
-  --ui-tooltip-bg: #252526;
+  --ui-tooltip-bg: #ffffff;
   --ui-tooltip-fg: var(--fg);
-  --ui-tooltip-border: 1px solid #454545;
+  --ui-tooltip-border: 1px solid #c8c8c8;
   --ui-tooltip-shadow: var(--elev-raised);
 
   /* --- 下拉菜单 / context menu ---
-   * menu.background = #252526
-   * menu.selectionBackground = #094771
+   * menu.background = #ffffff
+   * menu.selectionBackground = #e0edf9 (浅蓝选中)
    */
-  --ui-dropdown-bg: #252526;
-  --ui-dropdown-hover: #094771;
-  --ui-dropdown-border: 1px solid #454545;
+  --ui-dropdown-bg: #ffffff;
+  --ui-dropdown-hover: #e0edf9;
+  --ui-dropdown-border: 1px solid #c8c8c8;
 
   /* --- 模态 / 对话框 ---
-   * editorWidget.background = #252526
+   * editorWidget.background = #ffffff
    */
-  --ui-modal-bg: #252526;
-  --ui-modal-backdrop: rgba(0, 0, 0, 0.5);
+  --ui-modal-bg: #ffffff;
+  --ui-modal-backdrop: rgba(0, 0, 0, 0.28);
 
   /* --- Tab / 标签切换 ---
-   * tab.activeBackground = #1e1e1e, tab.inactiveBackground = #2d2d2d
+   * tab.activeBackground = #ffffff, tab.inactiveBackground = #ececec
    * tab.activeBorderTop = #007acc
    */
-  --ui-tab-active-bg: #1e1e1e;
-  --ui-tab-inactive-bg: #2d2d2d;
+  --ui-tab-active-bg: #ffffff;
+  --ui-tab-inactive-bg: #ececec;
   --ui-tab-active-border: var(--accent);
-  --ui-tab-hover-bg: #2a2d2e;
+  --ui-tab-hover-bg: #e8e8eb;
 
   /* --- 链接 ---
-   * textLink.foreground = #3794ff, textLink.activeForeground = #3794ff
+   * textLink.foreground = #006ab1 (VSCode Light+)
    */
-  --ui-link: #3794ff;
-  --ui-link-hover: #3794ff;
+  --ui-link: #006ab1;
+  --ui-link-hover: #006ab1;
 
   /* --- 校验/错误状态 ---
-   * editorError.foreground = #f44747, editorWarning.foreground = #cca700
-   * editorInfo.foreground = #3794ff
+   * 亮底错误/警告/信息 — 用浅底色 + 深文字
    */
-  --ui-error-fg: #f44747;
-  --ui-error-bg: #5a1d1d;
-  --ui-warn-fg: #cca700;
-  --ui-warn-bg: #4d3f00;
-  --ui-info-fg: #3794ff;
-  --ui-info-bg: #063b5e;
+  --ui-error-fg: #d1242f;
+  --ui-error-bg: #fde7e9;
+  --ui-warn-fg: #946800;
+  --ui-warn-bg: #fff3cd;
+  --ui-info-fg: #006ab1;
+  --ui-info-bg: #e8f4fd;
 
   /* ════════════════════════════════════════════════════════════════════
-   * COMPAT — 旧组件引用的别名
+   * COMPAT — 旧组件引用的别名 (亮底版)
    * ════════════════════════════════════════════════════════════════════ */
   --bg-panel: var(--surface);
-  --bg-hover: #2a2d2e;
-  --bg-selected: #094771;
+  --bg-hover: #e8e8eb;
+  --bg-selected: #e0edf9;
   --text: var(--fg);
   --text-muted: var(--fg-2);
   --text-dim: var(--muted);
   --user-bg: var(--ui-msg-user-bg);
   --assistant-bg: var(--bg);
   --tool-bg: var(--surface);
-  --bg-subtle: rgba(255, 255, 255, 0.04);
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.30);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.50), 0 2px 4px rgba(0, 0, 0, 0.30);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.60), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --bg-subtle: rgba(0, 0, 0, 0.02);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
 }

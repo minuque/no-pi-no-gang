@@ -1,5 +1,6 @@
 @import "tailwindcss";
-@import "../tokens-dark.css";
+@import "./theme/tokens-dark.css";
+@import "./theme/tokens-light.css";
 
 @theme {
   --color-bg: var(--bg);
@@ -20,36 +21,6 @@
   --color-bg-subtle: var(--bg-subtle);
   --font-mono-font: var(--font-mono);
 }
-
-:root {
-  --bg: #fafaf9;
-  --bg-panel: #f5f4f1;
-  --bg-hover: #edebe6;
-  --bg-selected: #e7e4de;
-  --border: #e0dcd5;
-  --text: #1c1917;
-  --text-muted: #6b6762;
-  --text-dim: #a09b95;
-  --accent: #4f6f8f;
-  --accent-hover: #3d5a75;
-  --accent-soft: color-mix(in oklab, var(--accent), transparent 92%);
-  --accent-subtle: color-mix(in oklab, var(--accent), transparent 94%);
-  --accent-border: color-mix(in oklab, var(--accent), transparent 75%);
-  --accent-ring: color-mix(in oklab, var(--accent), transparent 50%);
-  --user-bg: #eff4f8;
-  --assistant-bg: #fafaf9;
-  --tool-bg: #f5f4f1;
-  --bg-subtle: rgba(0,0,0,0.025);
-  --accent-on: #ffffff;
-  --success: #34d399;
-  --warn: #fbbf24;
-  --danger: #f87171;
-  --shadow-xs: 0 1px 2px rgba(28,25,23,0.04);
-  --shadow-sm: 0 1px 3px rgba(28,25,23,0.06), 0 1px 2px rgba(28,25,23,0.04);
-  --shadow-md: 0 4px 12px rgba(28,25,23,0.06), 0 2px 4px rgba(28,25,23,0.04);
-  --shadow-lg: 0 8px 24px rgba(28,25,23,0.08), 0 2px 6px rgba(28,25,23,0.04);
-}
-
 
 /* Theme toggle: circular wipe via View Transitions API.
    Disable the UA cross-fade; the actual clip-path animation is driven by
@@ -76,7 +47,7 @@ html, body {
   padding: 0;
   background-color: var(--bg);
   color: var(--text);
-  font-family: var(--font-geist), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-body);
   font-size: 14px;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
@@ -106,7 +77,9 @@ body {
 }
 
 :root {
-  --font-mono: var(--font-geist-mono), var(--font-noto-mono), 'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --font-body:    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace;
 }
 
 pre, code {
@@ -247,6 +220,13 @@ pre, code {
   font-family: var(--font-mono);
   font-size: 0.9em;
   color: var(--text);
+}
+
+/* ── Fenced code blocks (react-syntax-highlighter) ──
+   Override hardcoded fontFamily from Prism themes (vscDarkPlus / vs). */
+.markdown-body pre[class*="language-"],
+.markdown-body code[class*="language-"] {
+  font-family: var(--font-mono) !important;
 }
 
 /* ── List markers (bullets / numbers) ── */
@@ -496,6 +476,39 @@ span.linenumber {
   0%   { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in oklab, var(--success), transparent 45%); }
   40%  { transform: scale(1.08); box-shadow: 0 0 0 6px color-mix(in oklab, var(--success), transparent 75%); }
   100% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in oklab, var(--success), transparent 100%); }
+}
+
+/* ── Resize handles ── */
+/* Flex child between panels; width controlled inline for collapse animation.
+   Hover changes border-color — no pseudo-element, no layout shift. */
+.resize-handle {
+  flex-shrink: 0;
+  cursor: col-resize;
+  z-index: 10;
+  touch-action: none;
+  border: 0 solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  border-color: var(--accent);
+}
+
+/* Sidebar-chat boundary — left border */
+.resize-handle-bar-left {
+  border-left-width: 2px;
+}
+
+/* Chat–right-panel boundary — right border */
+.resize-handle-bar-right {
+  border-right-width: 2px;
+}
+
+@media (max-width: 640px) {
+  .resize-handle {
+    display: none;
+  }
 }
 
 @keyframes saved-check-draw {

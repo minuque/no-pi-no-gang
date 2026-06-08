@@ -140,7 +140,7 @@ html.dark {
    * ════════════════════════════════════════════════════════════════════ */
   --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+  --font-mono: 'JetBrains Mono', "Cascadia Code", Consolas, "Courier New", monospace;
 
   /* VSCode 编辑器的字号范围：11-14px 为主体，最小 9px */
   --text-xs: 10px;
@@ -264,7 +264,7 @@ html.dark {
   --ui-icon-active-accent: var(--accent);
   /* 备选: 像 VSCode 状态栏一样的蓝色 */
   --ui-icon-size: 20px;
- 
+
   /* --- 对话列表 ---
    * sideBar 底色，hover/active 对应 VSCode 列表状态:
    *   list.hoverBackground         = #2a2d2e
