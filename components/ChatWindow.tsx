@@ -1,14 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, forwardRef } from "react";
+import type { HTMLAttributes } from "react";
 import { useRouter } from "next/navigation";
-import type { AgentMessage, SessionInfo, SessionTreeNode } from "@/lib/types";
+import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
+import type { AgentMessage, SessionInfo, SessionTreeNode, ToolResultMessage } from "@/lib/types";
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
-import { ChatMinimap, MINIMAP_WIDTH, useMessageRefs } from "./ChatMinimap";
+import { ChatMinimap, MINIMAP_WIDTH } from "./ChatMinimap";
 import { SessionLoading } from "./SessionLoading";
 import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
 import { useDragDrop } from "@/hooks/useDragDrop";
+import { useTheme } from "@/hooks/useTheme";
 
 interface Props {
   session: SessionInfo | null;
@@ -22,6 +25,10 @@ interface Props {
   onSystemPromptChange?: (prompt: string | null) => void;
   onSessionStatsChange?: (stats: { tokens: { input: number; output: number; cacheRead: number; cacheWrite: number }; cost?: number } | null) => void;
   onContextUsageChange?: (usage: { percent: number | null; contextWindow: number; tokens: number | null } | null) => void;
+  recentCwds?: string[];
+  homeDir?: string;
+  onCwdSelect?: (cwd: string) => void;
+  onCwdDefault?: () => void;
 }
 
 function phaseLabel(phase: AgentPhase): string {
@@ -94,7 +101,7 @@ function Typewriter({ phrases }: { phrases: string[] }) {
   );
 }
 
-export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange }: Props) {
+export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, recentCwds, homeDir = "", onCwdSelect, onCwdDefault }: Props) {
   const router = useRouter();
   const {
     data, loading, error, messages, entryIds, streamState, commands,
@@ -107,13 +114,16 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     messagesEndRef, scrollContainerRef,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleThinkingLevelChange, handleAgentEventRef,
-    scrollToBottom,
+    scrollToBottom: _hookScrollToBottom,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange,
+    disableAutoScroll: true, // Virtuoso manages scrolling — avoid RAF conflict
   });
 
-  // Push session stats up to AppShell for the top bar. up to AppShell for the top bar.
+  const { isDark } = useTheme();
+
+  // Push session stats up to AppShell for the top bar.
   // Compare scalar fields to avoid loops from new object identity each render.
   const statsKey = sessionStats
     ? `${sessionStats.tokens.input}|${sessionStats.tokens.output}|${sessionStats.tokens.cacheRead}|${sessionStats.tokens.cacheWrite}|${sessionStats.cost ?? 0}`
@@ -163,9 +173,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     handleSend(content);
   }, [handleSend]);
 
-  const visibleMessages = messages.filter((m) => m.role === "user" || m.role === "assistant");
-  const messageRefs = useMessageRefs(visibleMessages.length);
-
   const isEmptyNew = isNew && messages.length === 0 && !streamState.isStreaming && !agentRunning;
 
   const availableThinkingLevels = displayModelValue
@@ -211,22 +218,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     return find(tree);
   }, [data?.tree, activeLeafId]);
 
-  const handleDirectoryChange = useCallback(async () => {
-    try {
-      const handle = await (window as any).showDirectoryPicker({ mode: "read" });
-      const currentCwd = session?.cwd ?? newSessionCwd;
-      if (currentCwd) {
-        const parent = currentCwd.replace(/[/\\][^/\\]+$/, "");
-        const newCwd = `${parent}/${handle.name}`;
-        router.replace(`/?cwd=${encodeURIComponent(newCwd)}`);
-      } else {
-        console.log("Selected directory:", handle.name);
-      }
-    } catch {
-      // user cancelled or API not available
-    }
-  }, [session?.cwd, newSessionCwd, router]);
-
   // Streaming metrics — token count + TPS
   const streamStartRef = useRef<number | null>(null);
   const [streamingTokens, setStreamingTokens] = useState<number>(0);
@@ -267,6 +258,86 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     return () => clearInterval(id);
   }, [agentRunning]);
 
+  // ── Virtual scrolling data model ──
+  // Flatten messages + streaming content + phase indicator into a single list
+  // for react-virtuoso. Each item has a stable "kind" discriminator.
+  type VirtuosoItem =
+    | { kind: "message"; msg: AgentMessage; msgIndex: number }
+    | { kind: "streaming"; msg: Partial<AgentMessage> }
+    | { kind: "phase"; label: string };
+
+  const listItems = useMemo<VirtuosoItem[]>(() => {
+    const items: VirtuosoItem[] = [];
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i];
+      // toolResult messages render null — skip to avoid zero-height items
+      // confusing Virtuoso's internal height map.
+      if (msg.role === "toolResult") continue;
+      items.push({ kind: "message", msg, msgIndex: i });
+    }
+    if (streamState.isStreaming && streamState.streamingMessage) {
+      items.push({ kind: "streaming", msg: streamState.streamingMessage });
+    } else if (agentRunning && !streamState.streamingMessage) {
+      items.push({ kind: "phase", label: phaseLabel(agentPhase) });
+    }
+    return items;
+  }, [messages, streamState.isStreaming, streamState.streamingMessage, agentRunning, agentPhase]);
+
+  // Pre-compute tool result lookup (needed by all message renders)
+  const toolResultsMap = useMemo(() => {
+    const map = new Map<string, ToolResultMessage>();
+    for (const msg of messages) {
+      if (msg.role === "toolResult") {
+        map.set((msg as ToolResultMessage).toolCallId, msg as ToolResultMessage);
+      }
+    }
+    return map;
+  }, [messages]);
+
+  // Last assistant index (for Retry button)
+  const lastAssistantIdx = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") return i;
+    }
+    return -1;
+  }, [messages]);
+
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+
+  // Virtuoso-scroller ref — read-only pass-through for minimap scroll position.
+  // Never write to this ref; all scroll mutations go through Virtuoso's API.
+  const scrollerElRef = useRef<HTMLDivElement | null>(null);
+
+  // At-bottom tracking (Virtuoso-native, no external IO needed)
+  const [atBottom, setAtBottom] = useState(true);
+  const atBottomRef = useRef(true);
+
+  // Scroll-to-bottom via Virtuoso API (replaces hook's scrollIntoView)
+  const scrollToBottom = useCallback((behavior: "smooth" | "auto" = "smooth") => {
+    virtuosoRef.current?.scrollToIndex({ index: "LAST", behavior, align: "end" });
+  }, []);
+
+
+  // Initial load: scroll to bottom once messages are present and agent is idle.
+  // Reset when session changes so switching sessions also scrolls to bottom.
+  const didInitialScroll = useRef(false);
+  useEffect(() => { didInitialScroll.current = false; }, [session?.id]);
+  useEffect(() => {
+    if (!didInitialScroll.current && listItems.length > 0 && !agentRunning) {
+      didInitialScroll.current = true;
+      scrollToBottom("auto");
+    }
+  }, [listItems.length, agentRunning, scrollToBottom]);
+
+  // Follow bottom during streaming — followOutput only handles count changes,
+  // not in-place height growth from streaming text. At ~250 chars/sec reveal
+  // rate, the content grows in small increments; 'auto' avoids scroll lag.
+  useEffect(() => {
+    if (agentRunning && atBottomRef.current) {
+      virtuosoRef.current?.scrollToIndex({ index: "LAST", behavior: "auto", align: "end" });
+    }
+  }, [agentRunning, streamState.streamingMessage]);
+
   const chatInputElement = (
     <ChatInput
       ref={chatInputRef}
@@ -287,8 +358,11 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       currentProject={projectName}
       activeBranch={activeBranch}
       branchOptions={branchOptions}
-      onDirectoryChange={handleDirectoryChange}
       onBranchChange={handleNavigate}
+      recentCwds={recentCwds}
+      homeDir={homeDir}
+      onCwdSelect={onCwdSelect}
+      onCwdDefault={onCwdDefault}
       streamingTokens={streamingTokens}
       streamingTps={streamingTps}
     />
@@ -368,9 +442,12 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 fontFamily: "var(--font-mono)",
               }}
             >
-              <div style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 0, flex: 1, lineHeight: 1.4 }}>
-                <span style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)" }}>π</span>
-                <span style={{ fontSize: 22, color: "var(--text)", fontWeight: 700, letterSpacing: "-0.01em" }}>Pi Agent Web</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1, lineHeight: 1.4 }}>
+                <img
+                  src={isDark ? "/pi-logo-on-dark.svg" : "/pi-logo-on-light.svg"}
+                  alt="Pi Agent Web"
+                  style={{ height: 28, width: "auto" }}
+                />
                 <span style={{ fontSize: 14, minWidth: 0, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
                   <Typewriter phrases={TYPEWRITER_PHRASES} />
                 </span>
@@ -390,104 +467,86 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       ) : (
       <>
       <div className="flex-1 flex overflow-hidden relative" style={{ paddingRight: MINIMAP_WIDTH, animation: "fade-in-up 0.35s ease both" }}>
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto pt-4 [scrollbar-width:none]">
-          <div className="mx-auto max-w-[1148px] px-4">
+        <Virtuoso
+          ref={virtuosoRef}
+          scrollerRef={(ref) => { scrollerElRef.current = ref as HTMLDivElement | null; }}
+          style={{ flex: 1 }}
+          className="[scrollbar-width:none]"
+          data={listItems}
+          followOutput={agentRunning ? "smooth" : false}
+          atBottomStateChange={(v) => { atBottomRef.current = v; setAtBottom(v); }}
+          increaseViewportBy={{ top: 400, bottom: 400 }}
+          itemContent={(index, item) => {
+            // ── Streaming item ──
+            if (item.kind === "streaming") {
+              return (
+                <div className="mx-auto max-w-[1148px] px-4">
+                  <MessageView message={item.msg as AgentMessage} isStreaming modelNames={modelNames} />
+                </div>
+              );
+            }
 
-            {(() => {
-              const toolResultsMap = new Map<string, import("@/lib/types").ToolResultMessage>();
-              for (const msg of messages) {
-                if (msg.role === "toolResult") {
-                  toolResultsMap.set((msg as import("@/lib/types").ToolResultMessage).toolCallId, msg as import("@/lib/types").ToolResultMessage);
-                }
+            // ── Phase indicator (agent running, no message yet) ──
+            if (item.kind === "phase") {
+              return (
+                <div className="mx-auto max-w-[1148px] px-4 py-2 text-[13px]" style={{ color: "var(--text-muted)" }}>
+                  <span className="animate-[pulse_1.5s_infinite]">{item.label}</span>
+                </div>
+              );
+            }
+
+            // ── Regular message ──
+            const { msg, msgIndex } = item;
+            // Compute per-message metadata (inexpensive — only runs for visible items)
+            const entryId = entryIds[msgIndex];
+            const prevAssistantEntryId =
+              msg.role === "user" && msgIndex > 0 && messages[msgIndex - 1]?.role === "assistant"
+                ? entryIds[msgIndex - 1]
+                : undefined;
+            let showTimestamp = false;
+            if (msg.role === "assistant") {
+              showTimestamp = true;
+              for (let j = msgIndex + 1; j < messages.length; j++) {
+                const r = messages[j]?.role;
+                if (r === "user") break;
+                if (r === "assistant") { showTimestamp = false; break; }
               }
-              // Find last assistant message index (for Retry button)
-              const lastAssistantIdx = (() => {
-                for (let i = messages.length - 1; i >= 0; i--) {
-                  if (messages[i].role === "assistant") return i;
-                }
-                return -1;
-              })();
-              let refIdx = 0;
-              return messages.map((msg, idx) => {
-                const prevAssistantEntryId =
-                  msg.role === "user" && idx > 0 && messages[idx - 1].role === "assistant"
-                    ? entryIds[idx - 1]
-                    : undefined;
-                const isVisible = msg.role === "user" || msg.role === "assistant";
-                const currentRefIdx = isVisible ? refIdx++ : -1;
-                let showTimestamp = false;
-                if (msg.role === "assistant") {
-                  showTimestamp = true;
-                  for (let j = idx + 1; j < messages.length; j++) {
-                    const r = messages[j].role;
-                    if (r === "user") break;
-                    if (r === "assistant") { showTimestamp = false; break; }
-                  }
-                  // Hide on the currently-streaming tail (the streaming bubble owns the live timestamp)
-                  if (showTimestamp && streamState.isStreaming && idx === messages.length - 1) {
-                    showTimestamp = false;
-                  }
-                }
-                const isLastAssistant = msg.role === "assistant" && idx === lastAssistantIdx && !streamState.isStreaming;
-                const view = (
-                  <MessageView
-                    key={idx}
-                    message={msg}
-                    toolResults={toolResultsMap}
-                    modelNames={modelNames}
-                    entryId={entryIds[idx]}
-                    onFork={agentRunning || isNew || (idx === 0 && msg.role === "user") ? undefined : handleFork}
-                    forking={forkingEntryId === entryIds[idx]}
-                    onNavigate={agentRunning ? undefined : handleNavigate}
-                    prevAssistantEntryId={agentRunning ? undefined : prevAssistantEntryId}
-                    onEditContent={(content) => chatInputRef?.current?.insertIfEmpty(content)}
-                    showTimestamp={showTimestamp}
-                    prevTimestamp={idx > 0 ? (messages[idx - 1] as import("@/lib/types").AgentMessage & { timestamp?: number }).timestamp : undefined}
-                    onRetry={isLastAssistant && !agentRunning ? handleRetry : undefined}
-                    onEditResend={msg.role === "user" && !agentRunning ? handleEditResend : undefined}
-                  />
-                );
-                if (!isVisible) return view;
-                const msgIdxForDelay = refIdx - 1; // 0-based for visible messages
-                return (
-                  <div
-                    key={idx}
-                    ref={(el) => {
-                      messageRefs.current[currentRefIdx] = el;
-                    }}
-                    style={{
-                      animation: isNew || session
-                        ? `message-enter 0.3s ease both`
-                        : undefined,
-                      animationDelay: isNew || session
-                        ? `${Math.min(msgIdxForDelay * 50, 800)}ms`
-                        : undefined,
-                    }}
-                  >
-                    {view}
-                  </div>
-                );
-              });
-            })()}
+              if (showTimestamp && streamState.isStreaming && msgIndex === messages.length - 1) {
+                showTimestamp = false;
+              }
+            }
+            const isLastAssistant = msg.role === "assistant" && msgIndex === lastAssistantIdx && !streamState.isStreaming;
 
-            {streamState.isStreaming && streamState.streamingMessage && (
-              <MessageView message={streamState.streamingMessage as AgentMessage} isStreaming modelNames={modelNames} />
-            )}
-
-            {agentRunning && !streamState.streamingMessage && (
-              <div className="py-2 text-[13px] text-text-muted">
-                <span className="animate-[pulse_1.5s_infinite]">{phaseLabel(agentPhase)}</span>
+            return (
+              <div className="mx-auto max-w-[1148px] px-4">
+                <MessageView
+                  message={msg}
+                  toolResults={toolResultsMap}
+                  modelNames={modelNames}
+                  entryId={entryId}
+                  onFork={agentRunning || isNew || (msgIndex === 0 && msg.role === "user") ? undefined : handleFork}
+                  forking={forkingEntryId === entryId}
+                  onNavigate={agentRunning ? undefined : handleNavigate}
+                  prevAssistantEntryId={agentRunning ? undefined : prevAssistantEntryId}
+                  onEditContent={(content) => chatInputRef?.current?.insertIfEmpty(content)}
+                  showTimestamp={showTimestamp}
+                  prevTimestamp={msgIndex > 0 ? (messages[msgIndex - 1] as AgentMessage & { timestamp?: number }).timestamp : undefined}
+                  onRetry={isLastAssistant && !agentRunning ? handleRetry : undefined}
+                  onEditResend={msg.role === "user" && !agentRunning ? handleEditResend : undefined}
+                />
               </div>
-            )}
+            );
+          }}
+          components={{
+            List: forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>((props, ref) => (
+              <div {...props} ref={ref} style={{ ...props.style, paddingTop: 16 }} />
+            )),
+            Footer: () => <div style={{ height: 24 }} />,
+          }}
+        />
 
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
-
-        {/* Scroll-to-bottom button — floats at bottom of messages area (inside scroll wrapper, not input).
-            Industry pattern: ChatGPT / Slack position the button over the scrollport bottom,
-            independent of input height. */}
-        {showScrollButton && (
+        {/* Scroll-to-bottom button */}
+        {!atBottom && (
           <div style={{
             position: "absolute",
             bottom: 12,
@@ -544,8 +603,8 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         <ChatMinimap
           messages={messages}
           streamingMessage={streamState.streamingMessage}
-          scrollContainer={scrollContainerRef}
-          messageRefs={messageRefs}
+          scrollContainer={scrollerElRef}
+          virtual
         />
       </div>
       </>

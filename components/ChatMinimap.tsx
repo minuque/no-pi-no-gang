@@ -7,7 +7,10 @@ interface Props {
   messages: AgentMessage[];
   streamingMessage: Partial<AgentMessage> | null;
   scrollContainer: RefObject<HTMLDivElement | null>;
-  messageRefs: RefObject<(HTMLDivElement | null)[]>;
+  messageRefs?: RefObject<(HTMLDivElement | null)[]>;
+  /** Virtual-scroll mode: estimate dot positions instead of reading DOM refs.
+   *  Used when react-virtuoso is active (DOM nodes are recycled). */
+  virtual?: boolean;
 }
 
 export const MINIMAP_WIDTH = 36;
@@ -64,7 +67,7 @@ interface NodeInfo {
   index: number;
 }
 
-export function ChatMinimap({ messages, streamingMessage, scrollContainer, messageRefs }: Props) {
+export function ChatMinimap({ messages, streamingMessage, scrollContainer, messageRefs, virtual }: Props) {
   const [scrollRatio, setScrollRatio] = useState(0);
   const [viewportRatio, setViewportRatio] = useState(1);
   const [visible, setVisible] = useState(false);
@@ -81,6 +84,12 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
   const allMessagesRef = useRef(allMessages);
   allMessagesRef.current = allMessages;
 
+  // Count of visible (user + assistant) messages for virtual mode
+  const visibleMsgCount = useMemo(() => {
+    return allMessages.filter((m) => m.role === "user" || m.role === "assistant").length;
+  }, [allMessages]);
+
+  const prevStateRef = useRef<{ visible: boolean; scrollRatio: number; viewportRatio: number; nodesLen: number }>({ visible: false, scrollRatio: 0, viewportRatio: 1, nodesLen: 0 });
   const updatePositionsRef = useRef<() => void>(null!);
   updatePositionsRef.current = () => {
     const scrollEl = scrollContainer.current;
@@ -90,7 +99,11 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
     const clientH = scrollEl.clientHeight;
     const scrollable = totalH - clientH;
 
-    setVisible(scrollable > 20);
+    const newVisible = scrollable > 20;
+    if (newVisible !== prevStateRef.current.visible) {
+      prevStateRef.current.visible = newVisible;
+      setVisible(newVisible);
+    }
     if (scrollable <= 0) {
       setScrollRatio(0);
       setViewportRatio(1);
@@ -99,14 +112,43 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
       setViewportRatio(clientH / totalH);
     }
 
-    // Build node positions from real DOM refs
+    if (virtual) {
+      // Virtual mode: evenly distribute dots based on visible message count.
+      // Industry pattern — ChatGPT / Claude minimap uses estimated positions
+      // since off-screen messages have no DOM nodes.
+      const count = visibleMsgCount;
+      if (count === 0) { setNodes([]); prevStateRef.current.nodesLen = 0; return; }
+      const newNodes: NodeInfo[] = [];
+      let dotIdx = 0;
+      const allMsgs = allMessagesRef.current;
+      for (let i = 0; i < allMsgs.length; i++) {
+        const msg = allMsgs[i];
+        if (msg.role !== "user" && msg.role !== "assistant") continue;
+        if (!hasTextContent(msg)) continue;
+        newNodes.push({
+          topRatio: dotIdx / count,
+          heightRatio: 1 / count,
+          msg,
+          index: dotIdx,
+        });
+        dotIdx++;
+      }
+      if (newNodes.length !== prevStateRef.current.nodesLen) {
+        prevStateRef.current.nodesLen = newNodes.length;
+        setNodes(newNodes);
+      }
+      return;
+    }
+
+    // DOM-ref mode: build node positions from real DOM refs
+    if (!messageRefs) return;
     const refs = messageRefs.current;
     const newNodes: NodeInfo[] = [];
     let refIndex = 0;
 
-    const allMessages = allMessagesRef.current;
-    for (let i = 0; i < allMessages.length; i++) {
-      const msg = allMessages[i];
+    const allMsgs = allMessagesRef.current;
+    for (let i = 0; i < allMsgs.length; i++) {
+      const msg = allMsgs[i];
       if (msg.role !== "user" && msg.role !== "assistant") continue;
 
       const el = refs?.[refIndex];
@@ -127,7 +169,10 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
         });
       }
     }
-    setNodes(newNodes);
+    if (newNodes.length !== prevStateRef.current.nodesLen) {
+      prevStateRef.current.nodesLen = newNodes.length;
+      setNodes(newNodes);
+    }
   };
 
   const updatePositions = useCallback(() => updatePositionsRef.current(), []);
@@ -159,6 +204,9 @@ export function ChatMinimap({ messages, streamingMessage, scrollContainer, messa
     const scrollable = el.scrollHeight - el.clientHeight;
     if (scrollable <= 0) return;
     const clamped = Math.max(0, Math.min(1 - viewportRatio, viewportTopRatio));
+    // One-time scrollTop write is safe with Virtuoso — it handles external
+    // scroll changes via its scroll event listener (same as user scroll wheel).
+    // Only continuous 60fps writes (RAF loop) cause conflicts.
     el.scrollTop = (clamped / (1 - viewportRatio)) * scrollable;
   }, [scrollContainer, viewportRatio]);
 
