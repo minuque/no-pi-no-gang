@@ -614,8 +614,77 @@ function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCal
 }
 
 function TextBlock({ block, isStreaming }: { block: TextContent; isStreaming?: boolean }) {
+  // ── 60fps smooth streaming reveal ──
+  // Decouples irregular SSE arrival from visual display.
+  // Incoming chunks accumulate in a ref; a RAF loop pulls characters
+  // at a consistent ~250 chars/sec, accelerating when the buffer is deep.
+  // Pattern: Claude.ai / ChatGPT / Manus / Codex all use buffer+RAF.
+  const [revealedLen, setRevealedLen] = useState(block.text.length);
+  const targetRef = useRef(block.text);
+  targetRef.current = block.text;
+  const rafRef = useRef<number | null>(null);
+  const streamingJustStarted = useRef(isStreaming);
+
+  useEffect(() => {
+    if (!isStreaming) {
+      // Streaming ended — show full text immediately, reset for next round
+      setRevealedLen(targetRef.current.length);
+      streamingJustStarted.current = true;
+      return;
+    }
+
+    // First render of a streaming burst: show all accumulated text instantly.
+    // Subsequent SSE chunks → smooth RAF reveal.
+    if (streamingJustStarted.current) {
+      streamingJustStarted.current = false;
+      setRevealedLen(targetRef.current.length);
+    }
+
+    const BASE_RATE = 250; // chars/sec — readable pace, won't lag behind model
+    let lastTime = performance.now();
+
+    const tick = () => {
+      const now = performance.now();
+      const dt = Math.min((now - lastTime) / 1000, 0.1); // cap for tab-switch safety
+      lastTime = now;
+
+      setRevealedLen((prev) => {
+        const target = targetRef.current.length;
+        if (prev >= target) {
+          rafRef.current = null; // caught up, stop polling
+          return prev;
+        }
+        // Adaptive speed: accelerate when SSE bursts ahead of display
+        const gap = target - prev;
+        const speedMul = gap > 150 ? 3.2 : gap > 80 ? 2.0 : 1.0;
+        const step = Math.max(1, Math.round(BASE_RATE * dt * speedMul));
+        const next = Math.min(target, prev + step);
+        if (next < target) {
+          rafRef.current = requestAnimationFrame(tick);
+        } else {
+          rafRef.current = null;
+        }
+        return next;
+      });
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [isStreaming, block.text]);
+
+  const displayText =
+    isStreaming && revealedLen < block.text.length
+      ? block.text.slice(0, revealedLen)
+      : block.text;
+
   return (
-    <div className="markdown-body" style={isStreaming ? { animation: "fade-in-up 0.25s ease both" } : undefined}>
+    <div className="markdown-body">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -650,7 +719,7 @@ function TextBlock({ block, isStreaming }: { block: TextContent; isStreaming?: b
           },
         }}
       >
-        {block.text}
+        {displayText}
       </ReactMarkdown>
     </div>
   );
@@ -1046,7 +1115,7 @@ function CodeBlock({ code, lang, headerAction }: { code: string; lang: string; h
         customStyle={{
           margin: 0,
           padding: "10px 12px",
-          fontSize: 12.5,
+          fontSize: 13,
           lineHeight: 1.6,
           borderRadius: 0,
           background: "var(--bg)",
