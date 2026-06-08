@@ -32,8 +32,11 @@ interface Props {
   currentProject?: string;
   activeBranch?: string;
   branchOptions?: { id: string; label: string }[];
-  onDirectoryChange?: () => void;
   onBranchChange?: (id: string) => void;
+  recentCwds?: string[];
+  homeDir?: string;
+  onCwdSelect?: (cwd: string) => void;
+  onCwdDefault?: () => void;
   streamingTokens?: number;
   streamingTps?: number | null;
 }
@@ -65,8 +68,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   currentProject,
   activeBranch,
   branchOptions,
-  onDirectoryChange,
   onBranchChange,
+  recentCwds = [],
+  homeDir = "",
+  onCwdSelect,
+  onCwdDefault,
   streamingTokens,
   streamingTps,
 }: Props, ref) {
@@ -82,6 +88,15 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const [focused, setFocused] = useState(false);
   const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
   const [contextTooltipOpen, setContextTooltipOpen] = useState(false);
+
+  // CWD picker state
+  const [cwdDropdownOpen, setCwdDropdownOpen] = useState(false);
+  const [cwdCustomOpen, setCwdCustomOpen] = useState(false);
+  const [cwdCustomValue, setCwdCustomValue] = useState("");
+  const [cwdCustomError, setCwdCustomError] = useState<string | null>(null);
+  const [cwdCustomValidating, setCwdCustomValidating] = useState(false);
+  const cwdInputRef = useRef<HTMLInputElement>(null);
+  const cwdDropdownRef = useRef<HTMLDivElement>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -193,6 +208,58 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     }
   }, [value, attachedImages, isStreaming, onSend, clearImages]);
 
+
+  // ── CWD picker helpers ──
+  const shortenCwd = (cwd: string): string => {
+    const path = (homeDir && cwd.startsWith(homeDir)) ? "~" + cwd.slice(homeDir.length) : cwd;
+    const sep = path.includes("/") ? "/" : "\\";
+    const parts = path.split(sep).filter(Boolean);
+    if (parts.length <= 2) return path;
+    return "…/" + parts.slice(-2).join(sep);
+  };
+
+  const commitCwdPath = useCallback(async () => {
+    const path = cwdCustomValue.trim();
+    if (!path || cwdCustomValidating) return;
+    setCwdCustomValidating(true);
+    setCwdCustomError(null);
+    try {
+      const res = await fetch("/api/cwd/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cwd: path }),
+      });
+      const data = await res.json().catch(() => ({})) as { cwd?: string; error?: string };
+      if (!res.ok || data.error) {
+        setCwdCustomError(data.error ?? `HTTP ${res.status}`);
+        return;
+      }
+      onCwdSelect?.(data.cwd ?? path);
+      setCwdDropdownOpen(false);
+      setCwdCustomOpen(false);
+      setCwdCustomValue("");
+      setCwdCustomError(null);
+    } catch (e) {
+      setCwdCustomError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCwdCustomValidating(false);
+    }
+  }, [cwdCustomValue, cwdCustomValidating, onCwdSelect]);
+
+  const handleCwdDefault = useCallback(async () => {
+    try {
+      const res = await fetch("/api/default-cwd", { method: "POST" });
+      const data = await res.json() as { cwd?: string; error?: string };
+      if (data.cwd) {
+        onCwdSelect?.(data.cwd);
+        setCwdDropdownOpen(false);
+        setCwdCustomOpen(false);
+        setCwdCustomValue("");
+        setCwdCustomError(null);
+      }
+    } catch { /* ignore */ }
+  }, [onCwdSelect]);
+  // ── end CWD picker ──
 
   const selectCommand = useCallback((name: string) => {
     const ta = textareaRef.current;
@@ -403,6 +470,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       if (branchDropdownRef.current && !branchDropdownRef.current.contains(e.target as Node)) {
         setBranchDropdownOpen(false);
       }
+      if (cwdDropdownRef.current && !cwdDropdownRef.current.contains(e.target as Node)) {
+        setCwdDropdownOpen(false);
+        setCwdCustomOpen(false);
+        setCwdCustomValue("");
+        setCwdCustomError(null);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -523,13 +596,15 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             border: `1px solid ${isStreaming
               ? "color-mix(in oklab, var(--danger), transparent 60%)"
               : focused
-                ? "var(--accent-border)"
+                ? "var(--accent-focus)"
                 : "color-mix(in srgb, var(--border) 70%, transparent)"}`,
             borderRadius: 14,
             padding: "10px 10px 10px 14px",
-            boxShadow: focused
-              ? "0 0 0 3px var(--accent-soft), 0 1px 2px rgba(0,0,0,0.25), 0 8px 24px -12px rgba(0,0,0,0.35)"
-              : "0 1px 2px rgba(0,0,0,0.18), 0 8px 24px -12px rgba(0,0,0,0.25)",
+            boxShadow: isStreaming
+              ? "var(--ui-input-streaming-ring), 0 1px 2px rgba(0,0,0,0.25), 0 8px 24px -12px rgba(0,0,0,0.35)"
+              : focused
+                ? "var(--ui-input-focus-ring), 0 1px 2px rgba(0,0,0,0.25), 0 8px 24px -12px rgba(0,0,0,0.35)"
+                : "0 1px 2px rgba(0,0,0,0.18), 0 8px 24px -12px rgba(0,0,0,0.25)",
             transition: "border-color 0.15s, background 0.15s, box-shadow 0.2s",
           } as React.CSSProperties}
         >
@@ -651,36 +726,165 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           {/* LEFT: project | branch | attach */}
           <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 6 }}>
 
-            {/* 📂 Project pill */}
-            <button
-              onClick={() => onDirectoryChange?.()}
-              disabled={isStreaming}
-              title="Switch project directory"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 4,
-                padding: "4px 10px", height: 28,
-                background: "none", border: "1px solid var(--border)", borderRadius: 9999,
-                color: "var(--text-muted)", cursor: isStreaming ? "not-allowed" : "pointer",
-                fontSize: 11, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
-                opacity: isStreaming ? 0.5 : 1,
-                transition: "background 0.12s, color 0.12s",
-              }}
-              onMouseEnter={(e) => {
-                if (isStreaming) return;
-                e.currentTarget.style.background = "var(--bg-hover)";
-                e.currentTarget.style.color = "var(--text)";
-              }}
-              onMouseLeave={(e) => {
-                if (isStreaming) return;
-                e.currentTarget.style.background = "none";
-                e.currentTarget.style.color = "var(--text-muted)";
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-              </svg>
-              {currentProject || "pi-web"}
-            </button>
+            {/* 📂 Project pill + CWD picker dropdown */}
+            <div ref={cwdDropdownRef} style={{ position: "relative" }}>
+              <button
+                onClick={() => { if (!isStreaming) setCwdDropdownOpen(v => !v); }}
+                disabled={isStreaming}
+                title="Switch project directory"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "4px 10px", height: 28,
+                  background: cwdDropdownOpen ? "var(--bg-hover)" : "none",
+                  border: "1px solid var(--border)", borderRadius: 9999,
+                  color: cwdDropdownOpen ? "var(--text)" : "var(--text-muted)",
+                  cursor: isStreaming ? "not-allowed" : "pointer",
+                  fontSize: 11, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
+                  opacity: isStreaming ? 0.5 : 1,
+                  transition: "background 0.12s, color 0.12s",
+                }}
+                onMouseEnter={(e) => {
+                  if (isStreaming) return;
+                  e.currentTarget.style.background = "var(--bg-hover)";
+                  e.currentTarget.style.color = "var(--text)";
+                }}
+                onMouseLeave={(e) => {
+                  if (isStreaming) return;
+                  e.currentTarget.style.background = cwdDropdownOpen ? "var(--bg-hover)" : "none";
+                  e.currentTarget.style.color = "var(--text-muted)";
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                </svg>
+                {currentProject || "pi-web"}
+              </button>
+
+              {cwdDropdownOpen && (
+                <div style={{
+                  position: "absolute", bottom: "calc(100% + 6px)", left: 0,
+                  zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
+                  borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
+                  overflow: "hidden", minWidth: 260, maxWidth: 380,
+                }}>
+                  {(recentCwds ?? []).map((cwd) => (
+                    <button
+                      key={cwd}
+                      onClick={() => {
+                        onCwdSelect?.(cwd);
+                        setCwdDropdownOpen(false);
+                        setCwdCustomOpen(false); setCwdCustomValue(""); setCwdCustomError(null);
+                      }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 7,
+                        width: "100%", padding: "8px 10px",
+                        background: "none",
+                        border: "none", borderBottom: "1px solid var(--border)",
+                        color: "var(--text-muted)", cursor: "pointer", textAlign: "left",
+                        fontSize: 11, fontFamily: "var(--font-mono)",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}
+                      title={cwd}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--text-dim)" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <path d="M1 3A1 1 0 0 1 2 2H4L5 3.5H8.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-7A.5.5 0 0 1 1 8V3Z" />
+                      </svg>
+                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortenCwd(cwd)}</span>
+                    </button>
+                  ))}
+
+                  {/* Default cwd shortcut */}
+                  {!cwdCustomOpen && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleCwdDefault(); }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 7,
+                        width: "100%", padding: "8px 10px",
+                        background: "none", border: "none",
+                        borderTop: (recentCwds ?? []).length > 0 ? "1px solid var(--border)" : "none",
+                        color: "var(--text-muted)", cursor: "pointer", textAlign: "left",
+                        fontSize: 11,
+                      }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                        <path d="M1 3A1 1 0 0 1 2 2H4L5 3.5H8.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-7A.5.5 0 0 1 1 8V3Z" />
+                      </svg>
+                      <span>Use default directory</span>
+                    </button>
+                  )}
+
+                  {/* Custom path entry */}
+                  {!cwdCustomOpen ? (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCwdCustomOpen(true);
+                        setCwdCustomError(null);
+                        setTimeout(() => cwdInputRef.current?.focus(), 0);
+                      }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 7,
+                        width: "100%", padding: "8px 10px",
+                        background: "none", border: "none",
+                        color: "var(--text-muted)", cursor: "pointer", textAlign: "left",
+                        fontSize: 11,
+                      }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" style={{ flexShrink: 0 }}>
+                        <line x1="5" y1="1" x2="5" y2="9" /><line x1="1" y1="5" x2="9" y2="5" />
+                      </svg>
+                      <span>Custom path…</span>
+                    </button>
+                  ) : (
+                    <div style={{ padding: "6px 8px", borderTop: (recentCwds ?? []).length > 0 ? "none" : undefined }}>
+                      <input
+                        ref={cwdInputRef}
+                        value={cwdCustomValue}
+                        onChange={(e) => { setCwdCustomValue(e.target.value); setCwdCustomError(null); }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { e.preventDefault(); void commitCwdPath(); }
+                          if (e.key === "Escape") { setCwdCustomOpen(false); setCwdCustomValue(""); setCwdCustomError(null); }
+                        }}
+                        placeholder="/path/to/project"
+                        style={{
+                          width: "100%", fontSize: 11, fontFamily: "var(--font-mono)",
+                          padding: "5px 8px", border: "1px solid var(--accent)", borderRadius: 5,
+                          outline: "none", background: "var(--bg)", color: "var(--text)", boxSizing: "border-box",
+                        }}
+                      />
+                      {cwdCustomError && (
+                        <div style={{ marginTop: 5, color: "var(--danger)", fontSize: 11, lineHeight: 1.35, overflowWrap: "anywhere" }}>
+                          {cwdCustomError}
+                        </div>
+                      )}
+                      <div style={{ display: "flex", gap: 5, marginTop: 5 }}>
+                        <button
+                          onClick={() => void commitCwdPath()}
+                          disabled={cwdCustomValidating || !cwdCustomValue.trim()}
+                          style={{
+                            flex: 1, padding: "4px 0", background: "var(--accent)", border: "none", borderRadius: 5,
+                            color: "var(--accent-on)", fontSize: 11, fontWeight: 600,
+                            cursor: cwdCustomValidating || !cwdCustomValue.trim() ? "not-allowed" : "pointer",
+                            opacity: cwdCustomValidating || !cwdCustomValue.trim() ? 0.65 : 1,
+                          }}
+                        >
+                          {cwdCustomValidating ? "Checking…" : "Open"}
+                        </button>
+                        <button
+                          onClick={() => { setCwdCustomOpen(false); setCwdCustomValue(""); setCwdCustomError(null); }}
+                          style={{
+                            flex: 1, padding: "4px 0", background: "var(--bg-hover)", border: "1px solid var(--border)",
+                            borderRadius: 5, color: "var(--text-muted)", fontSize: 11, cursor: "pointer",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* 🌿 Branch pill */}
             <div ref={branchDropdownRef} style={{ position: "relative" }}>

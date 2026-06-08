@@ -67,6 +67,10 @@ export interface UseAgentSessionOptions {
   onSystemPromptChange?: (prompt: string | null) => void;
   setNewSessionModel?: (model: { provider: string; modelId: string } | null) => void;
   setToolPreset?: (preset: "none" | "default" | "full") => void;
+  /** Disable RAF auto-scroll loop and auto-scroll effects.
+   *  Set true when the parent manages scrolling via an external virtual-scroller
+   *  (e.g. react-virtuoso) to avoid conflicts. */
+  disableAutoScroll?: boolean;
 }
 
 export type ThinkingLevelOption = "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -87,6 +91,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const {
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange,
+    disableAutoScroll = false,
   } = opts;
 
   const isNew = session === null && newSessionCwd !== null;
@@ -713,7 +718,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         const atBottom = entry.isIntersecting;
         isAtBottomRef.current = atBottom;
         setShowScrollButton(!atBottom);
-        if (atBottom && agentRunningRef.current && !autoScrollRafRef.current) {
+        if (atBottom && agentRunningRef.current && !autoScrollRafRef.current && !disableAutoScroll) {
           autoScrollRafRef.current = requestAnimationFrame(autoScrollLoop);
         }
       },
@@ -730,6 +735,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   // Start/stop rAF auto-scroll when agent running state changes.
   useEffect(() => {
+    if (disableAutoScroll) return;
     if (agentRunning) {
       if (isAtBottomRef.current && !autoScrollRafRef.current) {
         autoScrollRafRef.current = requestAnimationFrame(autoScrollLoop);
@@ -746,10 +752,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         autoScrollRafRef.current = null;
       }
     };
-  }, [agentRunning, autoScrollLoop]);
+  }, [agentRunning, autoScrollLoop, disableAutoScroll]);
 
   useEffect(() => {
-    if (messages.length > 0) {
+    if (messages.length > 0 && !disableAutoScroll) {
       if (pendingScrollToUserRef.current) {
         pendingScrollToUserRef.current = false;
         initialScrollDoneRef.current = true;
@@ -761,7 +767,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         scrollToBottom("smooth");
       }
     }
-  }, [messages.length, agentRunning, scrollToBottom]);
+  }, [messages.length, agentRunning, scrollToBottom, disableAutoScroll]);
 
   // (scroll-button visibility is handled by the unified scroll+resize listener above)
 
