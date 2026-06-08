@@ -3,7 +3,7 @@
 ## 快速开始
 
 ```bash
-npm run dev   # 端口 3030
+npm run dev   # 端口 7777
 ```
 
 类型检查：`node_modules/.bin/tsc --noEmit`
@@ -129,12 +129,3 @@ Pi 将 toolCall 块存储为 `{type:"toolCall", id, name, arguments}`，但 `Too
 `SessionContext` 中的 `entryIds[]` 是与 `messages[]` 平行的数组——将每条显示的消息映射回其 `.jsonl` 条目 ID，用于 fork 和 navigate_tree 调用。
 
 ---
-
-## CSS 变量（`app/globals.css`）
-
-```
---bg --bg-panel --bg-hover --bg-selected --border
---text --text-muted --text-dim
---accent --user-bg --tool-bg
---font-mono
-```
