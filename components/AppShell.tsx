@@ -17,6 +17,8 @@ export function AppShell() {
   const searchParams = useSearchParams();
   const { isDark, toggleTheme } = useTheme();
   const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(null);
+  const selectedSessionRef = useRef(selectedSession);
+  selectedSessionRef.current = selectedSession;
   // When user clicks +, we only store the cwd — no fake session id
   const [newSessionCwd, setNewSessionCwd] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -25,6 +27,7 @@ export function AppShell() {
   const [modelsConfigOpen, setModelsConfigOpen] = useState(false);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const SIDEBAR_MIN = 180;
   const SIDEBAR_MAX = 480;
@@ -260,6 +263,8 @@ export function AppShell() {
   }, [handleCwdChange]);
 
   const handleSelectSession = useCallback((session: SessionInfo, isRestore = false) => {
+    // Skip if already viewing this session — prevent unnecessary ChatWindow remount + loading
+    if (!isRestore && selectedSessionRef.current?.id === session.id) return;
     setNewSessionCwd(null);
     setSelectedSession(session);
     setSessionKey((k) => k + 1);
@@ -355,54 +360,92 @@ export function AppShell() {
         onCwdChange={handleCwdChange}
         onSessionsChange={setAllSessions}
       />
-      <div style={{ padding: "8px", flexShrink: 0, display: "flex", justifyContent: "space-between", gap: 4 }}>
-        {([
-          {
-            label: "Models",
-            onClick: () => setModelsConfigOpen(true),
-            disabled: false,
-            icon: (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" />
-                <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
-                <line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
-                <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" />
-                <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
-              </svg>
-            ),
-          },
-          {
-            label: "Skills",
-            onClick: () => setSkillsConfigOpen(true),
-            disabled: !activeCwd && !selectedSession?.cwd && !newSessionCwd,
-            icon: (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
-            ),
-          },
-        ] as { label: string; onClick: () => void; disabled: boolean; icon: React.ReactNode }[]).map(({ label, onClick, disabled, icon }) => (
-          <button
-            key={label}
-            onClick={onClick}
-            disabled={disabled}
-            title={label}
-            style={{
-              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              height: 32, padding: 0, background: "none", border: "none",
-              borderRadius: 9, color: "var(--text-muted)", cursor: disabled ? "default" : "pointer",
-              fontSize: 12, opacity: disabled ? 0.35 : 1,
-              transition: "background 0.12s, color 0.12s",
-            }}
-            onMouseEnter={(e) => { if (!disabled) { e.currentTarget.style.background = "var(--bg-hover)"; e.currentTarget.style.color = "var(--text)"; } }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--text-muted)"; }}
-          >
-            {icon}
-            {label}
-          </button>
-        ))}
+      <div style={{ padding: "8px", flexShrink: 0, position: "relative" }}>
+        <button
+          onClick={() => setSettingsMenuOpen((v) => !v)}
+          title="Settings"
+          style={{
+            width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+            height: 32, padding: "0 10px",
+            background: settingsMenuOpen ? "var(--bg-hover)" : "none",
+            border: "none", borderRadius: 8,
+            color: settingsMenuOpen ? "var(--text)" : "var(--text-muted)",
+            cursor: "pointer", fontSize: 12,
+            transition: "background 0.12s, color 0.12s",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; e.currentTarget.style.color = "var(--text)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = settingsMenuOpen ? "var(--bg-hover)" : "none"; e.currentTarget.style.color = settingsMenuOpen ? "var(--text)" : "var(--text-muted)"; }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+            Settings
+          </span>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ transform: settingsMenuOpen ? "rotate(180deg)" : "none", transition: "transform 0.15s", opacity: 0.55 }}>
+            <polyline points="2 3.5 5 6.5 8 3.5" />
+          </svg>
+        </button>
+        {settingsMenuOpen && (
+          <>
+            <div
+              style={{ position: "fixed", inset: 0, zIndex: 499 }}
+              onClick={() => setSettingsMenuOpen(false)}
+            />
+            <div style={{
+              position: "absolute",
+              bottom: "100%",
+              left: 4,
+              right: 4,
+              marginBottom: 4,
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              padding: 4,
+              zIndex: 500,
+              boxShadow: "var(--shadow-md)",
+            }}>
+              {([
+                { label: "Models", onClick: () => { setModelsConfigOpen(true); setSettingsMenuOpen(false); }, disabled: false, icon: (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" />
+                    <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
+                    <line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
+                    <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" />
+                    <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
+                  </svg>
+                ) },
+                { label: "Skills", onClick: () => { setSkillsConfigOpen(true); setSettingsMenuOpen(false); }, disabled: !activeCwd && !selectedSession?.cwd && !newSessionCwd, icon: (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                  </svg>
+                ) },
+              ]).map(({ label, onClick, disabled, icon }) => (
+                <button
+                  key={label}
+                  onClick={onClick}
+                  disabled={disabled}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", gap: 6,
+                    padding: "6px 10px", background: "none", border: "none",
+                    borderRadius: 6, color: disabled ? "var(--text-dim)" : "var(--text-muted)",
+                    cursor: disabled ? "default" : "pointer", fontSize: 12,
+                    opacity: disabled ? 0.4 : 1,
+                    transition: "background 0.1s, color 0.1s",
+                  }}
+                  onMouseEnter={(e) => { if (!disabled) { e.currentTarget.style.background = "var(--bg-hover)"; e.currentTarget.style.color = "var(--text)"; } }}
+                  onMouseLeave={(e) => { if (!disabled) { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--text-muted)"; } }}
+                >
+                  {icon}
+                  {label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </>
   );
@@ -647,7 +690,7 @@ export function AppShell() {
                   <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>Get Started</div>
                   <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.8 }}>
                     <span style={{ color: "var(--text-dim)", marginRight: 6 }}>1.</span>Select a project directory from the sidebar<br />
-                    <span style={{ color: "var(--text-dim)", marginRight: 6 }}>2.</span>Add models via the <strong style={{ color: "var(--text)" }}>Models</strong> button at the bottom
+                    <span style={{ color: "var(--text-dim)", marginRight: 6 }}>2.</span>Add models via <strong style={{ color: "var(--text)" }}>Settings</strong> at the bottom
                   </div>
                 </div>
               </div>

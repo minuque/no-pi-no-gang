@@ -1,6 +1,4 @@
-# TODO — pi-web 聊天体验打磨
-
-对齐 Claude Desktop 最新版 Chat 体验，仅列 Web 前端自身改进点。
+# TODO_CLAUDE.md
 
 ---
 
@@ -48,12 +46,9 @@
 
 ---
 
-# TODO — WorkspacePanel 重构（Reasonix 风格右侧面板）
+## WorkspacePanel 重构
 
-将文件树从左侧 SessionSidebar 迁移到右侧，做成 Reasonix 风格的分屏 WorkspacePanel。
-**左侧只保留会话列表。**
-
-## 架构概览
+将文件树从左侧 SessionSidebar 迁移到右侧。
 
 ```
 右侧面板 (WorkspacePanel)

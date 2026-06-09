@@ -277,16 +277,18 @@ html.dark {
   --ui-chatlist-item-active: #094771;
 
   /* --- 消息流 ---
-   * VSCode 没有"消息泡"概念。用编辑器/输入区底色做区分:
-   *   用户消息   = input.background #3c3c3c — 微提亮表示"发言"
-   *   Agent 消息 = editor 主底、左边 accent 线 (VSCode 差异高亮的做法)
+   * Claude/Codex 风格: 用户气泡靠底色+微阴影区分，无可见边框;
+   *   Agent 消息 = 主底纯文本、左边 accent 线
    */
-  --ui-msg-user-bg: #3c3c3c;
+  --ui-msg-user-bg: #2d2d2d;
   --ui-msg-user-border: none;
+  --ui-msg-user-shadow: 0 1px 3px rgba(0,0,0,0.22);
+  --ui-msg-user-hover-bg: #323232;
   --ui-msg-agent-accent-line: 2px solid var(--accent);
-  --ui-msg-padding: 14px;
-  --ui-msg-radius: 0;
-  /* VSCode 没有圆角气泡 */
+  --ui-msg-padding: 12px 16px;
+  --ui-msg-radius: 12px;
+  --ui-msg-gap: 24px;
+  --ui-msg-max-width: 85%;
 
   /* --- 代码块 ---
    * terminal.background = editor.background = #1e1e1e

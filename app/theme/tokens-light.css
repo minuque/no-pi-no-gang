@@ -252,15 +252,18 @@ html.light {
   --ui-chatlist-item-active: #e0edf9;
 
   /* --- 消息流 ---
-   * 亮底消息区分:
-   *   用户消息   = #ebebf2 — 微冷灰底标示"我的发言"
-   *   Agent 消息 = 主底色、左边 accent 蓝线区分
+   * Claude/Codex 风格: 用户气泡靠底色+微阴影区分，无可见边框;
+   *   Agent 消息 = 主底纯文本、左边 accent 线
    */
   --ui-msg-user-bg: #ebebf2;
   --ui-msg-user-border: none;
+  --ui-msg-user-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  --ui-msg-user-hover-bg: #e0e1e8;
   --ui-msg-agent-accent-line: 2px solid var(--accent);
-  --ui-msg-padding: 14px;
-  --ui-msg-radius: 0;
+  --ui-msg-padding: 12px 16px;
+  --ui-msg-radius: 12px;
+  --ui-msg-gap: 24px;
+  --ui-msg-max-width: 85%;
 
   /* --- 代码块 ---
    * terminal.background = 略深于 editor 的冷灰

@@ -598,39 +598,39 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           </div>
         )}
 
-        {/* Streaming status line */}
-        {isStreaming && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 10,
-            marginBottom: 8, fontSize: 12, color: "var(--text-dim)",
-            fontFamily: "var(--font-body)",
-          }}>
-            {/* Pi favicon */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/favicon.ico" alt="" style={{ width: 20, height: 20, flexShrink: 0 }} />
-            {streamingTps != null && streamingTps > 0 && (() => {
-              const tier = streamingTps >= 50 ? "high" : streamingTps >= 20 ? "mid" : "low";
-              return (
-                <span style={{
-                  padding: "2px 7px", borderRadius: 5,
-                  background: `var(--ui-tps-${tier}-bg)`,
-                  color: `var(--ui-tps-${tier}-fg)`,
-                  fontSize: 13, fontWeight: 500,
-                }}>
-                  {streamingTps.toFixed(1)} t/s
-                </span>
-              );
-            })()}
-            {streamingTokens !== undefined && streamingTokens > 0 && (
-              <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <svg width="14" height="14" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="5" y1="1.5" x2="5" y2="8.5" /><polyline points="2 6 5 8.5 8 6" />
-                </svg>
-                {streamingTokens}
+        {/* Streaming status line — fixed height to prevent layout shift */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          marginBottom: 8, height: 20, fontSize: 12, color: "var(--text-dim)",
+          fontFamily: "var(--font-mono)",
+          opacity: isStreaming ? 1 : 0,
+          transition: "opacity 0.15s",
+        }}>
+          {/* Pi favicon */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/favicon.ico" alt="" style={{ width: 16, height: 16, flexShrink: 0 }} />
+          {isStreaming && streamingTps != null && streamingTps > 0 && (() => {
+            const tier = streamingTps >= 50 ? "high" : streamingTps >= 20 ? "mid" : "low";
+            return (
+              <span style={{
+                padding: "1px 6px", borderRadius: 4,
+                background: `var(--ui-tps-${tier}-bg)`,
+                color: `var(--ui-tps-${tier}-fg)`,
+                fontSize: 11, fontWeight: 500, lineHeight: "18px",
+              }}>
+                {streamingTps.toFixed(1)} t/s
               </span>
-            )}
-          </div>
-        )}
+            );
+          })()}
+          {isStreaming && streamingTokens !== undefined && streamingTokens > 0 && (
+            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+              <svg width="11" height="11" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="1.5" x2="5" y2="8.5" /><polyline points="2 6 5 8.5 8 6" />
+              </svg>
+              {streamingTokens}
+            </span>
+          )}
+        </div>
 
         {/* Main input */}
         <div

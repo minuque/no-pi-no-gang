@@ -214,7 +214,7 @@ pre, code {
 
 /* ── Inline code (base; CodeBlock handles fenced blocks) ── */
 .markdown-body :not(pre) > code {
-  background: var(--bg-selected);
+  background: var(--bg-subtle);
   padding: 1px 5px;
   border-radius: 3px;
   font-family: var(--font-mono);
@@ -364,7 +364,7 @@ pre, code {
 .markdown-file-preview code {
   font-family: var(--font-mono);
   font-size: 0.9em;
-  background: var(--bg-panel);
+  background: var(--bg-subtle);
   padding: 1px 5px;
   border-radius: 3px;
 }

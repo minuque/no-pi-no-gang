@@ -152,11 +152,11 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
 
   return (
     <div
-      style={{ marginBottom: 24, display: "flex", flexDirection: "column", alignItems: "flex-end" }}
+      style={{ marginBottom: "var(--ui-msg-gap)", display: "flex", flexDirection: "column", alignItems: "flex-end" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: "85%" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: "var(--ui-msg-max-width)" }}>
         {editing ? (
           <div style={{ flex: 1, minWidth: 0 }}>
             <textarea
@@ -219,15 +219,17 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
         <div
           style={{
             minWidth: 0,
-            background: "var(--user-bg)",
-            border: "1px solid var(--accent-border)",
-            borderRadius: 12,
-            padding: "8px 12px",
+            background: hovered ? "var(--ui-msg-user-hover-bg, var(--user-bg))" : "var(--user-bg)",
+            border: "var(--ui-msg-user-border)",
+            borderRadius: "var(--ui-msg-radius)",
+            padding: "var(--ui-msg-padding)",
+            boxShadow: "var(--ui-msg-user-shadow)",
             fontSize: 14,
             lineHeight: 1.6,
             color: "var(--text)",
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
+            transition: "background 0.15s ease",
           }}
         >
           {imageBlocks.length > 0 && (
@@ -249,7 +251,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
                     key={i}
                     src={src}
                     alt=""
-                    style={{ maxWidth: 240, maxHeight: 240, borderRadius: 6, objectFit: "contain", display: "block", border: "1px solid var(--accent-border)" }}
+                    style={{ maxWidth: 240, maxHeight: 240, borderRadius: 6, objectFit: "contain", display: "block", border: "1px solid var(--border)" }}
                   />
                 );
               })}
@@ -516,7 +518,7 @@ function AssistantMessageView({
 
   return (
     <div
-      style={{ marginBottom: 24 }}
+      style={{ marginBottom: "var(--ui-msg-gap)" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -699,16 +701,7 @@ function TextBlock({ block, isStreaming }: { block: TextContent; isStreaming?: b
               return <CodeBlock code={raw.replace(/\n$/, "")} lang={lang} />;
             }
             return (
-              <code
-                style={{
-                  background: "var(--bg-selected)",
-                  padding: "1px 4px",
-                  borderRadius: 3,
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "0.9em",
-                }}
-                {...props}
-              >
+              <code {...props}>
                 {children}
               </code>
             );
