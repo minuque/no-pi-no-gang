@@ -303,7 +303,7 @@ function AddSkillPanel({
               fontSize: 13,
               borderRadius: 6,
               border: "none",
-              background: "var(--accent)",
+              background: "var(--accent-hover)",
               color: "var(--accent-on)",
               cursor: searching || !query.trim() ? "not-allowed" : "pointer",
               opacity: searching || !query.trim() ? 0.5 : 1,

@@ -67,10 +67,6 @@ export interface UseAgentSessionOptions {
   onSystemPromptChange?: (prompt: string | null) => void;
   setNewSessionModel?: (model: { provider: string; modelId: string } | null) => void;
   setToolPreset?: (preset: "none" | "default" | "full") => void;
-  /** Disable RAF auto-scroll loop and auto-scroll effects.
-   *  Set true when the parent manages scrolling via an external virtual-scroller
-   *  (e.g. react-virtuoso) to avoid conflicts. */
-  disableAutoScroll?: boolean;
 }
 
 export type ThinkingLevelOption = "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -91,7 +87,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const {
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange,
-    disableAutoScroll = false,
   } = opts;
 
   const isNew = session === null && newSessionCwd !== null;
@@ -121,18 +116,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [compactError, setCompactError] = useState<string | null>(null);
   const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
   const [commands, setCommands] = useState<{ name: string; description: string }[]>([]);
-  const [showScrollButton, setShowScrollButton] = useState(false);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
   const agentRunningRef = useRef(false);
   const handleAgentEventRef = useRef<((event: AgentEvent) => void) | null>(null);
-  const initialScrollDoneRef = useRef(false);
-  const pendingScrollToUserRef = useRef(false);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const isAtBottomRef = useRef(true);
-  const autoScrollRafRef = useRef<number | null>(null);
+  const loadGenRef = useRef(0);
 
   const setNewSessionModel = opts.setNewSessionModel ?? setNewSessionModelState;
   const setToolPresetState = opts.setToolPreset ?? setToolPreset;
@@ -158,12 +147,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   })();
 
   const loadSession = useCallback(async (sid: string, showLoading = false, includeState = false) => {
+    const gen = loadGenRef.current;
     try {
       if (showLoading) setLoading(true);
       const url = includeState
         ? `/api/sessions/${encodeURIComponent(sid)}?includeState`
         : `/api/sessions/${encodeURIComponent(sid)}`;
       const res = await fetch(url);
+      // Discard stale responses — a newer send/command has started
+      if (loadGenRef.current !== gen) return null;
       if (res.status === 404) {
         if (showLoading) {
           setData(null);
@@ -175,6 +167,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json() as SessionData & { agentState?: { running: boolean; state?: { isStreaming?: boolean; isCompacting?: boolean; contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null; systemPrompt?: string; thinkingLevel?: string } } };
+      // Re-check generation before every state mutation
+      if (loadGenRef.current !== gen) return null;
       setData(d);
       setActiveLeafId(d.leafId);
       setMessages(d.context.messages);
@@ -271,7 +265,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         setRetryInfo(null);
         dispatch({ type: "end" });
         if (sessionIdRef.current) {
-          loadSession(sessionIdRef.current);
           fetch(`/api/agent/${encodeURIComponent(sessionIdRef.current)}`)
             .then((r) => r.json())
             .then((d: { state?: { contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null; systemPrompt?: string } }) => {
@@ -279,6 +272,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
               if (d.state?.systemPrompt !== undefined) setSystemPrompt(d.state.systemPrompt ?? null);
             })
             .catch(() => {});
+          // Re-read session to pick up any messages missed by SSE (reconnect, lost message_end, etc.)
+          loadSession(sessionIdRef.current).catch(() => {});
         }
         onAgentEnd?.();
         break;
@@ -360,6 +355,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const handleCommand = useCallback(async (commandName: string, message: string, images?: AttachedImage[]) => {
     if (agentRunning) return;
+    loadGenRef.current += 1;
     const imageBlocks = images?.map((img) => ({ type: "image" as const, source: { type: "base64" as const, media_type: img.mimeType, data: img.data } }));
     const userMsg: AgentMessage = {
       role: "user",
@@ -373,7 +369,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setAgentRunning(true);
     setAgentPhase({ kind: "running_skill", skill: commandName });
     dispatch({ type: "start" });
-    pendingScrollToUserRef.current = true;
     const piImages = images?.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType }));
     try {
       if (isNew && newSessionCwd) {
@@ -429,6 +424,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const handleSend = useCallback(async (message: string, images?: AttachedImage[]) => {
     if (!message.trim() && !images?.length) return;
     if (agentRunning) return;
+    loadGenRef.current += 1;
     const cmdMatch = message.match(/^(\/[a-zA-Z0-9._-]+)\s*(.*)$/);
     if (cmdMatch) {
       const cmdName = cmdMatch[1].slice(1);
@@ -450,7 +446,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setAgentRunning(true);
     setAgentPhase({ kind: "waiting_model" });
     dispatch({ type: "start" });
-    pendingScrollToUserRef.current = true;
 
     const piImages = images?.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType }));
 
@@ -649,22 +644,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, [setToolPresetState]);
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
-    messagesEndRef.current?.scrollIntoView({ behavior });
-  }, []);
-
-  const autoScrollLoop = useCallback(() => {
-    if (agentRunningRef.current && isAtBottomRef.current) {
-      const container = scrollContainerRef.current;
-      if (container) {
-        container.scrollTop = container.scrollHeight - container.clientHeight;
-      }
-      autoScrollRafRef.current = requestAnimationFrame(autoScrollLoop);
-    } else {
-      autoScrollRafRef.current = null;
-    }
-  }, []);
-
   // Load session on mount
   useEffect(() => {
     if (session) {
@@ -701,75 +680,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (!onBranchDataChange) return;
     onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange);
   }, [data?.tree, activeLeafId, handleLeafChange, onBranchDataChange]);
-
-  // IntersectionObserver on the sentinel — industry-standard way to detect
-  // scroll-away-from-bottom. Handles scroll, resize, and content changes
-  // natively, without forced reflows (unlike getBoundingClientRect).
-  // hasMessages ensures the observer is re-created when the view transitions
-  // from empty-new/loading → messages (refs become available).
-  const hasMessages = messages.length > 0;
-  useEffect(() => {
-    const sentinel = messagesEndRef.current;
-    const root = scrollContainerRef.current;
-    if (!sentinel || !root) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        const atBottom = entry.isIntersecting;
-        isAtBottomRef.current = atBottom;
-        setShowScrollButton(!atBottom);
-        if (atBottom && agentRunningRef.current && !autoScrollRafRef.current && !disableAutoScroll) {
-          autoScrollRafRef.current = requestAnimationFrame(autoScrollLoop);
-        }
-      },
-      {
-        root,
-        rootMargin: "0px 0px 32px 0px", // 32px threshold from bottom
-        threshold: 0,
-      }
-    );
-    observer.observe(sentinel);
-
-    return () => observer.disconnect();
-  }, [autoScrollLoop, hasMessages]);
-
-  // Start/stop rAF auto-scroll when agent running state changes.
-  useEffect(() => {
-    if (disableAutoScroll) return;
-    if (agentRunning) {
-      if (isAtBottomRef.current && !autoScrollRafRef.current) {
-        autoScrollRafRef.current = requestAnimationFrame(autoScrollLoop);
-      }
-    } else {
-      if (autoScrollRafRef.current !== null) {
-        cancelAnimationFrame(autoScrollRafRef.current);
-        autoScrollRafRef.current = null;
-      }
-    }
-    return () => {
-      if (autoScrollRafRef.current !== null) {
-        cancelAnimationFrame(autoScrollRafRef.current);
-        autoScrollRafRef.current = null;
-      }
-    };
-  }, [agentRunning, autoScrollLoop, disableAutoScroll]);
-
-  useEffect(() => {
-    if (messages.length > 0 && !disableAutoScroll) {
-      if (pendingScrollToUserRef.current) {
-        pendingScrollToUserRef.current = false;
-        initialScrollDoneRef.current = true;
-        scrollToBottom("instant");
-      } else if (!initialScrollDoneRef.current) {
-        initialScrollDoneRef.current = true;
-        scrollToBottom("instant");
-      } else if (!agentRunning) {
-        scrollToBottom("smooth");
-      }
-    }
-  }, [messages.length, agentRunning, scrollToBottom, disableAutoScroll]);
-
-  // (scroll-button visibility is handled by the unified scroll+resize listener above)
 
   // Load model list
   useEffect(() => {
@@ -810,16 +720,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, toolPreset, thinkingLevel,
     retryInfo, contextUsage, systemPrompt, forkingEntryId,
     isCompacting, compactError, currentModel, displayModel, sessionStats,
-    agentPhase, showScrollButton,
+    agentPhase,
     isNew,
     // Refs
-    sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef,
-    pendingScrollToUserRef, initialScrollDoneRef,
+    sessionIdRef, eventSourceRef,
     // Actions
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleCompact, handleSteer, handleFollowUp, handleAbortCompaction,
     handleToolPresetChange, handleThinkingLevelChange, fetchCommands, loadTools, setActiveLeafId, setData, setMessages,
-    dispatch, setAgentRunning, setForkingEntryId, scrollToBottom,
+    dispatch, setAgentRunning, setForkingEntryId,
     // Subscriptions
     handleAgentEventRef,
   };

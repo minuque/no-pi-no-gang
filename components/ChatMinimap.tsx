@@ -8,8 +8,8 @@ interface Props {
   streamingMessage: Partial<AgentMessage> | null;
   scrollContainer: RefObject<HTMLDivElement | null>;
   messageRefs?: RefObject<(HTMLDivElement | null)[]>;
-  /** Virtual-scroll mode: estimate dot positions instead of reading DOM refs.
-   *  Used when react-virtuoso is active (DOM nodes are recycled). */
+  /** Virtual mode: estimate dot positions equally distributed by message count.
+   *  Keeps minimap lightweight without DOM refs. */
   virtual?: boolean;
 }
 

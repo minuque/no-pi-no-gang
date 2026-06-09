@@ -91,6 +91,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
   // CWD picker state
   const [cwdDropdownOpen, setCwdDropdownOpen] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [cwdCustomOpen, setCwdCustomOpen] = useState(false);
   const [cwdCustomValue, setCwdCustomValue] = useState("");
   const [cwdCustomError, setCwdCustomError] = useState<string | null>(null);
@@ -379,7 +380,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        if (!isStreaming) handleSend();
+        if (!isStreaming && document.activeElement === textareaRef.current) handleSend();
       }
     },
     [isStreaming, handleSend, showCommands, commandFiltered, selectedCommandIndex, selectCommand]
@@ -400,6 +401,52 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     const files = imageItems.map((item) => item.getAsFile()).filter((f): f is File => f !== null);
     processImageFiles(files);
   }, [processImageFiles]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    const types = Array.from(e.dataTransfer.types);
+    // Don't intercept OS file drops — let the browser default handle them
+    if (types.includes("Files")) return;
+    // Only activate for workspace file drags (text/plain data)
+    if (!types.includes("text/plain")) return;
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    const types = Array.from(e.dataTransfer.types);
+    // If OS files are present, let the browser default handle them
+    if (types.includes("Files")) return;
+    e.preventDefault();
+    setIsDragOver(false);
+    const path = e.dataTransfer.getData("text/plain");
+    if (!path) return;
+    // Insert as inline code reference
+    const ta = textareaRef.current;
+    const text = "`" + path + "`";
+    if (!ta) {
+      setValue((v) => v + (v ? " " : "") + text);
+      return;
+    }
+    const start = ta.selectionStart ?? ta.value.length;
+    const end = ta.selectionEnd ?? ta.value.length;
+    const before = ta.value.slice(0, start);
+    const after = ta.value.slice(end);
+    const sep = before.length > 0 && !before.endsWith(" ") ? " " : "";
+    const newVal = before + sep + text + after;
+    setValue(newVal);
+    requestAnimationFrame(() => {
+      if (!ta) return;
+      const pos = start + sep.length + text.length;
+      ta.setSelectionRange(pos, pos);
+      ta.focus();
+      ta.style.height = "auto";
+      ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+    });
+  }, []);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
@@ -592,12 +639,16 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             display: "flex",
             gap: 8,
             alignItems: "center",
-            background: "var(--bg)",
-            border: `1px solid ${isStreaming
-              ? "color-mix(in oklab, var(--danger), transparent 60%)"
-              : focused
-                ? "var(--accent-focus)"
-                : "color-mix(in srgb, var(--border) 70%, transparent)"}`,
+            background: isDragOver
+              ? "color-mix(in oklab, var(--accent), transparent 92%)"
+              : "var(--bg)",
+            border: `1px solid ${isDragOver
+              ? "var(--accent)"
+              : isStreaming
+                ? "color-mix(in oklab, var(--danger), transparent 60%)"
+                : focused
+                  ? "var(--accent-focus)"
+                  : "color-mix(in srgb, var(--border) 70%, transparent)"}`,
             borderRadius: 14,
             padding: "10px 10px 10px 14px",
             boxShadow: isStreaming
@@ -607,6 +658,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 : "0 1px 2px rgba(0,0,0,0.18), 0 8px 24px -12px rgba(0,0,0,0.25)",
             transition: "border-color 0.15s, background 0.15s, box-shadow 0.2s",
           } as React.CSSProperties}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
         >
           <div style={{ flex: 1, position: "relative", display: "flex" }}>
             <textarea
@@ -862,7 +916,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                           onClick={() => void commitCwdPath()}
                           disabled={cwdCustomValidating || !cwdCustomValue.trim()}
                           style={{
-                            flex: 1, padding: "4px 0", background: "var(--accent)", border: "none", borderRadius: 5,
+                            flex: 1, padding: "4px 0", background: "var(--accent-hover)", border: "none", borderRadius: 5,
                             color: "var(--accent-on)", fontSize: 11, fontWeight: 600,
                             cursor: cwdCustomValidating || !cwdCustomValue.trim() ? "not-allowed" : "pointer",
                             opacity: cwdCustomValidating || !cwdCustomValue.trim() ? 0.65 : 1,

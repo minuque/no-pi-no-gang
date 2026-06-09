@@ -1,7 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
 ## 快速开始
-
 
 ```bash
 npm run dev   # 端口 7777
@@ -57,9 +56,6 @@ npm run dev   # 端口 7777
 ### ToolCall 字段规范化
 Pi 将 toolCall 块存储为 `{type:"toolCall", id, name, arguments}`，但 `ToolCallContent` 使用的是 `{toolCallId, toolName, input}`。`lib/normalize.ts` 中的 `normalizeToolCalls()` 处理这种差异——在 `session-reader.ts`（文件加载）和 `ChatWindow.handleAgentEvent()`（流式传输）中均会调用。
 
-### 新会话的工具预设
-工具名称在会话创建时传入（`POST /api/agent/new` → `toolNames[]`）。对于已有会话，活跃的预设会在挂载时通过 `get_tools` → `getPresetFromTools()` 推断得出。当工具完全禁用时（`toolNames = []`），`rpc-manager.ts` 通过 `system-prompt-off.ts` + `DefaultResourceLoader` 注入一个最小化系统提示。
-
 ### 新会话的模型默认值
 `GET /api/models` 返回从 `~/.pi/agent/settings.json` 读取的 `defaultModel`。`ChatWindow` 在挂载时会为新会话预选该模型。
 
@@ -69,8 +65,11 @@ Pi 将 toolCall 块存储为 `{type:"toolCall", id, name, arguments}`，但 `Too
 ### 压缩 SSE 事件
 新版 pi 发出 `compaction_start` / `compaction_end`；旧版发出 `auto_compaction_start` / `auto_compaction_end`。`handleAgentEvent` 同时接受这两组事件以保持 `isCompacting` 同步。手动压缩是一个阻塞式 POST——在响应返回之前按钮保持禁用。
 
-### 孤立会话
-首行无法解析为有效头部的会话在 API 响应中标记为 `orphaned: true`——在侧边栏中显示"不完整"徽章且不可点击。
+### `agent_end` 中 `loadSession` 的竞态 (`hooks/useAgentSession.ts`)
+`agent_end` 中 fire-and-forget 调用 `loadSession` → `setMessages()` 全量替换，与下一次 `handleSend` 竞态导致消息丢失。**异步 loadSession 必须用版本计数器（`loadGenRef`）守卫——gen 不匹配则丢弃结果。**
 
----
+### Virtuoso 滚动性能 (`components/ChatWindow.tsx`)
+`atBottomStateChange` 中直接 `setState` → 每次滚动像素全量重渲染。`components` 内联 → Virtuoso 重挂载。**atBottom setState 用 ref 守卫只做 true↔false 转换；Virtuoso List/Footer 提取为模块级常量。**
 
+### 滚动源冲突 (`components/ChatWindow.tsx`)
+`useEffect` 依赖 `streamState.streamingMessage`（~60fps 变化）驱动滚动 → effect 高频重建 + 与用户手动滚动竞争。**滚动跟随用单一 rAF 循环（仅依赖 `agentRunning`），每帧读 ref 而非依赖 streaming 对象引用。**

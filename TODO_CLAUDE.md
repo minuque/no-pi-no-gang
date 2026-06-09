@@ -45,3 +45,142 @@
 - [x] **Usage limits donut gauge** — Claude Desktop 风格双层 donut + 智能变色 + 悬浮卡片式进度条
 - [x] **Markdown 内容间距** — p/ul/ol/table 底部间距 `8px` → `16px`
 - [ ] **皮影戏 π 点阵背景** — `PiCoworkBackground.tsx`：40px 固定网格暗色点阵 + 大尺寸 π 字符镂空透光，暗幕遮罩 + 呼吸动画。仅 `PiLoading.tsx` 加载界面使用；`ChatWindow.tsx` 聊天界面已移除（效果不理想）
+
+---
+
+# TODO — WorkspacePanel 重构（Reasonix 风格右侧面板）
+
+将文件树从左侧 SessionSidebar 迁移到右侧，做成 Reasonix 风格的分屏 WorkspacePanel。
+**左侧只保留会话列表。**
+
+## 架构概览
+
+```
+右侧面板 (WorkspacePanel)
+├── 头部: 切换按钮 | 搜索框 | 刷新
+├── 左: WorkspaceTree (文件树，可拖拽调整宽度)
+│   ├── 按需加载子目录 (同现有 fetchEntries)
+│   ├── 展开状态持久化 localStorage (key = cwd)
+│   ├── 搜索: 扁平化匹配，隐藏树结构
+│   ├── 右键菜单: 复制路径 / 插入引用到聊天
+│   └── 拖拽文件到 ChatInput → @path/to/file
+└── 右: WorkspacePreview (预览区)
+    ├── Breadcrumb 导航 (workspace > src > components > Foo.tsx)
+    ├── 代码高亮 (复用 SyntaxHighlighter)
+    ├── Markdown 渲染 (复用 react-markdown)
+    └── 图片/音频/PDF/DOCX (复用现有 FileViewer 逻辑)
+```
+
+## 文件变更清单
+
+### 新建
+
+- [x] **`components/ContextMenu.tsx`** — 通用右键菜单组件
+  - 定位: `position: fixed` 跟随鼠标
+  - 点击外部 / Esc 关闭
+  - 支持分隔线和快捷键提示
+  - API: `<ContextMenu items={[...]} point={{x,y}} onClose={...} />`
+
+- [x] **`components/WorkspaceTree.tsx`** — 文件树组件
+  - 从 `FileExplorer.tsx` 提取 TreeNode + fetchEntries
+  - 新增: 展开状态持久化 — `localStorage.setItem('pi-expanded-dirs:' + cwd, JSON.stringify([...set]))`
+  - 新增: 搜索框 — 输入后扁平化匹配，隐藏树 (`flattened.map` 渲染)
+  - 新增: 右键菜单 — 文件: 复制路径/插入引用; 文件夹: 复制路径/插入引用
+  - 新增: 拖拽 — `draggable` + `onDragStart` set `text/plain` + 自定义 data
+  - 移除: hover mention 按钮 (改为右键 + 拖拽)
+  - 缩进: 保持纯 padding，不加引导线
+
+- [x] **`components/WorkspacePreview.tsx`** — 预览区组件
+  - Breadcrumb: `root > dir > ... > file`，各级可点击跳转目录
+  - 空状态: "Select a file to preview"
+  - 文件内容: 复用 FileViewer 的 TextFileViewer/ImageViewer/AudioViewer/DocumentViewer 渲染逻辑
+  - 提取共享渲染函数到 `lib/file-preview.tsx` 以便 WorkspacePreview 和 FileViewer 共用
+
+- [x] **`components/WorkspacePanel.tsx`** — 面板壳组件
+  - Props: `open`, `cwd`, `onClose`, `onAddToChat?`
+  - 布局: 头部栏 + `display:flex` 左右分屏
+  - 拖拽调整树宽度: pointer events (复用 AppShell 现有 drag 逻辑)
+  - 树最小宽度 180px，最大 340px，默认 240px
+  - 持久化树宽度到 localStorage: `pi-workspace-tree-width`
+
+### 修改
+
+- [x] **`components/AppShell.tsx`** — 替换右侧面板内容
+  - 移除: `fileTabs` / `activeFileTabId` / `TabBar` / `FileViewer` 相关代码
+  - 移除: `handleOpenFile` / `handleCloseFileTab`
+  - 新增: `<WorkspacePanel>` 替代现有 `<TabBar> + <FileViewer>`
+  - 面板开关逻辑保持不变 (右上角 toggle 按钮)
+  - `onAddToChat` → 调用 `chatInputRef.current?.insertText(...)`
+  - 保留 `rightPanelWidth` 拖拽调整
+
+- [x] **`components/SessionSidebar.tsx`** — 移除 FileExplorer 部分
+  - 移除: `<FileExplorer>` 及其 wrapper（Explorer 折叠区）
+  - 移除相关 props: `onOpenFile`, `explorerRefreshKey`, `onAtMention`, `explorerRefreshDone`
+  - 移除 session 列表下方的边界线和折叠按钮
+  - Session 列表改为 `flex: 1` 占满剩余空间（去掉文件树后的高度分配）
+
+- [x] **`components/ChatInput.tsx`** — 添加文件拖放接收
+  - `onDrop`: 读 `event.dataTransfer.getData("text/plain")`，调用 `insertText(...)` 插入引用
+  - `onDragOver`: `event.preventDefault()` + 视觉反馈（边框/背景高亮）
+  - 支持 `application/x-pi-file-path` 自定义 MIME type
+
+### 可选删除
+
+- [x] **`components/FileExplorer.tsx`** — 已删除（零引用）
+
+- [x] **`components/TabBar.tsx`** — 已删除（零引用）
+
+### 不变
+
+- `components/FileViewer.tsx` — 保留不动（Agent 消息中的文件引用仍用它渲染）
+- `components/FileIcons.tsx` — 保留不动（WorkspaceTree 复用）
+- `app/api/files/[...path]/route.ts` — 保留不动（API 不变）
+- `lib/file-paths.ts` — 保留不动
+
+## 实施顺序
+
+1. 创建 `ContextMenu.tsx`（被 WorkspaceTree 依赖）
+2. 创建 `WorkspaceTree.tsx`（独立可测试）
+3. 创建 `WorkspacePreview.tsx`
+4. 创建 `WorkspacePanel.tsx`（组装 Tree + Preview）
+5. 修改 `ChatInput.tsx`（添加 drop handler）
+6. 修改 `SessionSidebar.tsx`（移除 FileExplorer）
+7. 修改 `AppShell.tsx`（接入 WorkspacePanel，移除 TabBar/FileViewer）
+8. 删除废弃代码（FileExplorer.tsx, TabBar.tsx）
+
+## 技术要点
+
+### 展开状态持久化
+```ts
+const STORAGE_PREFIX = "pi-expanded-dirs:";
+function loadExpanded(cwd: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + cwd);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch { return new Set(); }
+}
+function saveExpanded(cwd: string, set: Set<string>) {
+  try { localStorage.setItem(STORAGE_PREFIX + cwd, JSON.stringify([...set])); } catch {}
+}
+```
+
+### 搜索扁平化
+```ts
+// 递归收集所有已加载的 entry → [{path, entry}]
+// filter → path.toLowerCase().includes(q)
+// 搜索结果渲染为扁平行（显示完整路径），不显示树结构
+```
+
+### 拖拽 MIME type
+```ts
+// dragStart: 同时设置 "text/plain" 和自定义 "application/x-pi-file-path"
+event.dataTransfer.setData("text/plain", relativePath);
+event.dataTransfer.setData("application/x-pi-file-path", absolutePath);
+```
+
+### 右键菜单
+```ts
+// 文件: Copy Relative Path / Copy Absolute Path / Insert Reference to Chat
+// 文件夹: Copy Path / Insert Reference to Chat
+// 空白处: Refresh
+```

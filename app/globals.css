@@ -380,6 +380,12 @@ span.linenumber {
   font-style: normal !important;
 }
 
+/* Text selection — theme-aware */
+::selection {
+  background: var(--ui-selection-bg, #264f78);
+  color: var(--ui-selection-fg, var(--text));
+}
+
 /* Focus ring */
 :focus-visible {
   outline: 2px solid var(--accent);
@@ -478,31 +484,64 @@ span.linenumber {
   100% { transform: scale(1); box-shadow: 0 0 0 0 color-mix(in oklab, var(--success), transparent 100%); }
 }
 
-/* ── Resize handles ── */
-/* Flex child between panels; width controlled inline for collapse animation.
-   Hover changes border-color — no pseudo-element, no layout shift. */
+/* ── Resize handles ─────────────────────────────────────────────────────
+ *
+ * Each handle is a 4px-wide flex child with a 20px invisible hit area
+ * (::before, left/right -8px).  The dividing line lives on ::after and
+ * is always painted in --border; on hover it shifts to --accent.
+ *
+ * Panels next to a handle must NOT draw their own border — the handle
+ * owns the only line, so there is never z-order fighting between a
+ * static panel border and the accent overlay. */
 .resize-handle {
+  position: relative;
   flex-shrink: 0;
+  width: 4px;
   cursor: col-resize;
   z-index: 10;
   touch-action: none;
-  border: 0 solid transparent;
-  transition: border-color 0.15s ease;
 }
 
-.resize-handle:hover,
-.resize-handle:active {
-  border-color: var(--accent);
+/* ── Hit area extension (inward, no layout impact) ── */
+.resize-handle::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -8px;
+  right: -8px;          /* 4 + 8×2 = 20px total hit area */
 }
 
-/* Sidebar-chat boundary — left border */
-.resize-handle-bar-left {
-  border-left-width: 2px;
+/* ── Visual line — always visible, accent on hover ── */
+.resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--border);
+  transition: background 0.15s ease;
 }
 
-/* Chat–right-panel boundary — right border */
-.resize-handle-bar-right {
-  border-right-width: 2px;
+.resize-handle:hover::after,
+.resize-handle:active::after {
+  background: var(--accent);
+}
+
+/* bar-left / bar-right: ::after snaps to the panel-adjacent edge
+   instead of centering */
+.resize-handle-bar-left::after {
+  left: 0;
+  right: auto;
+  transform: none;
+}
+
+.resize-handle-bar-right::after {
+  left: auto;
+  right: 0;
+  transform: none;
 }
 
 @media (max-width: 640px) {

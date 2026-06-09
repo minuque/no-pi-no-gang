@@ -21,6 +21,8 @@
     "build": "next build --webpack",
     "start": "next start -p 7777",
     "lint": "eslint .",
+    "check:agents": "node -e \"const a=require('fs').readFileSync('AGENTS.md','utf8'),c=require('fs').readFileSync('CLAUDE.md','utf8');if(a!==c){console.error('CLAUDE.md out of sync with AGENTS.md');process.exit(1)}\"",
+    "sync:agents": "node -e \"require('fs').copyFileSync('AGENTS.md','CLAUDE.md')\"",
     "release": "npm version patch --no-git-tag-version && npm run build && npm publish --access public"
   },
   "dependencies": {
@@ -36,7 +38,6 @@
     "react-dom": "^19.2.4",
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^16.1.1",
-    "react-virtuoso": "^4.18.7",
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {

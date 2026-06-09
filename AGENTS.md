@@ -1,14 +1,14 @@
-# Pi Agent Web - 开发笔记
+# AGENTS.md
 
 ## 快速开始
 
 ```bash
 npm run dev   # 端口 7777
 ```
+**开发期间切勿运行 `next build`**——会污染 `.next/` 目录并导致 `npm run dev` 崩坏。
 
 类型检查：`node_modules/.bin/tsc --noEmit`
 代码检查：`node node_modules/next/dist/bin/next lint`
-**开发期间切勿运行 `next build`**——会污染 `.next/` 目录并导致 `npm run dev` 崩坏。
 
 ---
 
@@ -34,45 +34,6 @@ npm run dev   # 端口 7777
 
 ---
 
-## 文件地图
-
-```
-app/api/
-  sessions/route.ts               GET  列出所有会话
-  sessions/[id]/route.ts          GET/PATCH/DELETE 会话
-  sessions/[id]/context/route.ts  GET ?leafId= — 获取指定叶子节点的上下文
-  sessions/new/route.ts           返回 410（已废弃）
-  agent/new/route.ts              POST { cwd, message, toolNames?, provider?, modelId? }
-  agent/[id]/route.ts             GET 状态 | POST 任意命令
-  agent/[id]/events/route.ts      GET SSE 流
-  files/[...path]/route.ts        GET 获取文件内容给查看器
-  models/route.ts                 GET { models, modelList, defaultModel }
-  models-config/route.ts          GET/POST — 读写 ~/.pi/agent/models.json
-
-lib/
-  rpc-manager.ts      AgentSessionWrapper + 注册表 + startRpcSession
-  session-reader.ts   解析 .jsonl；getModelNameMap/getModelList/getDefaultModel
-  types.ts            共享的 TypeScript 类型
-  normalize.ts        normalizeToolCalls() — 文件格式与我们的类型之间存在字段名不匹配
-  system-prompt-off.ts  所有工具禁用时的最小化系统提示
-
-components/
-  AppShell.tsx        布局 + URL 状态 + 标签页管理
-  SessionSidebar.tsx  会话树 + FileExplorer
-  ChatWindow.tsx      消息 + 流式传输 + SSE + fork/navigate 逻辑
-  ChatInput.tsx       输入栏 + 模型/思考/工具/压缩控件
-  MessageView.tsx     渲染单条消息（user/assistant/toolCall/toolResult）
-  BranchNavigator.tsx 会话内分支切换器
-  ChatMinimap.tsx     消息列表旁的滚动缩略图
-  ToolPanel.tsx       导出 PRESET_NONE/DEFAULT/FULL + getPresetFromTools
-  ModelsConfig.tsx    编辑 models.json 的弹窗（从侧边栏底部打开）
-  FileExplorer.tsx    侧边栏内的文件树
-  FileViewer.tsx      标签页中的文件内容
-  TabBar.tsx          标签栏（Chat + 已打开的文件标签页）
-```
-
----
-
 ## 关键设计决策与陷阱
 
 ### AgentSession 生命周期（`lib/rpc-manager.ts`）
@@ -95,9 +56,6 @@ components/
 ### ToolCall 字段规范化
 Pi 将 toolCall 块存储为 `{type:"toolCall", id, name, arguments}`，但 `ToolCallContent` 使用的是 `{toolCallId, toolName, input}`。`lib/normalize.ts` 中的 `normalizeToolCalls()` 处理这种差异——在 `session-reader.ts`（文件加载）和 `ChatWindow.handleAgentEvent()`（流式传输）中均会调用。
 
-### 新会话的工具预设
-工具名称在会话创建时传入（`POST /api/agent/new` → `toolNames[]`）。对于已有会话，活跃的预设会在挂载时通过 `get_tools` → `getPresetFromTools()` 推断得出。当工具完全禁用时（`toolNames = []`），`rpc-manager.ts` 通过 `system-prompt-off.ts` + `DefaultResourceLoader` 注入一个最小化系统提示。
-
 ### 新会话的模型默认值
 `GET /api/models` 返回从 `~/.pi/agent/settings.json` 读取的 `defaultModel`。`ChatWindow` 在挂载时会为新会话预选该模型。
 
@@ -107,25 +65,11 @@ Pi 将 toolCall 块存储为 `{type:"toolCall", id, name, arguments}`，但 `Too
 ### 压缩 SSE 事件
 新版 pi 发出 `compaction_start` / `compaction_end`；旧版发出 `auto_compaction_start` / `auto_compaction_end`。`handleAgentEvent` 同时接受这两组事件以保持 `isCompacting` 同步。手动压缩是一个阻塞式 POST——在响应返回之前按钮保持禁用。
 
-### 孤立会话
-首行无法解析为有效头部的会话在 API 响应中标记为 `orphaned: true`——在侧边栏中显示"不完整"徽章且不可点击。
+### `agent_end` 中 `loadSession` 的竞态 (`hooks/useAgentSession.ts`)
+`agent_end` 中 fire-and-forget 调用 `loadSession` → `setMessages()` 全量替换，与下一次 `handleSend` 竞态导致消息丢失。**异步 loadSession 必须用版本计数器（`loadGenRef`）守卫——gen 不匹配则丢弃结果。**
 
----
+### Virtuoso 滚动性能 (`components/ChatWindow.tsx`)
+`atBottomStateChange` 中直接 `setState` → 每次滚动像素全量重渲染。`components` 内联 → Virtuoso 重挂载。**atBottom setState 用 ref 守卫只做 true↔false 转换；Virtuoso List/Footer 提取为模块级常量。**
 
-## Pi 会话文件格式
-
-位置：`~/.pi/agent/sessions/<encoded-cwd>/<timestamp>_<uuid>.jsonl`
-
-```jsonl
-{"type":"session","version":3,"id":"<uuid>","timestamp":"...","cwd":"/path","parentSession":"/abs/path/to/parent.jsonl"}
-{"type":"model_change","id":"<8hex>","parentId":null,"provider":"zenmux","modelId":"claude-sonnet-4-6","timestamp":"..."}
-{"type":"message","id":"<8hex>","parentId":"<8hex>","message":{"role":"user","content":"..."}}
-{"type":"message","id":"<8hex>","parentId":"<8hex>","message":{"role":"assistant","content":[...],...}}
-{"type":"message","id":"<8hex>","parentId":"<8hex>","message":{"role":"toolResult","toolCallId":"...","content":[...]}}
-{"type":"compaction","id":"<8hex>","parentId":"<8hex>","summary":"...","firstKeptEntryId":"<8hex>","tokensBefore":N}
-{"type":"session_info","id":"...","parentId":"...","name":"自定义名称"}
-```
-
-`SessionContext` 中的 `entryIds[]` 是与 `messages[]` 平行的数组——将每条显示的消息映射回其 `.jsonl` 条目 ID，用于 fork 和 navigate_tree 调用。
-
----
+### 滚动源冲突 (`components/ChatWindow.tsx`)
+`useEffect` 依赖 `streamState.streamingMessage`（~60fps 变化）驱动滚动 → effect 高频重建 + 与用户手动滚动竞争。**滚动跟随用单一 rAF 循环（仅依赖 `agentRunning`），每帧读 ref 而非依赖 streaming 对象引用。**

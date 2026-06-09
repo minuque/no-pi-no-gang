@@ -4,8 +4,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SessionSidebar } from "./SessionSidebar";
 import { ChatWindow } from "./ChatWindow";
-import { FileViewer } from "./FileViewer";
-import { TabBar, type Tab } from "./TabBar";
+import { WorkspacePanel } from "./WorkspacePanel";
 import { ModelsConfig } from "./ModelsConfig";
 import { SkillsConfig } from "./SkillsConfig";
 import { BranchNavigator } from "./BranchNavigator";
@@ -22,7 +21,7 @@ export function AppShell() {
   const [newSessionCwd, setNewSessionCwd] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sessionKey, setSessionKey] = useState(0);
-  const [explorerRefreshKey, setExplorerRefreshKey] = useState(0);
+
   const [modelsConfigOpen, setModelsConfigOpen] = useState(false);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
@@ -59,7 +58,7 @@ export function AppShell() {
       }
     } catch { setRightPanelWidth(Math.round(window.innerWidth * 0.42)); }
   }, []);
-  const [rightPanelOpen, setRightPanelOpen] = useState(false);
+  const [workspacePanelOpen, setWorkspacePanelOpen] = useState(false);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
   const topBarRef = useRef<HTMLDivElement>(null);
 
@@ -130,14 +129,14 @@ export function AppShell() {
   }, []);
   const handleDragMove = useCallback((e: React.PointerEvent) => {
     if (!dragState.current.active) return;
-    // Reserve space for chat minimum + right panel (if open)
-    const reservedRight = rightPanelOpen ? rightPanelWidthRef.current : 0;
+    // Reserve space for chat minimum + workspace panel (if open)
+    const reservedRight = workspacePanelOpen ? rightPanelWidthRef.current : 0;
     const maxW = Math.max(SIDEBAR_MIN, window.innerWidth - CHAT_MIN_WIDTH - reservedRight);
     const w = Math.min(SIDEBAR_MAX, maxW, Math.max(SIDEBAR_MIN, dragState.current.startWidth + e.clientX - dragState.current.startX));
     const el = sidebarRef.current;
     if (el) { el.style.width = `${w}px`; el.style.minWidth = `${w}px`; }
     sidebarWidthRef.current = w;
-  }, [rightPanelOpen]);
+  }, [workspacePanelOpen]);
   const handleDragEnd = useCallback(() => {
     if (!dragState.current.active) return;
     dragState.current.active = false;
@@ -178,9 +177,7 @@ export function AppShell() {
     try { localStorage.setItem("pi-right-panel-width", String(rightPanelWidthRef.current)); } catch {}
   }, []);
 
-  // Right panel — file tabs only
-  const [fileTabs, setFileTabs] = useState<Tab[]>([]);
-  const [activeFileTabId, setActiveFileTabId] = useState<string | null>(null);
+
 
   const handleAtMention = useCallback((relativePath: string) => {
     chatInputRef.current?.insertText("`" + relativePath + "`");
@@ -302,7 +299,7 @@ export function AppShell() {
 
   const handleAgentEnd = useCallback(() => {
     setRefreshKey((k) => k + 1);
-    setExplorerRefreshKey((k) => k + 1);
+
   }, []);
 
   const handleSessionForked = useCallback((newSessionId: string) => {
@@ -335,28 +332,7 @@ export function AppShell() {
     }
   }, [selectedSession, router]);
 
-  const handleOpenFile = useCallback((filePath: string, fileName: string) => {
-    const tabId = `file:${filePath}`;
-    setFileTabs((prev) => {
-      if (prev.find((t) => t.id === tabId)) return prev;
-      return [...prev, { id: tabId, label: fileName, filePath }];
-    });
-    setActiveFileTabId(tabId);
-    setRightPanelOpen(true);
-  }, []);
 
-  const handleCloseFileTab = useCallback((tabId: string) => {
-    setFileTabs((prev) => {
-      const next = prev.filter((t) => t.id !== tabId);
-      if (next.length === 0) setRightPanelOpen(false);
-      return next;
-    });
-    setActiveFileTabId((cur) => {
-      if (cur !== tabId) return cur;
-      const remaining = fileTabs.filter((t) => t.id !== tabId);
-      return remaining.length > 0 ? remaining[remaining.length - 1].id : null;
-    });
-  }, [fileTabs]);
 
   // Show chat area if a session is selected, or if we have a cwd to start a new session in
   const effectiveNewSessionCwd = newSessionCwd ?? (selectedSession === null && activeCwd ? activeCwd : null);
@@ -364,7 +340,6 @@ export function AppShell() {
   // While restoring initial session from URL, don't show the placeholder
   const showPlaceholder = initialSessionRestored && !showChat;
 
-  const activeFileTab = fileTabs.find((t) => t.id === activeFileTabId) ?? null;
 
   const sidebarContent = (
     <>
@@ -376,11 +351,8 @@ export function AppShell() {
         onInitialRestoreDone={handleInitialRestoreDone}
         refreshKey={refreshKey}
         onSessionDeleted={handleSessionDeleted}
-        selectedCwd={selectedSession?.cwd ?? newSessionCwd ?? null}
+        selectedCwd={selectedSession?.cwd ?? newSessionCwd ?? activeCwd ?? null}
         onCwdChange={handleCwdChange}
-        onOpenFile={handleOpenFile}
-        explorerRefreshKey={explorerRefreshKey}
-        onAtMention={handleAtMention}
         onSessionsChange={setAllSessions}
       />
       <div style={{ padding: "8px", flexShrink: 0, display: "flex", justifyContent: "space-between", gap: 4 }}>
@@ -459,7 +431,6 @@ export function AppShell() {
         className={`sidebar-container${sidebarOpen ? " sidebar-open" : " sidebar-closed"}`}
         style={{
           background: "var(--bg-panel)",
-          borderRight: sidebarOpen ? "1px solid var(--border)" : "none",
           display: "flex",
           flexDirection: "column",
           flexShrink: 0,
@@ -577,90 +548,27 @@ export function AppShell() {
               </button>
             </div>
           )}
-          {/* Session stats — right-aligned in top bar */}
-          {showChat && (sessionStats || contextUsage) && (() => {
-            const t = sessionStats?.tokens;
-            const c = sessionStats?.cost ?? 0;
-            const fmt = (n: number) => n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(0)}k` : String(n);
-            const costStr = c > 0 ? (c >= 0.01 ? `$${c.toFixed(2)}` : `<$0.01`) : null;
-
-            let ctxColor = "var(--text-muted)";
-            let ctxStr: string | null = null;
-            if (contextUsage?.contextWindow) {
-              const pct = contextUsage.percent;
-              if (pct !== null && pct > 90) ctxColor = "var(--danger)";
-              else if (pct !== null && pct > 70) ctxColor = "color-mix(in oklab, var(--warn), transparent 5%)";
-              ctxStr = pct !== null ? `${pct.toFixed(0)}% / ${fmt(contextUsage.contextWindow)}` : `? / ${fmt(contextUsage.contextWindow)}`;
-            }
-
-            const tooltipParts: string[] = [];
-            if (t) {
-              tooltipParts.push(`in: ${t.input.toLocaleString()}`);
-              tooltipParts.push(`out: ${t.output.toLocaleString()}`);
-              tooltipParts.push(`cache read: ${t.cacheRead.toLocaleString()}`);
-              tooltipParts.push(`cache write: ${t.cacheWrite.toLocaleString()}`);
-              if (c > 0) tooltipParts.push(`cost: $${c.toFixed(4)}`);
-            }
-            if (contextUsage?.contextWindow) {
-              const pct = contextUsage.percent;
-              tooltipParts.push(`context: ${pct !== null ? pct.toFixed(1) + "%" : "unknown"} of ${contextUsage.contextWindow.toLocaleString()} tokens`);
-            }
-            const tooltip = tooltipParts.join("  |  ");
-
-            return (
-              <div
-                title={tooltip}
-                style={{
-                  marginLeft: "auto",
-                  display: "flex", alignItems: "center", gap: 10,
-                  paddingLeft: 12,
-                  paddingRight: rightPanelOpen ? 12 : 48,
-                  height: "100%",
-                  fontSize: 11, color: "var(--text-muted)",
-                  whiteSpace: "nowrap", cursor: "default",
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                {t && t.input > 0 && (
-                  <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="8.5" x2="5" y2="1.5" /><polyline points="2 4 5 1.5 8 4" />
-                    </svg>
-                    {fmt(t.input)}
-                  </span>
-                )}
-                {t && t.output > 0 && (
-                  <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="1.5" x2="5" y2="8.5" /><polyline points="2 6 5 8.5 8 6" />
-                    </svg>
-                    {fmt(t.output)}
-                  </span>
-                )}
-                {t && t.cacheRead > 0 && (
-                  <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8.5 5a3.5 3.5 0 1 1-1-2.45" /><polyline points="6.5 1.5 8.5 2.5 7.5 4.5" />
-                    </svg>
-                    {fmt(t.cacheRead)}
-                  </span>
-                )}
-                {costStr && (
-                  <span style={{ display: "flex", alignItems: "center", color: "var(--text)", fontWeight: 500 }}>
-                    {costStr}
-                  </span>
-                )}
-                {ctxStr && (
-                  <span style={{ display: "flex", alignItems: "center", gap: 4, color: ctxColor }}>
-                    <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 9 L1 5 Q1 1 5 1 Q9 1 9 5 L9 9" /><line x1="1" y1="9" x2="9" y2="9" />
-                    </svg>
-                    {ctxStr}
-                  </span>
-                )}
-              </div>
-            );
-          })()}
+          {/* Workspace panel toggle — right-aligned in top bar */}
+          {showChat && (
+            <button
+              onClick={() => setWorkspacePanelOpen((v) => !v)}
+              title={workspacePanelOpen ? "Close workspace panel" : "Open workspace panel"}
+              style={{
+                marginLeft: "auto",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: 36, height: 36, padding: 0,
+                background: "none", border: "none", borderLeft: "1px solid var(--border)",
+                color: workspacePanelOpen ? "var(--text)" : "var(--text-muted)",
+                cursor: "pointer", flexShrink: 0, transition: "color 0.12s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = workspacePanelOpen ? "var(--text)" : "var(--text-muted)"; }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
+              </svg>
+            </button>
+          )}
           {/* Top panel dropdown — shared, only one active at a time */}
           {activeTopPanel && topPanelPos && (
             <div style={{
@@ -748,73 +656,36 @@ export function AppShell() {
         </div>
       </div>
 
-      {/* Right resize handle — between chat and right panel */}
+      {/* Right resize handle — between chat and workspace panel */}
       <div
         className="resize-handle resize-handle-bar-right"
-        style={{ display: rightPanelOpen ? "block" : "none" }}
+        style={{ display: workspacePanelOpen ? "block" : "none" }}
         onPointerDown={handleRightDragStart}
         onPointerMove={handleRightDragMove}
         onPointerUp={handleRightDragEnd}
         onLostPointerCapture={handleRightDragEnd}
       />
 
-      {/* Right panel: file viewer — always mounted, width animated via CSS */}
+      {/* Right panel: workspace — always mounted, width animated via CSS */}
       <div
         ref={rightPanelRef}
-        className={`right-panel-container${rightPanelOpen ? " right-panel-open" : " right-panel-closed"}`}
+        className={`right-panel-container${workspacePanelOpen ? " right-panel-open" : " right-panel-closed"}`}
         style={{
           display: "flex",
           flexDirection: "column",
-          borderLeft: rightPanelOpen ? "1px solid var(--border)" : "none",
           background: "var(--bg)",
-          width: rightPanelOpen ? rightPanelWidth : 0,
-          minWidth: rightPanelOpen ? rightPanelWidth : 0,
+          width: workspacePanelOpen ? rightPanelWidth : 0,
+          minWidth: workspacePanelOpen ? rightPanelWidth : 0,
         }}
       >
-        {/* Right panel tab bar */}
-        <div style={{ display: "flex", alignItems: "center", flexShrink: 0, background: "var(--bg-panel)", borderBottom: "1px solid var(--border)", height: 36 }}>
-          <div style={{ flex: 1, overflow: "hidden" }}>
-            <TabBar
-              tabs={fileTabs}
-              activeTabId={activeFileTabId ?? ""}
-              onSelectTab={setActiveFileTabId}
-              onCloseTab={handleCloseFileTab}
-            />
-          </div>
-
-        </div>
-
-        {/* File content */}
-        <div style={{ flex: 1, overflow: "hidden" }}>
-          {activeFileTab?.filePath ? (
-            <FileViewer filePath={activeFileTab.filePath} cwd={activeCwd ?? undefined} />
-          ) : (
-            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: 12 }}>
-              No file open
-            </div>
-          )}
-        </div>
+        <WorkspacePanel
+          open={workspacePanelOpen}
+          cwd={activeCwd ?? selectedSession?.cwd ?? newSessionCwd ?? null}
+          onClose={() => setWorkspacePanelOpen(false)}
+          onAddToChat={(text) => chatInputRef.current?.insertText(text)}
+        />
       </div>
     </div>
-    {/* File panel toggle — always visible at top-right */}
-    <button
-      onClick={() => setRightPanelOpen((v) => !v)}
-      title={rightPanelOpen ? "Hide file panel" : "Show file panel"}
-      style={{
-        position: "fixed", top: 0, right: 0, zIndex: 300,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        width: 36, height: 36, padding: 0,
-        background: "var(--bg-panel)", border: "none", borderLeft: "1px solid var(--border)", borderBottom: "1px solid var(--border)",
-        color: rightPanelOpen ? "var(--text)" : "var(--text-muted)",
-        cursor: "pointer", transition: "color 0.12s",
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = rightPanelOpen ? "var(--text)" : "var(--text-muted)"; }}
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
-      </svg>
-    </button>
     {modelsConfigOpen && <ModelsConfig onClose={() => { setModelsConfigOpen(false); setModelsRefreshKey((k) => k + 1); }} />}
     {skillsConfigOpen && (activeCwd ?? selectedSession?.cwd ?? newSessionCwd) && (
       <SkillsConfig cwd={(activeCwd ?? selectedSession?.cwd ?? newSessionCwd)!} onClose={() => setSkillsConfigOpen(false)} />

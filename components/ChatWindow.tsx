@@ -1,15 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, forwardRef } from "react";
-import type { HTMLAttributes } from "react";
-import { useRouter } from "next/navigation";
-import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentMessage, SessionInfo, SessionTreeNode, ToolResultMessage } from "@/lib/types";
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, MINIMAP_WIDTH } from "./ChatMinimap";
 import { SessionLoading } from "./SessionLoading";
 import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
+import { useChatScroll } from "@/hooks/useChatScroll";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import { useTheme } from "@/hooks/useTheme";
 
@@ -102,23 +100,19 @@ function Typewriter({ phrases }: { phrases: string[] }) {
 }
 
 export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, recentCwds, homeDir = "", onCwdSelect, onCwdDefault }: Props) {
-  const router = useRouter();
   const {
     data, loading, error, messages, entryIds, streamState, commands,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, thinkingLevel,
     retryInfo, contextUsage, forkingEntryId,
     displayModel: displayModelValue, sessionStats,
-    agentPhase, showScrollButton,
+    agentPhase,
     activeLeafId,
     isNew,
-    messagesEndRef, scrollContainerRef,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
     handleThinkingLevelChange, handleAgentEventRef,
-    scrollToBottom: _hookScrollToBottom,
   } = useAgentSession({
     session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange,
-    disableAutoScroll: true, // Virtuoso manages scrolling — avoid RAF conflict
   });
 
   const { isDark } = useTheme();
@@ -258,30 +252,12 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     return () => clearInterval(id);
   }, [agentRunning]);
 
-  // ── Virtual scrolling data model ──
-  // Flatten messages + streaming content + phase indicator into a single list
-  // for react-virtuoso. Each item has a stable "kind" discriminator.
-  type VirtuosoItem =
-    | { kind: "message"; msg: AgentMessage; msgIndex: number }
-    | { kind: "streaming"; msg: Partial<AgentMessage> }
-    | { kind: "phase"; label: string };
-
-  const listItems = useMemo<VirtuosoItem[]>(() => {
-    const items: VirtuosoItem[] = [];
-    for (let i = 0; i < messages.length; i++) {
-      const msg = messages[i];
-      // toolResult messages render null — skip to avoid zero-height items
-      // confusing Virtuoso's internal height map.
-      if (msg.role === "toolResult") continue;
-      items.push({ kind: "message", msg, msgIndex: i });
-    }
-    if (streamState.isStreaming && streamState.streamingMessage) {
-      items.push({ kind: "streaming", msg: streamState.streamingMessage });
-    } else if (agentRunning && !streamState.streamingMessage) {
-      items.push({ kind: "phase", label: phaseLabel(agentPhase) });
-    }
-    return items;
-  }, [messages, streamState.isStreaming, streamState.streamingMessage, agentRunning, agentPhase]);
+  // ── Native scroll controller (replaces Virtuoso) ──
+  const {
+    containerRef: scrollContainerRef,
+    scrollToBottom,
+    isAtBottom,
+  } = useChatScroll();
 
   // Pre-compute tool result lookup (needed by all message renders)
   const toolResultsMap = useMemo(() => {
@@ -302,41 +278,22 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     return -1;
   }, [messages]);
 
-  const virtuosoRef = useRef<VirtuosoHandle>(null);
-
-  // Virtuoso-scroller ref — read-only pass-through for minimap scroll position.
-  // Never write to this ref; all scroll mutations go through Virtuoso's API.
-  const scrollerElRef = useRef<HTMLDivElement | null>(null);
-
-  // At-bottom tracking (Virtuoso-native, no external IO needed)
-  const [atBottom, setAtBottom] = useState(true);
-  const atBottomRef = useRef(true);
-
-  // Scroll-to-bottom via Virtuoso API (replaces hook's scrollIntoView)
-  const scrollToBottom = useCallback((behavior: "smooth" | "auto" = "smooth") => {
-    virtuosoRef.current?.scrollToIndex({ index: "LAST", behavior, align: "end" });
-  }, []);
-
-
-  // Initial load: scroll to bottom once messages are present and agent is idle.
-  // Reset when session changes so switching sessions also scrolls to bottom.
+  // Initial scroll to bottom when session loads with existing messages.
   const didInitialScroll = useRef(false);
   useEffect(() => { didInitialScroll.current = false; }, [session?.id]);
   useEffect(() => {
-    if (!didInitialScroll.current && listItems.length > 0 && !agentRunning) {
+    if (!didInitialScroll.current && messages.length > 0 && !agentRunning) {
       didInitialScroll.current = true;
+      scrollToBottom("instant");
+    }
+  }, [messages.length, agentRunning, scrollToBottom]);
+
+  // When agent starts, jump to bottom so the user sees their message + response.
+  useEffect(() => {
+    if (agentRunning) {
       scrollToBottom("auto");
     }
-  }, [listItems.length, agentRunning, scrollToBottom]);
-
-  // Follow bottom during streaming — followOutput only handles count changes,
-  // not in-place height growth from streaming text. At ~250 chars/sec reveal
-  // rate, the content grows in small increments; 'auto' avoids scroll lag.
-  useEffect(() => {
-    if (agentRunning && atBottomRef.current) {
-      virtuosoRef.current?.scrollToIndex({ index: "LAST", behavior: "auto", align: "end" });
-    }
-  }, [agentRunning, streamState.streamingMessage]);
+  }, [agentRunning, scrollToBottom]);
 
   const chatInputElement = (
     <ChatInput
@@ -466,87 +423,81 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         </div>
       ) : (
       <>
-      <div className="flex-1 flex overflow-hidden relative" style={{ paddingRight: MINIMAP_WIDTH, animation: "fade-in-up 0.35s ease both" }}>
-        <Virtuoso
-          ref={virtuosoRef}
-          scrollerRef={(ref) => { scrollerElRef.current = ref as HTMLDivElement | null; }}
-          style={{ flex: 1 }}
-          className="[scrollbar-width:none]"
-          data={listItems}
-          followOutput={agentRunning ? "smooth" : false}
-          atBottomStateChange={(v) => { atBottomRef.current = v; setAtBottom(v); }}
-          increaseViewportBy={{ top: 400, bottom: 400 }}
-          itemContent={(index, item) => {
-            // ── Streaming item ──
-            if (item.kind === "streaming") {
+      <div className="flex-1 overflow-hidden relative" style={{ paddingRight: MINIMAP_WIDTH, animation: "fade-in-up 0.35s ease both" }}>
+        {/* ── Native scroll viewport ── */}
+        <div
+          ref={scrollContainerRef}
+          className="h-full overflow-y-auto [scrollbar-width:none]"
+        >
+          <div style={{ paddingTop: 16 }}>
+            {/* Completed messages (skip toolResult — rendered inline by MessageView) */}
+            {messages.map((msg, i) => {
+              if (msg.role === "toolResult") return null;
+              const entryId = entryIds[i];
+              const prevAssistantEntryId =
+                msg.role === "user" && i > 0 && messages[i - 1]?.role === "assistant"
+                  ? entryIds[i - 1]
+                  : undefined;
+              let showTimestamp = false;
+              if (msg.role === "assistant") {
+                showTimestamp = true;
+                for (let j = i + 1; j < messages.length; j++) {
+                  const r = messages[j]?.role;
+                  if (r === "user") break;
+                  if (r === "assistant") { showTimestamp = false; break; }
+                }
+                if (showTimestamp && streamState.isStreaming && i === messages.length - 1) {
+                  showTimestamp = false;
+                }
+              }
+              const isLastAssistant = msg.role === "assistant" && i === lastAssistantIdx && !streamState.isStreaming;
+
               return (
-                <div className="mx-auto max-w-[1148px] px-4">
-                  <MessageView message={item.msg as AgentMessage} isStreaming modelNames={modelNames} />
+                <div key={i} className="mx-auto max-w-[1148px] px-4">
+                  <MessageView
+                    message={msg}
+                    toolResults={toolResultsMap}
+                    modelNames={modelNames}
+                    entryId={entryId}
+                    onFork={agentRunning || isNew || (i === 0 && msg.role === "user") ? undefined : handleFork}
+                    forking={forkingEntryId === entryId}
+                    onNavigate={agentRunning ? undefined : handleNavigate}
+                    prevAssistantEntryId={agentRunning ? undefined : prevAssistantEntryId}
+                    onEditContent={(content) => chatInputRef?.current?.insertIfEmpty(content)}
+                    showTimestamp={showTimestamp}
+                    prevTimestamp={i > 0 ? (messages[i - 1] as AgentMessage & { timestamp?: number }).timestamp : undefined}
+                    onRetry={isLastAssistant && !agentRunning ? handleRetry : undefined}
+                    onEditResend={msg.role === "user" && !agentRunning ? handleEditResend : undefined}
+                  />
                 </div>
               );
-            }
+            })}
 
-            // ── Phase indicator (agent running, no message yet) ──
-            if (item.kind === "phase") {
-              return (
-                <div className="mx-auto max-w-[1148px] px-4 py-2 text-[13px]" style={{ color: "var(--text-muted)" }}>
-                  <span className="animate-[pulse_1.5s_infinite]">{item.label}</span>
-                </div>
-              );
-            }
-
-            // ── Regular message ──
-            const { msg, msgIndex } = item;
-            // Compute per-message metadata (inexpensive — only runs for visible items)
-            const entryId = entryIds[msgIndex];
-            const prevAssistantEntryId =
-              msg.role === "user" && msgIndex > 0 && messages[msgIndex - 1]?.role === "assistant"
-                ? entryIds[msgIndex - 1]
-                : undefined;
-            let showTimestamp = false;
-            if (msg.role === "assistant") {
-              showTimestamp = true;
-              for (let j = msgIndex + 1; j < messages.length; j++) {
-                const r = messages[j]?.role;
-                if (r === "user") break;
-                if (r === "assistant") { showTimestamp = false; break; }
-              }
-              if (showTimestamp && streamState.isStreaming && msgIndex === messages.length - 1) {
-                showTimestamp = false;
-              }
-            }
-            const isLastAssistant = msg.role === "assistant" && msgIndex === lastAssistantIdx && !streamState.isStreaming;
-
-            return (
+            {/* Streaming content */}
+            {streamState.isStreaming && streamState.streamingMessage && (
               <div className="mx-auto max-w-[1148px] px-4">
                 <MessageView
-                  message={msg}
-                  toolResults={toolResultsMap}
+                  message={streamState.streamingMessage as AgentMessage}
+                  isStreaming
                   modelNames={modelNames}
-                  entryId={entryId}
-                  onFork={agentRunning || isNew || (msgIndex === 0 && msg.role === "user") ? undefined : handleFork}
-                  forking={forkingEntryId === entryId}
-                  onNavigate={agentRunning ? undefined : handleNavigate}
-                  prevAssistantEntryId={agentRunning ? undefined : prevAssistantEntryId}
-                  onEditContent={(content) => chatInputRef?.current?.insertIfEmpty(content)}
-                  showTimestamp={showTimestamp}
-                  prevTimestamp={msgIndex > 0 ? (messages[msgIndex - 1] as AgentMessage & { timestamp?: number }).timestamp : undefined}
-                  onRetry={isLastAssistant && !agentRunning ? handleRetry : undefined}
-                  onEditResend={msg.role === "user" && !agentRunning ? handleEditResend : undefined}
                 />
               </div>
-            );
-          }}
-          components={{
-            List: forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>((props, ref) => (
-              <div {...props} ref={ref} style={{ ...props.style, paddingTop: 16 }} />
-            )),
-            Footer: () => <div style={{ height: 24 }} />,
-          }}
-        />
+            )}
+
+            {/* Phase indicator (agent running, no message yet) */}
+            {agentRunning && !streamState.streamingMessage && (
+              <div className="mx-auto max-w-[1148px] px-4 py-2 text-[13px]" style={{ color: "var(--text-muted)" }}>
+                <span className="animate-[pulse_1.5s_infinite]">{phaseLabel(agentPhase)}</span>
+              </div>
+            )}
+
+            {/* Bottom spacer — keeps last message from hugging the edge */}
+            <div style={{ height: 24 }} />
+          </div>
+        </div>
 
         {/* Scroll-to-bottom button */}
-        {!atBottom && (
+        {!isAtBottom && (
           <div style={{
             position: "absolute",
             bottom: 12,
@@ -603,7 +554,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         <ChatMinimap
           messages={messages}
           streamingMessage={streamState.streamingMessage}
-          scrollContainer={scrollerElRef}
+          scrollContainer={scrollContainerRef}
           virtual
         />
       </div>

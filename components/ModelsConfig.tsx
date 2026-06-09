@@ -297,7 +297,7 @@ function ProviderDetail({ name, provider, onChange, onRename, onDelete }: {
         <TextInput value={editingName} onChange={setEditingName} placeholder="provider-name" mono />
         {editingName !== name && editingName.trim() && (
           <button onClick={() => onRename(editingName.trim())}
-            style={{ marginTop: 4, padding: "3px 10px", background: "var(--accent)", border: "none", borderRadius: 4, color: "var(--accent-on)", cursor: "pointer", fontSize: 11, alignSelf: "flex-start" }}>
+            style={{ marginTop: 4, padding: "3px 10px", background: "var(--accent-hover)", border: "none", borderRadius: 4, color: "var(--accent-on)", cursor: "pointer", fontSize: 11, alignSelf: "flex-start" }}>
             Rename
           </button>
         )}
@@ -377,7 +377,7 @@ function ThinkingLevelMapEditor({
           color: "var(--text-dim)",
         };
         const btnActive: React.CSSProperties = {
-          background: "var(--accent)",
+          background: "var(--accent-hover)",
           color: "var(--accent-on)",
           fontWeight: 600,
         };
@@ -880,7 +880,7 @@ function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; onRefre
               <button
                 onClick={() => submitCode(loginState.token, inputValue)}
                 disabled={!inputValue.trim()}
-                style={{ padding: "6px 12px", background: inputValue.trim() ? "var(--accent)" : "var(--bg-panel)", border: "none", borderRadius: 5, color: inputValue.trim() ? "var(--accent-on)" : "var(--text-dim)", cursor: inputValue.trim() ? "pointer" : "not-allowed", fontSize: 12, fontWeight: 600, flexShrink: 0 }}
+                style={{ padding: "6px 12px", background: inputValue.trim() ? "var(--accent-hover)" : "var(--bg-panel)", border: "none", borderRadius: 5, color: inputValue.trim() ? "var(--accent-on)" : "var(--text-dim)", cursor: inputValue.trim() ? "pointer" : "not-allowed", fontSize: 12, fontWeight: 600, flexShrink: 0 }}
               >
                 Submit
               </button>
@@ -927,7 +927,7 @@ function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; onRefre
           <>
             <button
               onClick={handleLogin}
-              style={{ padding: "5px 14px", background: "var(--accent)", border: "none", borderRadius: 5, color: "var(--accent-on)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+              style={{ padding: "5px 14px", background: "var(--accent-hover)", border: "none", borderRadius: 5, color: "var(--accent-on)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
             >
               {provider.loggedIn ? "Re-login" : "Login"}
             </button>
@@ -1039,7 +1039,7 @@ function ApiKeyDetail({ provider, onRefresh }: { provider: ApiKeyProvider; onRef
             disabled={saving || !apiKey.trim() || savedOk}
             style={{
               padding: "6px 12px",
-              background: savedOk ? "var(--success)" : apiKey.trim() ? "var(--accent)" : "var(--bg-panel)",
+              background: savedOk ? "var(--success)" : apiKey.trim() ? "var(--accent-hover)" : "var(--bg-panel)",
               border: "none", borderRadius: 5,
               color: (apiKey.trim() || savedOk) ? "var(--accent-on)" : "var(--text-dim)",
               cursor: (saving || !apiKey.trim() || savedOk) ? "not-allowed" : "pointer",
@@ -1561,7 +1561,7 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
             position: "relative",
             padding: "6px 16px",
             minWidth: 92,
-            background: savedOk ? "var(--success)" : saving ? "var(--bg-panel)" : "var(--accent)",
+            background: savedOk ? "var(--success)" : saving ? "var(--bg-panel)" : "var(--accent-hover)",
             border: "none", borderRadius: 6,
             color: savedOk ? "var(--accent-on)" : saving ? "var(--text-muted)" : "var(--accent-on)",
             cursor: (saving || savedOk) ? "default" : "pointer", fontSize: 13, fontWeight: 600,

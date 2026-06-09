@@ -204,7 +204,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
                 disabled={!editValue.trim()}
                 style={{
                   padding: "3px 10px", height: 24,
-                  background: editValue.trim() ? "var(--accent)" : "var(--bg-panel)",
+                  background: editValue.trim() ? "var(--accent-hover)" : "var(--bg-panel)",
                   border: "none",
                   borderRadius: 5, color: editValue.trim() ? "var(--accent-on)" : "var(--text-dim)",
                   cursor: editValue.trim() ? "pointer" : "not-allowed",

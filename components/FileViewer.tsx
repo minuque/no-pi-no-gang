@@ -8,6 +8,17 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useTheme } from "@/hooks/useTheme";
 import { encodeFilePathForApi, getFileName, getRelativeFilePath } from "@/lib/file-paths";
+import {
+  IMAGE_EXTS,
+  AUDIO_EXTS,
+  DOCUMENT_PREVIEW_EXTS,
+  DOCX_PREVIEW_MAX_BYTES,
+  isImagePath,
+  isAudioPath,
+  getFileExt,
+  isDocumentPreviewPath,
+  formatSize,
+} from "@/lib/file-preview";
 
 interface Props {
   filePath: string;
@@ -20,30 +31,7 @@ interface FileData {
   size: number;
 }
 
-const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif"]);
-const AUDIO_EXTS = new Set(["mp3", "wav", "ogg", "oga", "opus", "m4a", "aac", "flac", "weba", "webm"]);
-const DOCUMENT_PREVIEW_EXTS = new Set(["pdf", "docx"]);
-const DOCX_PREVIEW_MAX_BYTES = 10 * 1024 * 1024;
-
-function isImagePath(filePath: string): boolean {
-  const base = getFileName(filePath);
-  const ext = base.toLowerCase().split(".").pop() ?? "";
-  return IMAGE_EXTS.has(ext);
-}
-
-function isAudioPath(filePath: string): boolean {
-  const base = getFileName(filePath);
-  const ext = base.toLowerCase().split(".").pop() ?? "";
-  return AUDIO_EXTS.has(ext);
-}
-
-function getFileExt(filePath: string): string {
-  return getFileName(filePath).toLowerCase().split(".").pop() ?? "";
-}
-
-function isDocumentPreviewPath(filePath: string): boolean {
-  return DOCUMENT_PREVIEW_EXTS.has(getFileExt(filePath));
-}
+// ── Download link (used by DocumentViewer, kept here) ──
 
 function DownloadLink({ filePath, label = "Download" }: { filePath: string; label?: string }) {
   const encoded = encodeFilePathForApi(filePath);
@@ -72,12 +60,6 @@ type DiffLine =
   | { type: "unchanged"; text: string; lineNo: number }
   | { type: "removed"; text: string; lineNo: number }
   | { type: "added"; text: string; lineNo: number };
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 // Myers diff — returns line-level unified diff
 function diffLines(oldLines: string[], newLines: string[]): DiffLine[] {
