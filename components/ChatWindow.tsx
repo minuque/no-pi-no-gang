@@ -256,6 +256,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   const {
     containerRef: scrollContainerRef,
     scrollToBottom,
+    shouldAutoScrollRef,
     isAtBottom,
   } = useChatScroll();
 
@@ -294,6 +295,14 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       scrollToBottom("auto");
     }
   }, [agentRunning, scrollToBottom]);
+
+  // Streaming-driven scroll: every time the streaming message content changes,
+  // scroll to bottom if the user hasn't manually scrolled up.
+  useEffect(() => {
+    if (streamState.isStreaming && streamState.streamingMessage && shouldAutoScrollRef.current) {
+      scrollToBottom("instant");
+    }
+  }, [streamState.streamingMessage, streamState.isStreaming, scrollToBottom, shouldAutoScrollRef]);
 
   const chatInputElement = (
     <ChatInput
