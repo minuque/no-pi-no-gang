@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentMessage, SessionInfo, SessionTreeNode, ToolResultMessage } from "@/lib/types";
-import { MessageView, ToolCallsGroup } from "./MessageView";
+import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, MINIMAP_WIDTH } from "./ChatMinimap";
 import { SessionLoading } from "./SessionLoading";
@@ -272,13 +272,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   }, [messages]);
 
   // Last assistant index (for Retry button)
-  const lastAssistantIdx = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "assistant") return i;
-    }
-    return -1;
-  }, [messages]);
-
   // Initial scroll to bottom when session loads with existing messages.
   const didInitialScroll = useRef(false);
   useEffect(() => { didInitialScroll.current = false; }, [session?.id]);
@@ -439,48 +432,91 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
           className="h-full overflow-y-auto [scrollbar-width:none]"
         >
           <div style={{ paddingTop: 16 }}>
-            {/* Completed messages (skip toolResult — rendered inline by MessageView) */}
-            {messages.map((msg, i) => {
-              if (msg.role === "toolResult") return null;
-              const entryId = entryIds[i];
-              const prevAssistantEntryId =
-                msg.role === "user" && i > 0 && messages[i - 1]?.role === "assistant"
-                  ? entryIds[i - 1]
-                  : undefined;
-              let showTimestamp = false;
-              if (msg.role === "assistant") {
-                showTimestamp = true;
-                for (let j = i + 1; j < messages.length; j++) {
-                  const r = messages[j]?.role;
-                  if (r === "user") break;
-                  if (r === "assistant") { showTimestamp = false; break; }
-                }
-                if (showTimestamp && streamState.isStreaming && i === messages.length - 1) {
-                  showTimestamp = false;
-                }
-              }
-              const isLastAssistant = msg.role === "assistant" && i === lastAssistantIdx && !streamState.isStreaming;
+            {/* Completed messages — merge consecutive toolCall-only assistants into the previous assistant with text */}
+            {(() => {
+              // Build merged render list: absorb toolCall-only assistants into the preceding assistant
+              const items: Array<{
+                msg: AgentMessage;
+                entryId: string;
+                originalIndex: number;
+              }> = [];
 
-              return (
-                <div key={i} className="mx-auto max-w-[1148px] px-4">
-                  <MessageView
-                    message={msg}
-                    toolResults={toolResultsMap}
-                    modelNames={modelNames}
-                    entryId={entryId}
-                    onFork={agentRunning || isNew || (i === 0 && msg.role === "user") ? undefined : handleFork}
-                    forking={forkingEntryId === entryId}
-                    onNavigate={agentRunning ? undefined : handleNavigate}
-                    prevAssistantEntryId={agentRunning ? undefined : prevAssistantEntryId}
-                    onEditContent={(content) => chatInputRef?.current?.insertIfEmpty(content)}
-                    showTimestamp={showTimestamp}
-                    prevTimestamp={i > 0 ? (messages[i - 1] as AgentMessage & { timestamp?: number }).timestamp : undefined}
-                    onRetry={isLastAssistant && !agentRunning ? handleRetry : undefined}
-                    onEditResend={msg.role === "user" && !agentRunning ? handleEditResend : undefined}
-                  />
-                </div>
-              );
-            })}
+              for (let i = 0; i < messages.length; i++) {
+                const msg = messages[i];
+                if (msg.role === "toolResult") continue;
+
+                if (msg.role === "assistant") {
+                  const content = msg.content;
+                  const isToolCallOnly = Array.isArray(content) &&
+                    content.length > 0 &&
+                    content.every((b: any) => b.type === "toolCall");
+
+                  if (isToolCallOnly) {
+                    const last = items[items.length - 1];
+                    if (last?.msg.role === "assistant") {
+                      const tagged = (content as any[]).map((b: any) =>
+                        b.type === "toolCall" ? { ...b, _sourceTs: msg.timestamp } : b
+                      );
+                      last.msg = {
+                        ...last.msg,
+                        content: [...(last.msg.content as any[]), ...tagged],
+                      };
+                      continue;
+                    }
+                  }
+                }
+
+                items.push({ msg, entryId: entryIds[i], originalIndex: i });
+              }
+
+              const lastAssistantMergedIdx = (() => {
+                for (let i = items.length - 1; i >= 0; i--) {
+                  if (items[i].msg.role === "assistant") return i;
+                }
+                return -1;
+              })();
+
+              return items.map(({ msg, entryId, originalIndex }, idx) => {
+                const prevItem = idx > 0 ? items[idx - 1] : undefined;
+                const nextItem = idx < items.length - 1 ? items[idx + 1] : undefined;
+
+                const prevAssistantEntryId =
+                  msg.role === "user" && prevItem?.msg.role === "assistant"
+                    ? prevItem.entryId
+                    : undefined;
+
+                let showTimestamp = false;
+                if (msg.role === "assistant") {
+                  showTimestamp = true;
+                  // Suppress if the next rendered message before a user is also an assistant
+                  if (nextItem?.msg.role === "assistant") showTimestamp = false;
+                  if (showTimestamp && streamState.isStreaming && idx === items.length - 1) {
+                    showTimestamp = false;
+                  }
+                }
+                const isLastAssistant = msg.role === "assistant" && idx === lastAssistantMergedIdx && !streamState.isStreaming;
+
+                return (
+                  <div key={entryId ?? originalIndex} className="mx-auto max-w-[1148px] px-4">
+                    <MessageView
+                      message={msg}
+                      toolResults={toolResultsMap}
+                      modelNames={modelNames}
+                      entryId={entryId}
+                      onFork={agentRunning || isNew || (idx === 0 && msg.role === "user") ? undefined : handleFork}
+                      forking={forkingEntryId === entryId}
+                      onNavigate={agentRunning ? undefined : handleNavigate}
+                      prevAssistantEntryId={agentRunning ? undefined : prevAssistantEntryId}
+                      onEditContent={(content) => chatInputRef?.current?.insertIfEmpty(content)}
+                      showTimestamp={showTimestamp}
+                      prevTimestamp={prevItem?.msg.timestamp as number | undefined}
+                      onRetry={isLastAssistant && !agentRunning ? handleRetry : undefined}
+                      onEditResend={msg.role === "user" && !agentRunning ? handleEditResend : undefined}
+                    />
+                  </div>
+                );
+              });
+            })()}
 
             {/* Streaming content */}
             {streamState.isStreaming && streamState.streamingMessage && (

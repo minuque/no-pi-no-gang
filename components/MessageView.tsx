@@ -448,17 +448,20 @@ function AssistantMessageView({
   // Tool call durations derived from session file timestamps (accurate for completed messages)
   // assistant message timestamp = when generation ended = when tools started running
   // toolResult timestamp = when tool execution finished
+  // _sourceTs: when a toolCall was merged from another message, use that message's timestamp
   const toolCallDurations = useMemo<Map<string, number>>(() => {
     const map = new Map<string, number>();
     if (!toolResults || !message.timestamp) return map;
     for (const [callId, result] of toolResults) {
-      if (result.timestamp && message.timestamp) {
-        const secs = Math.round((result.timestamp - message.timestamp) / 1000);
+      if (result.timestamp) {
+        const block = blocks.find(b => b.type === "toolCall" && (b as ToolCallContent).toolCallId === callId) as ToolCallContent | undefined;
+        const startTs = block?._sourceTs ?? message.timestamp;
+        const secs = Math.round((result.timestamp - startTs) / 1000);
         if (secs > 0) map.set(callId, secs);
       }
     }
     return map;
-  }, [toolResults, message.timestamp]);
+  }, [toolResults, message.timestamp, blocks]);
 
   const textContent = blocks
     .filter((b): b is TextContent => b.type === "text")
@@ -521,9 +524,7 @@ function AssistantMessageView({
       onMouseLeave={() => setHovered(false)}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {blocks.map((block, i) => (
-          <BlockView key={i} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(i) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} />
-        ))}
+        <BlockView blocks={blocks} toolResults={toolResults} isStreaming={isStreaming} streamingDurations={streamingDurations} thinkingDurationFromFile={thinkingDurationFromFile} toolCallDurations={toolCallDurations} />
       </div>
 
       <div style={{
@@ -593,20 +594,57 @@ function AssistantMessageView({
   );
 }
 
-function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCallDurations }: { block: AssistantContentBlock; toolResults?: Map<string, ToolResultMessage>; isStreaming?: boolean; streamingDuration?: number; toolCallDurations?: Map<string, number> }) {
-  if (block.type === "text") {
-    return <TextBlock block={block as TextContent} isStreaming={isStreaming} />;
+function BlockView({ blocks, toolResults, isStreaming, streamingDurations, thinkingDurationFromFile, toolCallDurations }: {
+  blocks: AssistantContentBlock[];
+  toolResults?: Map<string, ToolResultMessage>;
+  isStreaming?: boolean;
+  streamingDurations: Map<number, number>;
+  thinkingDurationFromFile?: number;
+  toolCallDurations: Map<string, number>;
+}) {
+  const elements: ReactNode[] = [];
+  let toolCallRun: { block: ToolCallContent; idx: number }[] = [];
+
+  const flushToolCalls = () => {
+    if (toolCallRun.length === 0) return;
+    if (toolCallRun.length === 1) {
+      const { block, idx } = toolCallRun[0];
+      const result = toolResults?.get(block.toolCallId);
+      const duration = toolCallDurations.get(block.toolCallId);
+      elements.push(
+        <ToolCallBlock key={idx} block={block} result={result} isRunning={isStreaming && !result} duration={duration} />
+      );
+    } else {
+      elements.push(
+        <ToolCallsGroup
+          key={`group-${toolCallRun[0].idx}`}
+          blocks={toolCallRun.map(tc => tc.block)}
+          toolResults={toolResults}
+          isStreaming={isStreaming}
+          toolCallDurations={toolCallDurations}
+        />
+      );
+    }
+    toolCallRun = [];
+  };
+
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i];
+    if (block.type === "toolCall") {
+      toolCallRun.push({ block: block as ToolCallContent, idx: i });
+    } else {
+      flushToolCalls();
+      if (block.type === "text") {
+        elements.push(<TextBlock key={i} block={block as TextContent} isStreaming={isStreaming} />);
+      } else if (block.type === "thinking") {
+        const dur = streamingDurations.get(i) ?? thinkingDurationFromFile;
+        elements.push(<ThinkingBlock key={i} block={block as ThinkingContent} duration={dur} isStreaming={isStreaming} />);
+      }
+    }
   }
-  if (block.type === "thinking") {
-    return <ThinkingBlock block={block as ThinkingContent} duration={streamingDuration} isStreaming={isStreaming} />;
-  }
-  if (block.type === "toolCall") {
-    const tc = block as ToolCallContent;
-    const result = toolResults?.get(tc.toolCallId);
-    const duration = toolCallDurations?.get(tc.toolCallId);
-    return <ToolCallBlock block={tc} result={result} isRunning={isStreaming && !result} duration={duration} />;
-  }
-  return null;
+  flushToolCalls();
+
+  return <>{elements}</>;
 }
 
 function TextBlock({ block, isStreaming }: { block: TextContent; isStreaming?: boolean }) {
@@ -904,7 +942,15 @@ function ThinkingBlock({ block, duration, isStreaming }: { block: ThinkingConten
 }
 
 
-function ToolCallBlock({ block, result, isRunning, duration, group }: { block: ToolCallContent; result?: ToolResultMessage; isRunning?: boolean; duration?: number; group?: boolean }) {
+function ToolCallBlock({ block, result, isRunning, duration, group, isFirst, isLast }: {
+  block: ToolCallContent;
+  result?: ToolResultMessage;
+  isRunning?: boolean;
+  duration?: number;
+  group?: boolean;
+  isFirst?: boolean;
+  isLast?: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const inputStr = JSON.stringify(block.input, null, 2);
 
@@ -915,10 +961,14 @@ function ToolCallBlock({ block, result, isRunning, duration, group }: { block: T
   const resultIsEmpty = resultText === null ? false : (resultText.trim() === "(no output)" || resultText.trim() === "");
   const isError = result?.isError ?? false;
 
+  const br = group
+    ? isFirst && isLast ? 7 : isFirst ? "7px 7px 0 0" : isLast ? "0 0 7px 7px" : 0
+    : 7;
+
   return (
     <div
       style={{
-        borderRadius: 7,
+        borderRadius: br,
         overflow: "hidden",
         fontSize: 12,
         borderTop: "1px solid var(--border)",
@@ -941,19 +991,19 @@ function ToolCallBlock({ block, result, isRunning, duration, group }: { block: T
           border: "none",
           color: "var(--text-muted)",
           cursor: "pointer",
-          fontSize: 12,
+          fontSize: 13,
           textAlign: "left",
           minWidth: 0,
         }}
       >
-        <span style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 11, flexShrink: 0 }}>
+        <span style={{ color: result ? (isError ? "var(--danger)" : "var(--success)") : "var(--text-muted)", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 12, flexShrink: 0 }}>
           {block.toolName}
         </span>
-        <span style={{ color: "var(--text-dim)", fontFamily: "var(--font-mono)", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+        <span style={{ color: "var(--text-dim)", fontFamily: "var(--font-mono)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
           {getToolPreview(block)}
         </span>
         {duration !== undefined && (
-          <span style={{ fontSize: 11, color: "var(--text-dim)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
+          <span style={{ fontSize: 12, color: "var(--text-dim)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
         )}
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--text-dim)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
           <polyline points="2 3.5 5 6.5 8 3.5" />
@@ -962,7 +1012,7 @@ function ToolCallBlock({ block, result, isRunning, duration, group }: { block: T
 
       {/* ── Expanded: input args + paired result ── */}
       {expanded && (
-        <div style={{ animation: "fadeInUp 200ms ease" }}>
+        <div style={{ animation: "fade-in-up 200ms ease" }}>
         <pre
           style={{
             margin: 0,
@@ -995,43 +1045,113 @@ function ToolCallBlock({ block, result, isRunning, duration, group }: { block: T
 
 
 
-export function ToolCallsGroup({ blocks, blockIndices, toolResults, isStreaming, streamingDurations, thinkingDurationFromFile, toolCallDurations }: {
-  blocks: any[];
-  blockIndices: number[];
+export function ToolCallsGroup({ blocks, toolResults, isStreaming, toolCallDurations }: {
+  blocks: ToolCallContent[];
   toolResults?: Map<string, ToolResultMessage>;
   isStreaming?: boolean;
-  streamingDurations?: Map<number, number>;
-  thinkingDurationFromFile?: number;
   toolCallDurations?: Map<string, number>;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const mountRef = useRef(Date.now());
+  const [elapsed, setElapsed] = useState(0);
+
+  // Real-time timer during streaming
+  useEffect(() => {
+    if (!isStreaming) { setElapsed(Math.round((Date.now() - mountRef.current) / 1000)); return; }
+    const tick = () => setElapsed(Math.round((Date.now() - mountRef.current) / 1000));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [isStreaming]);
+
+  const allDone = blocks.every(b => toolResults?.has(b.toolCallId));
+  const showTimer = elapsed > 0;
+
   return (
     <div
       style={{
-        paddingLeft: 12,
-        borderLeft: "2px solid var(--border)",
+        paddingLeft: 11,
+        borderLeft: "1.5px solid var(--border)",
         display: "flex",
         flexDirection: "column",
       }}
     >
-      {blocks.map((block, i) => {
-        const result = toolResults?.get(block.toolCallId);
-        return (
-          <div
-            key={i}
-            style={{
-              marginTop: i === 0 ? 0 : -1,
-            }}
-          >
-            <ToolCallBlock
-              block={block}
-              result={result}
-              isRunning={isStreaming && !result}
-              duration={toolCallDurations?.get(block.toolCallId)}
-              group={true}
-            />
-          </div>
-        );
-      })}
+      {/* ── Group header ── */}
+      <button
+        onClick={() => setExpanded(v => !v)}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "5px 2px",
+          marginLeft: -11,
+          paddingLeft: 11,
+          background: "none",
+          border: "none",
+          borderRadius: 5,
+          color: hovered ? "var(--text)" : "var(--text-dim)",
+          cursor: "pointer",
+          fontSize: 12,
+          fontFamily: "var(--font-mono)",
+          textAlign: "left",
+          width: `calc(100% + 11px)`,
+          transition: "color 0.15s ease",
+        }}
+      >
+        <svg
+          width="9" height="9" viewBox="0 0 10 10" fill="none"
+          stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+          style={{ flexShrink: 0, transform: expanded ? "rotate(90deg)" : "none", transition: "transform 0.15s ease" }}
+        >
+          <polyline points="3 2 6 5 3 8" />
+        </svg>
+        <span
+          key={blocks.length}
+          style={{ fontWeight: 600, color: "var(--text)", flexShrink: 0, animation: "fade-in-up 200ms ease" }}
+        >
+          {blocks.length} tools
+        </span>
+        <span style={{ flex: 1 }} />
+        {showTimer && (
+          <span style={{
+            flexShrink: 0, fontVariantNumeric: "tabular-nums",
+            color: "var(--text-dim)", opacity: 0.5,
+            ...(isStreaming && !allDone ? { animation: "pulse 1.5s ease-in-out infinite" } : {}),
+          }}>
+            {elapsed}s
+          </span>
+        )}
+      </button>
+
+      {/* ── Expanded items (conditionally rendered, mount triggers fade-in-up) ── */}
+      {expanded && (
+        <div style={{ display: "flex", flexDirection: "column", animation: "fade-in-up 180ms ease" }}>
+          {blocks.map((block, i) => {
+            const result = toolResults?.get(block.toolCallId);
+            return (
+              <div
+                key={i}
+                style={{
+                  marginTop: i === 0 ? 0 : -1,
+                }}
+              >
+                <ToolCallBlock
+                  block={block}
+                  result={result}
+                  isRunning={isStreaming && !result}
+                  duration={toolCallDurations?.get(block.toolCallId)}
+                  group={true}
+                  isFirst={i === 0}
+                  isLast={i === blocks.length - 1}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

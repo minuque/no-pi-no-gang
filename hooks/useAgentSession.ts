@@ -171,7 +171,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (loadGenRef.current !== gen) return null;
       setData(d);
       setActiveLeafId(d.leafId);
-      setMessages(d.context.messages);
+      setMessages(mergeToolCallMessages(d.context.messages));
       setEntryIds(d.context.entryIds ?? []);
       setCurrentModelOverride(null);
       setError(null);
@@ -200,7 +200,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json() as { context: { messages: AgentMessage[]; entryIds: string[] } };
-      setMessages(d.context.messages);
+      setMessages(mergeToolCallMessages(d.context.messages));
       setEntryIds(d.context.entryIds ?? []);
     } catch (e) {
       console.error("Failed to load context:", e);
@@ -249,6 +249,34 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     agentRunningRef.current = agentRunning;
   }, [agentRunning]);
 
+  const isToolCallOnly = (msg: AgentMessage): boolean => {
+    if (msg.role !== "assistant") return false;
+    const content = msg.content;
+    return Array.isArray(content) &&
+      content.length > 0 &&
+      content.every((b: any) => b.type === "toolCall");
+  };
+
+  const mergeToolCallMessages = (msgs: AgentMessage[]): AgentMessage[] => {
+    const result: AgentMessage[] = [];
+    for (const msg of msgs) {
+      if (!isToolCallOnly(msg)) { result.push(msg); continue; }
+      const last = result[result.length - 1];
+      if (last?.role === "assistant") {
+        const tagged = (msg.content as any[]).map((b: any) =>
+          b.type === "toolCall" ? { ...b, _sourceTs: msg.timestamp } : b
+        );
+        result[result.length - 1] = {
+          ...last,
+          content: [...(last.content as any[]), ...tagged],
+        };
+      } else {
+        result.push(msg);
+      }
+    }
+    return result;
+  };
+
   const handleAgentEvent = useCallback((event: AgentEvent) => {
     switch (event.type) {
       case "agent_start":
@@ -292,7 +320,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       case "message_end": {
         const completed = event.message as AgentMessage | undefined;
         if (completed && completed.role !== "user") {
-          setMessages((prev) => [...prev, normalizeToolCalls(completed)]);
+          setMessages((prev) => mergeToolCallMessages([...prev, normalizeToolCalls(completed)]));
         }
         dispatch({ type: "reset" });
         setAgentPhase({ kind: "waiting_model" });
