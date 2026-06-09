@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentMessage, SessionInfo, SessionTreeNode, ToolResultMessage } from "@/lib/types";
-import { MessageView } from "./MessageView";
+import { MessageView, ToolCallsGroup } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, MINIMAP_WIDTH } from "./ChatMinimap";
 import { SessionLoading } from "./SessionLoading";

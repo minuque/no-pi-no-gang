@@ -283,8 +283,6 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
         }}>
           <div style={{
             display: "flex", gap: 3,
-            opacity: hovered ? 1 : 0,
-            pointerEvents: hovered ? "auto" : "none",
             transition: "opacity 0.12s",
           }}>
             {onEditResend && (
@@ -312,6 +310,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
                 Edit
               </button>
             )}
+          </div>
             <button
               onClick={copyContent}
               title="Copy message"
@@ -341,7 +340,6 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
               )}
               {copied ? "Copied" : "Copy"}
             </button>
-          </div>
           {(canFork || canNavigate) && (
             <div style={{
               display: "flex", gap: 3,
@@ -544,8 +542,6 @@ function AssistantMessageView({
               cursor: "pointer",
               fontSize: 11, fontWeight: 400,
               whiteSpace: "nowrap",
-              opacity: hovered ? 1 : 0,
-              pointerEvents: hovered ? "auto" : "none",
               transition: "opacity 0.12s, color 0.12s",
             }}
             onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
@@ -571,8 +567,6 @@ function AssistantMessageView({
               cursor: "pointer",
               fontSize: 11, fontWeight: 400,
               whiteSpace: "nowrap",
-              opacity: hovered ? 1 : 0,
-              pointerEvents: hovered ? "auto" : "none",
               transition: "opacity 0.12s, color 0.12s",
             }}
             onMouseEnter={(e) => { if (!copied) e.currentTarget.style.color = "var(--accent)"; }}
@@ -910,7 +904,7 @@ function ThinkingBlock({ block, duration, isStreaming }: { block: ThinkingConten
 }
 
 
-function ToolCallBlock({ block, result, isRunning, duration }: { block: ToolCallContent; result?: ToolResultMessage; isRunning?: boolean; duration?: number }) {
+function ToolCallBlock({ block, result, isRunning, duration, group }: { block: ToolCallContent; result?: ToolResultMessage; isRunning?: boolean; duration?: number; group?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const inputStr = JSON.stringify(block.input, null, 2);
 
@@ -927,7 +921,10 @@ function ToolCallBlock({ block, result, isRunning, duration }: { block: ToolCall
         borderRadius: 7,
         overflow: "hidden",
         fontSize: 12,
-        border: "1px solid var(--border)",
+        borderTop: "1px solid var(--border)",
+        borderRight: "1px solid var(--border)",
+        borderBottom: "1px solid var(--border)",
+        borderLeft: group ? "none" : "1px solid var(--border)",
         background: "var(--bg-panel)",
       }}
     >
@@ -995,6 +992,50 @@ function ToolCallBlock({ block, result, isRunning, duration }: { block: ToolCall
     </div>
   );
 }
+
+
+
+export function ToolCallsGroup({ blocks, blockIndices, toolResults, isStreaming, streamingDurations, thinkingDurationFromFile, toolCallDurations }: {
+  blocks: any[];
+  blockIndices: number[];
+  toolResults?: Map<string, ToolResultMessage>;
+  isStreaming?: boolean;
+  streamingDurations?: Map<number, number>;
+  thinkingDurationFromFile?: number;
+  toolCallDurations?: Map<string, number>;
+}) {
+  return (
+    <div
+      style={{
+        paddingLeft: 12,
+        borderLeft: "2px solid var(--border)",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {blocks.map((block, i) => {
+        const result = toolResults?.get(block.toolCallId);
+        return (
+          <div
+            key={i}
+            style={{
+              marginTop: i === 0 ? 0 : -1,
+            }}
+          >
+            <ToolCallBlock
+              block={block}
+              result={result}
+              isRunning={isStreaming && !result}
+              duration={toolCallDurations?.get(block.toolCallId)}
+              group={true}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 
 function PairedResult({ text, isEmpty, isError }: {
   text: string;

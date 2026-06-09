@@ -39,13 +39,13 @@ html.dark {
    *   --surface-raised = inactive tab → 弹窗/hover 面板
    *   --surface-deep   = activity bar → 最深层 (图标列/窄侧栏)
    * ════════════════════════════════════════════════════════════════════ */
-  --bg: #1e1e1e;
+  --bg: #151517;
   /* editor.background */
-  --surface: #252526;
+  --surface: #1b1b1c;
   /* sideBar.background */
-  --surface-raised: #2d2d2d;
+  --surface-raised: #222224;
   /* tab.inactiveBackground */
-  --surface-deep: #333333;
+  --surface-deep: #111112;
   /* activityBar.background — 图标专用深色 */
   --surface-warm: var(--surface);
   /* schema 兼容 */
@@ -66,8 +66,8 @@ html.dark {
    *   #6a6a6a / #1e1e1e =  2.5:1 (装饰性文字)
    * ════════════════════════════════════════════════════════════════════ */
   --fg: #d4d4d4;
-  --fg-2: #bbbbbb;
-  --muted: #858585;
+  --fg-2: #aaaaaa;
+  --muted: #707070;
   --meta: #6a6a6a;
 
   /* ════════════════════════════════════════════════════════════════════
@@ -78,8 +78,9 @@ html.dark {
    *   #474747  tab.border
    *   #333333  用于更细微的分隔 (如终端分割线)
    * ════════════════════════════════════════════════════════════════════ */
-  --border: #3e3e42;
-  --border-soft: #333333;
+  --border: #2d2d2e;
+  --border-soft: #232324;
+  --border-muted: #1e1e1f;
 
   /* ════════════════════════════════════════════════════════════════════
    * ACCENT — VSCode 蓝 #007acc
@@ -106,14 +107,11 @@ html.dark {
   --accent-focus: #007fd4;
   /* focusBorder */
   /* 保留 schema 兼容的变体名 — VSCode 风格用固定色，不运算 */
-  --accent-glow: none;
   --accent-soft: #094771;
   /* 深蓝选中底色 */
-  --accent-subtle: #062f4a;
   /* list.focusBackground — 更深的蓝色 */
   --accent-border: #264f78;
   /* 选中/焦点边框 */
-  --accent-ring: #007fd4;
   /* 同 focusBorder */
 
   /* ════════════════════════════════════════════════════════════════════
@@ -236,7 +234,7 @@ html.dark {
    *   标题栏 = #323233 (VSCode 原生 titleBar.activeBackground)
    * 这里用 inactive tab 色做导航底色，用 border 区分。
    */
-  --ui-topnav-bg: #2d2d2d;
+  --ui-topnav-bg: #1b1b1c;
   --ui-topnav-border: 0.5px solid var(--border);
   --ui-topnav-height: 40px;
 
@@ -273,17 +271,17 @@ html.dark {
    */
   --ui-chatlist-bg: var(--surface);
   --ui-chatlist-width: var(--chat-list);
-  --ui-chatlist-item-hover: #2a2d2e;
+  --ui-chatlist-item-hover: #252526;
   --ui-chatlist-item-active: #094771;
 
   /* --- 消息流 ---
    * Claude/Codex 风格: 用户气泡靠底色+微阴影区分，无可见边框;
    *   Agent 消息 = 主底纯文本、左边 accent 线
    */
-  --ui-msg-user-bg: #2d2d2d;
+  --ui-msg-user-bg: #252527;
   --ui-msg-user-border: none;
   --ui-msg-user-shadow: 0 1px 3px rgba(0,0,0,0.22);
-  --ui-msg-user-hover-bg: #323232;
+  --ui-msg-user-hover-bg: #2a2a2c;
   --ui-msg-agent-accent-line: 2px solid var(--accent);
   --ui-msg-padding: 12px 16px;
   --ui-msg-radius: 12px;
@@ -294,7 +292,7 @@ html.dark {
    * terminal.background = editor.background = #1e1e1e
    * 代码块底色跟主背景一致，用微妙的边框区分，行号列略深。
    */
-  --ui-code-bg: #1e1e1e;
+  --ui-code-bg: #121213;
   --ui-code-border: 1px solid var(--border);
   --ui-code-accent-stripe: 2px solid var(--accent);
   --ui-code-gutter: #1a1a1a;
@@ -304,8 +302,8 @@ html.dark {
    * input.background = #3c3c3c
    * 比主底亮的独立输入区，focus 用 accent-focus 边框 + 微光环。
    */
-  --ui-input-area-bg: var(--surface);
-  --ui-input-bg: #3c3c3c;
+  --ui-input-area-bg: #1b1b1c;
+  --ui-input-bg: #262628;
   --ui-input-border: 1px solid #3c3c3c;
   /* input.border 与 bg 同色 */
   --ui-input-border-focus: 1px solid var(--accent-focus);
@@ -330,8 +328,8 @@ html.dark {
    * scrollbarSlider.background = #79797966 (~ #424242 ~40%)
    * scrollbarSlider.hoverBackground = #646464b3
    */
-  --ui-scrollbar-thumb: #424242;
-  --ui-scrollbar-hover: #555555;
+  --ui-scrollbar-thumb: #333;
+  --ui-scrollbar-hover: #444;
   --ui-scrollbar-track: transparent;
 
   /* --- 选中文字 ---
@@ -353,7 +351,7 @@ html.dark {
   /* --- Badge / pill ---
    * badge.background = #4d4d4d, badge.foreground = #ffffff
    */
-  --ui-badge-bg: #4d4d4d;
+  --ui-badge-bg: #333;
   --ui-badge-fg: #ffffff;
 
   /* --- TPS 速率 badge (ChatInput 流式速度指示) ---
@@ -372,39 +370,39 @@ html.dark {
    * toolbar hover = menubar.selectionBackground = #3c3c3c
    */
   --ui-toolbar-bg: var(--bg);
-  --ui-toolbar-hover: #3c3c3c;
+  --ui-toolbar-hover: #252526;
 
   /* --- Tooltip / popover ---
    * editorHoverWidget.background = #252526
    * editorHoverWidget.border = #454545
    */
-  --ui-tooltip-bg: #252526;
+  --ui-tooltip-bg: #222224;
   --ui-tooltip-fg: var(--fg);
-  --ui-tooltip-border: 1px solid #454545;
+  --ui-tooltip-border: 1px solid #2d2d2e;
   --ui-tooltip-shadow: var(--elev-raised);
 
   /* --- 下拉菜单 / context menu ---
    * menu.background = #252526
    * menu.selectionBackground = #094771
    */
-  --ui-dropdown-bg: #252526;
+  --ui-dropdown-bg: #222224;
   --ui-dropdown-hover: #094771;
-  --ui-dropdown-border: 1px solid #454545;
+  --ui-dropdown-border: 1px solid #2d2d2e;
 
   /* --- 模态 / 对话框 ---
    * editorWidget.background = #252526
    */
-  --ui-modal-bg: #252526;
+  --ui-modal-bg: #222224;
   --ui-modal-backdrop: rgba(0, 0, 0, 0.5);
 
   /* --- Tab / 标签切换 ---
    * tab.activeBackground = #1e1e1e, tab.inactiveBackground = #2d2d2d
    * tab.activeBorderTop = #007acc
    */
-  --ui-tab-active-bg: #1e1e1e;
-  --ui-tab-inactive-bg: #2d2d2d;
+  --ui-tab-active-bg: #151517;
+  --ui-tab-inactive-bg: #222224;
   --ui-tab-active-border: var(--accent);
-  --ui-tab-hover-bg: #2a2d2e;
+  --ui-tab-hover-bg: #252526;
 
   /* --- 链接 ---
    * textLink.foreground = #3794ff, textLink.activeForeground = #3794ff
@@ -427,15 +425,15 @@ html.dark {
    * COMPAT — 旧组件引用的别名
    * ════════════════════════════════════════════════════════════════════ */
   --bg-panel: var(--surface);
-  --bg-hover: #2a2d2e;
-  --bg-selected: #094771;
+  --bg-hover: #252526;
+  --bg-selected: #282829;
   --text: var(--fg);
   --text-muted: var(--fg-2);
   --text-dim: var(--muted);
   --user-bg: var(--ui-msg-user-bg);
   --assistant-bg: var(--bg);
   --tool-bg: var(--surface);
-  --bg-subtle: rgba(255, 255, 255, 0.07);
+  --bg-subtle: rgba(255, 255, 255, 0.05);
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.30);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.25);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.50), 0 2px 4px rgba(0, 0, 0, 0.30);
