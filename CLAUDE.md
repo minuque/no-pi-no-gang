@@ -15,18 +15,31 @@ npm run dev   # 端口 7777
 ## 架构
 
 ```
-浏览器                   Next.js 服务端               AgentSession（进程内）
-  │                        │                               │
-  ├─ GET /api/sessions ────▶ 读取 ~/.pi/agent/sessions/    │
-  ├─ GET /api/sessions/[id] 直接读取 .jsonl 文件            │
-  │                        │                               │
-  ├─ 发送消息 ─────────────▶ POST /api/agent/[id]          │
-  │                        │   startRpcSession() ─────────▶│ createAgentSession()
-  │                        │   session.send(cmd) ─────────▶│ session.prompt()
-  │                        │                               │
-  ├─ SSE 连接 ─────────────▶ GET /api/agent/[id]/events    │
-  │                        │   session.onEvent() ◀─────────│ session.subscribe()
-  │◀── data: {...} ─────────│                               │
+┌──────────────┐      ┌────────────────────────┐      ┌──────────────────┐
+│    浏览器     │      │     Next.js 服务端      │      │   AgentSession   │
+│              │      │                        │      │    （进程内）     │
+└──────┬───────┘      └───────────┬────────────┘      └────────┬─────────┘
+       │                          │                            │
+       │  [读取]  GET /sessions   │                            │
+       │ ────────────────────────▶│  session-reader            │
+       │                          │  parse + normalize         │
+       │ ◀────────────────────────│                            │
+       │          JSON            │                            │
+       │                          │                            │
+       │  [发送]  POST /agent     │                            │
+       │ ────────────────────────▶│  rpc-manager               │
+       │                          │  startRpcSession() ───────▶│  prompt()
+       │                          │  session.send(cmd) ───────▶│  fork()
+       │                          │                            │  navigate()
+       │  [流式]  GET /events     │                            │
+       │ ────────────────────────▶│  session.onEvent() ◀───────│  subscribe()
+       │ ◀────────────────────────│                            │
+       │        SSE stream        │                            │
+
+持久层  ~/.pi/agent/
+       ├── sessions/<cwd>/<ts>_<uuid>.jsonl   ← 会话文件（reader 读，AgentSession 读写）
+       ├── settings.json                      ← 用户设置 & 默认模型
+       └── models.json                        ← 可用模型列表
 ```
 
 **浏览会话**（只读）：通过 `lib/session-reader.ts` 直接读取 `.jsonl` 文件——不创建 AgentSession。
