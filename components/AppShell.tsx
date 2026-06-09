@@ -505,7 +505,7 @@ export function AppShell() {
             style={{
               display: "flex", alignItems: "center", justifyContent: "center",
               width: 36, height: 36, padding: 0,
-              background: "none", border: "none", borderRight: "1px solid var(--border)",
+              background: "none", border: "none",
               color: "var(--text-muted)", cursor: "pointer", flexShrink: 0, transition: "color 0.12s",
             }}
             onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
@@ -532,7 +532,7 @@ export function AppShell() {
             style={{
               display: "flex", alignItems: "center", justifyContent: "center",
               width: 36, height: 36, padding: 0,
-              background: "none", border: "none", borderRight: "1px solid var(--border)",
+              background: "none", border: "none",
               color: "var(--text-muted)", cursor: "pointer", flexShrink: 0, transition: "color 0.12s",
             }}
             onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
@@ -571,9 +571,8 @@ export function AppShell() {
                   display: "flex", alignItems: "center", gap: 6,
                   height: "100%", padding: "0 12px",
                   background: activeTopPanel === "system" ? "var(--bg-selected)" : "none",
-                  border: "none",
+                 border: "none",
                   borderTop: activeTopPanel === "system" ? "2px solid var(--accent)" : "2px solid transparent",
-                  borderRight: "1px solid var(--border)",
                   cursor: "pointer",
                   color: activeTopPanel === "system" ? "var(--text)" : "var(--text-muted)",
                   fontSize: 11, whiteSpace: "nowrap", transition: "color 0.1s, background 0.1s",
@@ -591,16 +590,47 @@ export function AppShell() {
               </button>
             </div>
           )}
-          {/* Workspace panel toggle — right-aligned in top bar */}
+          {/* Right-side toolbar */}
           {showChat && (
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}>
+            <button
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+              }}
+              title={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              aria-pressed={isDark}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: 36, height: 36, padding: 0,
+                background: "none", border: "none",
+                color: "var(--text-muted)", cursor: "pointer", flexShrink: 0, transition: "color 0.12s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+            >
+              {isDark ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              )}
+            </button>
             <button
               onClick={() => setWorkspacePanelOpen((v) => !v)}
               title={workspacePanelOpen ? "Close workspace panel" : "Open workspace panel"}
               style={{
-                marginLeft: "auto",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 width: 36, height: 36, padding: 0,
-                background: "none", border: "none", borderLeft: "1px solid var(--border)",
+                background: "none", border: "none",
                 color: workspacePanelOpen ? "var(--text)" : "var(--text-muted)",
                 cursor: "pointer", flexShrink: 0, transition: "color 0.12s",
               }}
@@ -611,8 +641,9 @@ export function AppShell() {
                 <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="15" y1="3" x2="15" y2="21" />
               </svg>
             </button>
+            </div>
           )}
-          {/* Top panel dropdown — shared, only one active at a time */}
+          {/* Top panel dropdown/* Top panel dropdown — shared, only one active at a time */}
           {activeTopPanel && topPanelPos && (
             <div style={{
               position: "fixed",
@@ -678,20 +709,25 @@ export function AppShell() {
             />
           ) : showPlaceholder ? (
             activeCwd ? (
-              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 15 }}>
-                Select a session from the sidebar
+              <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, userSelect: "none", pointerEvents: "none" }}>
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-dim)", opacity: 0.5 }}>
+                  <rect x="2" y="3" width="20" height="14" rx="2" />
+                  <line x1="8" y1="21" x2="16" y2="21" />
+                  <line x1="12" y1="17" x2="12" y2="21" />
+                </svg>
+                <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>No session selected</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6, textAlign: "center", maxWidth: 320 }}>
+                  Pick a session from the sidebar or&#10;enter a message to start a new one.
+                </div>
               </div>
             ) : (
-              <div style={{ position: "absolute", top: 12, left: 12, display: "flex", alignItems: "flex-start", gap: 8, userSelect: "none", pointerEvents: "none" }}>
-                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7, flexShrink: 0 }}>
-                  <line x1="20" y1="12" x2="4" y2="12" /><polyline points="10 6 4 12 10 18" />
+              <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, userSelect: "none", pointerEvents: "none" }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent)", opacity: 0.6 }}>
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                 </svg>
-                <div>
-                  <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>Get Started</div>
-                  <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.8 }}>
-                    <span style={{ color: "var(--text-dim)", marginRight: 6 }}>1.</span>Select a project directory from the sidebar<br />
-                    <span style={{ color: "var(--text-dim)", marginRight: 6 }}>2.</span>Add models via <strong style={{ color: "var(--text)" }}>Settings</strong> at the bottom
-                  </div>
+                <div style={{ fontSize: 20, fontWeight: 600, color: "var(--text)" }}>Pi Agent Web</div>
+                <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, textAlign: "center", maxWidth: 360 }}>
+                  Select a project directory from the sidebar,&#10;then add models in <strong style={{ color: "var(--text)", fontWeight: 500 }}>Settings</strong> to get started.
                 </div>
               </div>
             )

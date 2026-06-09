@@ -43,9 +43,9 @@ html.light {
    *   --surface-raised = inactive tab → 弹窗/hover 面板
    *   --surface-deep   = 最深亮色 → 图标列/窄侧栏
    * ════════════════════════════════════════════════════════════════════ */
-  --bg: #fafbfc;
+  --bg: #f5f5f5;
   /* editor.background + 冷: R=250 G=251 B=252 (+2) */
-  --surface: #f2f3f6;
+  --surface: #eeeeee;
   /* sideBar.background + 冷: R=242 G=243 B=246 (+4) */
   --surface-raised: #e9eaf0;
   /* tab.inactiveBackground + 冷: R=233 G=234 B=240 (+7) */
@@ -78,8 +78,9 @@ html.light {
    *   #d4d4d8  panel.border + 冷 (+4)
    *   #e5e5e9  更细分隔 + 冷 (+4)
    * ════════════════════════════════════════════════════════════════════ */
-  --border: #d4d4d8;
+  --border: #d4d4d4;
   --border-soft: #e5e5e9;
+  --border-muted: #ebebef;
 
   /* ════════════════════════════════════════════════════════════════════
    * ACCENT — VSCode 蓝 #007acc (跨主题一致)
@@ -109,10 +110,7 @@ html.light {
   /* list.activeSelectionBackground */
   --accent-focus: #005fb8;
   /* focusBorder */
-  --accent-glow: none;
   --accent-soft: #e8f4fd;
-  /* 浅蓝选中底色 */
-  --accent-subtle: #d0e8f7;
   /* list.focusBackground — 稍深蓝 */
   --accent-border: #add6ff;
   /* 选中/焦点边框 */
@@ -127,9 +125,9 @@ html.light {
    *   #946800  深琥珀 — 亮底需要更深的警告色保证对比度
    *   #d1242f  冷红 — terminal 红 (比暖红 #ff4444 更克制)
    * ════════════════════════════════════════════════════════════════════ */
-  --success: #0a7e3e;
-  --warn: #946800;
-  --danger: #d1242f;
+  --success: #1a8d4a;
+  --warn: #a67c00;
+  --danger: #c7423e;
 
   /* ════════════════════════════════════════════════════════════════════
    * TYPOGRAPHY — 与 dark 主题相同字体栈
