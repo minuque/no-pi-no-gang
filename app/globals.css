@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 @import "./theme/tokens-dark.css";
 @import "./theme/tokens-light.css";
 
@@ -486,34 +486,55 @@ span.linenumber {
 
 /* ── Resize handles ─────────────────────────────────────────────────────
  *
- * Each handle is a 4px-wide flex child with a 20px invisible hit area
- * (::before, left/right -8px).  The dividing line lives on ::after and
- * is always painted in --border; on hover it shifts to --accent.
+ * Inline handles are real flex children, used for inner panel splits like
+ * tree/preview. Overlay handles are absolute-positioned sashes for the app
+ * shell edges so they do not consume layout width or squeeze toolbar content.
  *
- * Panels next to a handle must NOT draw their own border — the handle
- * owns the only line, so there is never z-order fighting between a
- * static panel border and the accent overlay. */
-.resize-handle {
+ * Panels next to a handle must NOT draw their own border — the handle owns
+ * the divider line, so there is never z-order fighting between a static panel
+ * border and the accent overlay. */
+.resize-handle,
+.resize-handle-overlay {
   position: relative;
-  flex-shrink: 0;
-  width: 4px;
   cursor: col-resize;
-  z-index: 10;
   touch-action: none;
 }
 
-/* ── Hit area extension (inward, no layout impact) ── */
-.resize-handle::before {
+.resize-handle {
+  flex-shrink: 0;
+  width: 4px;
+  z-index: 10;
+}
+
+.resize-handle-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 210;
+}
+
+/* ── Hit areas ── */
+.resize-handle::before,
+.resize-handle-overlay::before {
   content: "";
   position: absolute;
   top: 0;
   bottom: 0;
+}
+
+.resize-handle::before {
   left: -8px;
   right: -8px;          /* 4 + 8×2 = 20px total hit area */
 }
 
+.resize-handle-overlay::before {
+  left: 0;
+  right: 0;
+}
+
 /* ── Visual line — always visible, accent on hover ── */
-.resize-handle::after {
+.resize-handle::after,
+.resize-handle-overlay::after {
   content: "";
   position: absolute;
   top: 0;
@@ -526,12 +547,13 @@ span.linenumber {
 }
 
 .resize-handle:hover::after,
-.resize-handle:active::after {
+.resize-handle:active::after,
+.resize-handle-overlay:hover::after,
+.resize-handle-overlay:active::after {
   background: var(--accent);
 }
 
-/* bar-left / bar-right: ::after snaps to the panel-adjacent edge
-   instead of centering */
+/* Inline handle variants: snap line to the panel-adjacent edge. */
 .resize-handle-bar-left::after {
   left: 0;
   right: auto;
@@ -544,8 +566,22 @@ span.linenumber {
   transform: none;
 }
 
+/* Overlay handle variants: keep hit area inside the side panels. */
+.resize-handle-overlay-left::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.resize-handle-overlay-right::after {
+  left: 0;
+  right: auto;
+  transform: none;
+}
+
 @media (max-width: 640px) {
-  .resize-handle {
+  .resize-handle,
+  .resize-handle-overlay {
     display: none;
   }
 }

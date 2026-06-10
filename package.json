@@ -1,6 +1,6 @@
 {
-  "name": "@agegr/pi-web",
-  "version": "0.6.13",
+  "name": "@minuque/pi-agent-web",
+  "version": "0.0.1",
   "description": "Web UI for the pi coding agent",
   "license": "MIT",
   "bin": {
@@ -17,11 +17,11 @@
     "package.json"
   ],
   "scripts": {
-    "dev": "next dev -p 8899",
+    "dev": "next dev -p 7777",
+    "dev:light": "set NODE_OPTIONS=--max-old-space-size=1536&& set NEXT_PUBLIC_PI_WEB_LIGHT_RENDER=1&& next dev -p 7777 --hostname 127.0.0.1",
     "build": "next build --webpack",
     "start": "next start -p 7777",
     "lint": "eslint .",
-    "check:agents": "node -e \"const a=require('fs').readFileSync('AGENTS.md','utf8'),c=require('fs').readFileSync('CLAUDE.md','utf8');if(a!==c){console.error('CLAUDE.md out of sync with AGENTS.md');process.exit(1)}\"",
     "sync:agents": "node -e \"require('fs').copyFileSync('AGENTS.md','CLAUDE.md')\"",
     "release": "npm version patch --no-git-tag-version && npm run build && npm publish --access public"
   },

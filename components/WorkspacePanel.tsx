@@ -57,7 +57,7 @@ export function WorkspacePanel({ open, cwd, onClose, onAddToChat }: Props) {
     try { localStorage.setItem("pi-workspace-tree-width", String(treeWidthRef.current)); } catch {}
   }, []);
 
-  if (!open || !cwd) return null;
+  if (!cwd) return null;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: "var(--bg)" }}>

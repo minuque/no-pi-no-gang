@@ -1,16 +1,18 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SessionSidebar } from "./SessionSidebar";
-import { ChatWindow } from "./ChatWindow";
-import { WorkspacePanel } from "./WorkspacePanel";
-import { ModelsConfig } from "./ModelsConfig";
-import { SkillsConfig } from "./SkillsConfig";
 import { BranchNavigator } from "./BranchNavigator";
 import { useTheme } from "@/hooks/useTheme";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
 import type { ChatInputHandle } from "./ChatInput";
+
+const ChatWindow = dynamic(() => import("./ChatWindow").then((m) => m.ChatWindow), { ssr: false });
+const WorkspacePanel = dynamic(() => import("./WorkspacePanel").then((m) => m.WorkspacePanel), { ssr: false });
+const ModelsConfig = dynamic(() => import("./ModelsConfig").then((m) => m.ModelsConfig), { ssr: false });
+const SkillsConfig = dynamic(() => import("./SkillsConfig").then((m) => m.SkillsConfig), { ssr: false });
 
 export function AppShell() {
   const router = useRouter();
@@ -46,6 +48,8 @@ export function AppShell() {
   }, []);
   // Chat area minimum width — both drag handles must respect this
   const CHAT_MIN_WIDTH = 320;
+  const EDGE_HANDLE_WIDTH = 12;
+  const EDGE_HANDLE_INSET = EDGE_HANDLE_WIDTH - 1;
   // Right panel drag-to-resize
   const RIGHT_PANEL_MIN = 300;
   const [rightPanelWidth, setRightPanelWidth] = useState(RIGHT_PANEL_MIN);
@@ -126,7 +130,7 @@ export function AppShell() {
   const handleDragStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
     document.body.classList.add('is-dragging');
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    e.currentTarget.setPointerCapture(e.pointerId);
     dragState.current = { active: true, startX: e.clientX, startWidth: sidebarWidthRef.current };
     if (sidebarRef.current) sidebarRef.current.style.transition = 'none';
   }, []);
@@ -138,6 +142,7 @@ export function AppShell() {
     const w = Math.min(SIDEBAR_MAX, maxW, Math.max(SIDEBAR_MIN, dragState.current.startWidth + e.clientX - dragState.current.startX));
     const el = sidebarRef.current;
     if (el) { el.style.width = `${w}px`; el.style.minWidth = `${w}px`; }
+    (e.currentTarget as HTMLElement).style.left = `${w - EDGE_HANDLE_INSET}px`;
     sidebarWidthRef.current = w;
   }, [workspacePanelOpen]);
   const handleDragEnd = useCallback(() => {
@@ -156,7 +161,7 @@ export function AppShell() {
   const handleRightDragStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
     document.body.classList.add('is-dragging');
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    e.currentTarget.setPointerCapture(e.pointerId);
     rightDragState.current = { active: true, startX: e.clientX, startWidth: rightPanelWidthRef.current };
     if (rightPanelRef.current) rightPanelRef.current.style.transition = 'none';
   }, []);
@@ -166,9 +171,11 @@ export function AppShell() {
     const reservedLeft = (sidebarOpen ? sidebarWidthRef.current : 0) + CHAT_MIN_WIDTH;
     const maxW = Math.max(0, window.innerWidth - reservedLeft);
     const delta = rightDragState.current.startX - e.clientX;
-    const w = Math.min(maxW, Math.max(0, rightDragState.current.startWidth + delta));
+    const minW = Math.min(RIGHT_PANEL_MIN, maxW);
+    const w = Math.min(maxW, Math.max(minW, rightDragState.current.startWidth + delta));
     const el = rightPanelRef.current;
     if (el) { el.style.width = `${w}px`; el.style.minWidth = `${w}px`; }
+    (e.currentTarget as HTMLElement).style.left = `calc(100% - ${w}px)`;
     rightPanelWidthRef.current = w;
   }, [sidebarOpen]);
   const handleRightDragEnd = useCallback(() => {
@@ -487,8 +494,12 @@ export function AppShell() {
 
       {/* Left resize handle — between sidebar and chat */}
       <div
-        className="resize-handle resize-handle-bar-left"
-        style={{ display: sidebarOpen ? "block" : "none" }}
+        className="resize-handle-overlay resize-handle-overlay-left"
+        style={{
+          display: sidebarOpen ? "block" : "none",
+          width: EDGE_HANDLE_WIDTH,
+          left: sidebarWidth - EDGE_HANDLE_INSET,
+        }}
         onPointerDown={handleDragStart}
         onPointerMove={handleDragMove}
         onPointerUp={handleDragEnd}
@@ -737,8 +748,12 @@ export function AppShell() {
 
       {/* Right resize handle — between chat and workspace panel */}
       <div
-        className="resize-handle resize-handle-bar-right"
-        style={{ display: workspacePanelOpen ? "block" : "none" }}
+        className="resize-handle-overlay resize-handle-overlay-right"
+        style={{
+          display: workspacePanelOpen ? "block" : "none",
+          width: EDGE_HANDLE_WIDTH,
+          left: `calc(100% - ${rightPanelWidth}px)`,
+        }}
         onPointerDown={handleRightDragStart}
         onPointerMove={handleRightDragMove}
         onPointerUp={handleRightDragEnd}
@@ -755,6 +770,7 @@ export function AppShell() {
           background: "var(--bg)",
           width: workspacePanelOpen ? rightPanelWidth : 0,
           minWidth: workspacePanelOpen ? rightPanelWidth : 0,
+          overflow: "hidden",
         }}
       >
         <WorkspacePanel

@@ -8,50 +8,73 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * Standard chat-UI approach used by ChatGPT, Claude, etc.:
  * - A single shouldAutoScroll ref tracks whether the user wants to stay at bottom.
  * - It becomes false when the user scrolls up, true when they scroll to bottom.
- * - Streaming content changes trigger a scrollToBottom via React effects.
- * - This avoids the complexity of ResizeObserver + rAF + intent flags competing.
+ * - Streaming follow uses one requestAnimationFrame loop controlled by agentRunning.
+ * - Hot-path scroll/stream state lives in refs; React state only updates on transitions.
  */
 export interface UseChatScrollOptions {
+  /** Keep following new content while the agent is running. */
+  follow?: boolean;
   /** Callback when at-bottom state changes (for showing/hiding scroll button) */
   onAtBottomChange?: (atBottom: boolean) => void;
 }
 
-export function useChatScroll({ onAtBottomChange }: UseChatScrollOptions = {}) {
+const BOTTOM_THRESHOLD_PX = 8;
+
+export function useChatScroll({ follow = false, onAtBottomChange }: UseChatScrollOptions = {}) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const onAtBottomChangeRef = useRef(onAtBottomChange);
+  onAtBottomChangeRef.current = onAtBottomChange;
 
   // -- The single source of truth --
   // Using a ref so rAF and event handlers always read the latest value
   // without going through React state.
   const shouldAutoScrollRef = useRef(true);
+  const isAtBottomRef = useRef(true);
 
   // React state for UI only (scroll-to-bottom button visibility)
   const [isAtBottom, setIsAtBottom] = useState(true);
 
   // Track the last scroll position to detect user-initiated scroll-up
   const lastScrollTopRef = useRef(0);
+  const touchYRef = useRef<number | null>(null);
 
   // -- Helpers --
-  const updateAtBottom = useCallback(
-    (atBottom: boolean) => {
-      if (shouldAutoScrollRef.current !== atBottom) {
-        shouldAutoScrollRef.current = atBottom;
-        setIsAtBottom(atBottom);
-        onAtBottomChange?.(atBottom);
-      }
-    },
-    [onAtBottomChange],
-  );
+  const measureAtBottom = useCallback((el: HTMLDivElement) => {
+    return (
+      el.scrollHeight <= el.clientHeight ||
+      el.scrollHeight - el.scrollTop - el.clientHeight <= BOTTOM_THRESHOLD_PX
+    );
+  }, []);
+
+  const updateAtBottom = useCallback((atBottom: boolean) => {
+    if (isAtBottomRef.current === atBottom) return;
+    isAtBottomRef.current = atBottom;
+    setIsAtBottom(atBottom);
+    onAtBottomChangeRef.current?.(atBottom);
+  }, []);
+
+  const followBottom = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    lastScrollTopRef.current = el.scrollTop;
+    updateAtBottom(true);
+  }, [updateAtBottom]);
 
   const scrollToBottom = useCallback(
     (behavior: ScrollBehavior = "instant") => {
       const el = containerRef.current;
       if (!el) return;
       shouldAutoScrollRef.current = true;
-      setIsAtBottom(true);
-      onAtBottomChange?.(true);
-      el.scrollTo({ top: el.scrollHeight, behavior });
+      updateAtBottom(true);
+      if (behavior === "instant") {
+        el.scrollTop = el.scrollHeight;
+      } else {
+        el.scrollTo({ top: el.scrollHeight, behavior });
+      }
+      lastScrollTopRef.current = el.scrollTop;
     },
-    [onAtBottomChange],
+    [updateAtBottom],
   );
 
   // -- Scroll event handler --
@@ -59,24 +82,42 @@ export function useChatScroll({ onAtBottomChange }: UseChatScrollOptions = {}) {
     const el = containerRef.current;
     if (!el) return;
 
-    const atBottom =
-      el.scrollHeight <= el.clientHeight ||
-      el.scrollHeight - el.scrollTop - el.clientHeight <= 8;
-
-    // Detect user scroll-up: the user scrolled up (scrollTop decreased)
-    // AND we are not already at the bottom.
-    // Using a generous threshold so small programmatic nudges don't flicker.
-    const userScrolledUp =
-      !atBottom && lastScrollTopRef.current > el.scrollTop;
+    const atBottom = measureAtBottom(el);
+    const userScrolledUp = !atBottom && lastScrollTopRef.current > el.scrollTop;
 
     if (userScrolledUp) {
+      shouldAutoScrollRef.current = false;
       updateAtBottom(false);
-    } else if (atBottom && !shouldAutoScrollRef.current) {
+    } else if (atBottom) {
+      shouldAutoScrollRef.current = true;
       updateAtBottom(true);
+    } else if (isAtBottomRef.current) {
+      updateAtBottom(false);
     }
 
     lastScrollTopRef.current = el.scrollTop;
-  }, [updateAtBottom]);
+  }, [measureAtBottom, updateAtBottom]);
+
+  const handleWheel = useCallback((event: WheelEvent) => {
+    const el = containerRef.current;
+    if (el && event.deltaY < 0 && el.scrollTop > 0) {
+      shouldAutoScrollRef.current = false;
+    }
+  }, []);
+
+  const handleTouchStart = useCallback((event: TouchEvent) => {
+    touchYRef.current = event.touches[0]?.clientY ?? null;
+  }, []);
+
+  const handleTouchMove = useCallback((event: TouchEvent) => {
+    const prevY = touchYRef.current;
+    const nextY = event.touches[0]?.clientY ?? null;
+    const el = containerRef.current;
+    if (el && prevY !== null && nextY !== null && nextY > prevY && el.scrollTop > 0) {
+      shouldAutoScrollRef.current = false;
+    }
+    touchYRef.current = nextY;
+  }, []);
 
   // -- Attach scroll listener --
   useEffect(() => {
@@ -85,11 +126,32 @@ export function useChatScroll({ onAtBottomChange }: UseChatScrollOptions = {}) {
 
     lastScrollTopRef.current = el.scrollTop;
     el.addEventListener("scroll", handleScroll, { passive: true });
+    el.addEventListener("wheel", handleWheel, { passive: true });
+    el.addEventListener("touchstart", handleTouchStart, { passive: true });
+    el.addEventListener("touchmove", handleTouchMove, { passive: true });
 
     return () => {
       el.removeEventListener("scroll", handleScroll);
+      el.removeEventListener("wheel", handleWheel);
+      el.removeEventListener("touchstart", handleTouchStart);
+      el.removeEventListener("touchmove", handleTouchMove);
     };
-  }, [handleScroll]);
+  }, [handleScroll, handleTouchMove, handleTouchStart, handleWheel]);
+
+  useEffect(() => {
+    if (!follow) return;
+
+    let frame = 0;
+    const tick = () => {
+      if (shouldAutoScrollRef.current) {
+        followBottom();
+      }
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [follow, followBottom]);
 
   return {
     containerRef,

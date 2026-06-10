@@ -292,6 +292,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         setAgentPhase(null);
         setRetryInfo(null);
         dispatch({ type: "end" });
+        // Bump gen so loadSession below captures a generation that any
+        // subsequent handleSend/handleCommand will invalidate.  Without
+        // this, a stale agent_end event (already queued when handleSend
+        // reconnects the SSE) would capture the same gen as handleSend
+        // and its loadSession would overwrite messages with stale data.
+        loadGenRef.current += 1;
         if (sessionIdRef.current) {
           fetch(`/api/agent/${encodeURIComponent(sessionIdRef.current)}`)
             .then((r) => r.json())
@@ -363,6 +369,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (event.errorMessage) {
           setCompactError(event.errorMessage as string);
         } else if (!event.aborted) {
+          loadGenRef.current += 1;
           if (sessionIdRef.current) loadSession(sessionIdRef.current);
         }
         break;
