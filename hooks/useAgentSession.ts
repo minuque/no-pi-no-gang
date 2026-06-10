@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect, useReducer } from "react";
 import type { AgentMessage, SessionInfo, SessionTreeNode } from "@/lib/types";
 import { normalizeToolCalls } from "@/lib/normalize";
 import { sendAgentCommand } from "@/lib/agent-client";
+import { toast } from "sonner";
 import type { ToolEntry } from "@/components/ToolPanel";
 
 export interface SessionData {
@@ -92,7 +93,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const isNew = session === null && newSessionCwd !== null;
 
   const [data, setData] = useState<SessionData | null>(null);
-  const [loading, setLoading] = useState(!isNew);
+  // Only autoload when we have a session to load.  If the user lands with no
+  // session and no cwd, the UI must still render ChatInput so they can pick a
+  // project — loading=true would block it with a spinner forever.
+  const [loading, setLoading] = useState(session !== null);
   const [error, setError] = useState<string | null>(null);
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
@@ -122,6 +126,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const agentRunningRef = useRef(false);
   const handleAgentEventRef = useRef<((event: AgentEvent) => void) | null>(null);
   const loadGenRef = useRef(0);
+  const modelListRef = useRef(modelList);
+  modelListRef.current = modelList;
 
   const setNewSessionModel = opts.setNewSessionModel ?? setNewSessionModelState;
   const setToolPresetState = opts.setToolPreset ?? setToolPreset;
@@ -390,6 +396,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const handleCommand = useCallback(async (commandName: string, message: string, images?: AttachedImage[]) => {
     if (agentRunning) return;
+    // Require at least one model to be configured
+    if (modelListRef.current.length === 0) {
+      toast.error("No models configured. Add models in Settings → Models first.");
+      return;
+    }
     loadGenRef.current += 1;
     const imageBlocks = images?.map((img) => ({ type: "image" as const, source: { type: "base64" as const, media_type: img.mimeType, data: img.data } }));
     const userMsg: AgentMessage = {
@@ -459,6 +470,16 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const handleSend = useCallback(async (message: string, images?: AttachedImage[]) => {
     if (!message.trim() && !images?.length) return;
     if (agentRunning) return;
+    // Don't send when neither a session nor a project directory is selected
+    if (!session && !newSessionCwd) {
+      toast.error("Select a project directory before chatting.");
+      return;
+    }
+    // Require at least one model to be configured
+    if (modelListRef.current.length === 0) {
+      toast.error("No models configured. Add models in Settings → Models first.");
+      return;
+    }
     loadGenRef.current += 1;
     const cmdMatch = message.match(/^(\/[a-zA-Z0-9._-]+)\s*(.*)$/);
     if (cmdMatch) {

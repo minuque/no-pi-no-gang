@@ -598,13 +598,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           </div>
         )}
 
-        {/* Streaming status line — fixed height to prevent layout shift */}
+        {/* Streaming status line — only rendered during active conversation */}
+        {isStreaming && (
         <div style={{
           display: "flex", alignItems: "center", gap: 8,
           marginBottom: 8, height: 20, fontSize: 12, color: "var(--text-dim)",
           fontFamily: "var(--font-mono)",
-          opacity: isStreaming ? 1 : 0,
-          transition: "opacity 0.15s",
         }}>
           {/* Pi favicon */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -631,6 +630,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             </span>
           )}
         </div>
+        )}
 
         {/* Main input */}
         <div
@@ -777,8 +777,41 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         {/* Bottom bar: left | spacer | right */}
         <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
 
-          {/* LEFT: project | branch | attach */}
+          {/* LEFT: attach | project | branch */}
           <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 6 }}>
+
+            {/* ➕ Attach button — simplified + icon */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isStreaming}
+              title="Attach image"
+              style={{
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                width: 28, height: 28,
+                background: attachedImages.length ? "color-mix(in oklab, var(--accent), transparent 92%)" : "none",
+                border: `1px solid ${attachedImages.length ? "var(--accent)" : "var(--border)"}`,
+                borderRadius: 9999,
+                color: attachedImages.length ? "var(--accent)" : "var(--text-muted)",
+                cursor: isStreaming ? "not-allowed" : "pointer",
+                opacity: isStreaming ? 0.5 : 1,
+                transition: "background 0.12s, color 0.12s",
+              }}
+              onMouseEnter={(e) => {
+                if (isStreaming) return;
+                e.currentTarget.style.background = "var(--bg-hover)";
+                e.currentTarget.style.color = "var(--text)";
+              }}
+              onMouseLeave={(e) => {
+                if (isStreaming) return;
+                e.currentTarget.style.background = attachedImages.length ? "color-mix(in oklab, var(--accent), transparent 92%)" : "none";
+                e.currentTarget.style.color = attachedImages.length ? "var(--accent)" : "var(--text-muted)";
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
 
             {/* 📂 Project pill + CWD picker dropdown */}
             <div ref={cwdDropdownRef} style={{ position: "relative" }}>
@@ -1012,40 +1045,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 </div>
               )}
             </div>
-
-            {/* 🖼️ Attach pill */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isStreaming}
-              title="Attach image"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 4,
-                padding: "4px 10px", height: 28,
-                background: "none", border: "1px solid var(--border)", borderRadius: 9999,
-                color: attachedImages.length ? "var(--accent)" : "var(--text-muted)",
-                cursor: isStreaming ? "not-allowed" : "pointer",
-                fontSize: 11, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
-                opacity: isStreaming ? 0.5 : 1,
-                transition: "background 0.12s, color 0.12s",
-              }}
-              onMouseEnter={(e) => {
-                if (isStreaming) return;
-                e.currentTarget.style.background = "var(--bg-hover)";
-                e.currentTarget.style.color = attachedImages.length ? "var(--accent)" : "var(--text)";
-              }}
-              onMouseLeave={(e) => {
-                if (isStreaming) return;
-                e.currentTarget.style.background = "none";
-                e.currentTarget.style.color = attachedImages.length ? "var(--accent)" : "var(--text-muted)";
-              }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
-              Attach
-            </button>
 
           </div>
 
@@ -1312,18 +1311,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 </div>
               </div>
             )}
-
-            {/* Status ring */}
-            <span style={{
-              display: "block",
-              width: 7, height: 7,
-              borderRadius: "50%",
-              background: isStreaming ? "var(--warn)" : "var(--success)",
-              boxShadow: isStreaming
-                ? "0 0 6px color-mix(in oklab, var(--warn), transparent 40%)"
-                : "0 0 6px color-mix(in oklab, var(--success), transparent 50%)",
-              flexShrink: 0,
-            }} />
 
           </div>
 

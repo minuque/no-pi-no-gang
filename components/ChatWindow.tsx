@@ -167,7 +167,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     handleSend(content);
   }, [handleSend]);
 
-  const isEmptyNew = isNew && messages.length === 0 && !streamState.isStreaming && !agentRunning;
+  const showWelcome = !session && messages.length === 0 && !streamState.isStreaming && !agentRunning;
 
   const availableThinkingLevels = displayModelValue
     ? (modelThinkingLevels[`${displayModelValue.provider}:${displayModelValue.modelId}`] ?? null)
@@ -374,7 +374,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         </div>
       )}
 
-      {isEmptyNew ? (
+      {showWelcome ? (
         <div
           className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8"
           style={{ animation: "fade-in-up 0.4s ease both" }}
@@ -581,9 +581,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         )}
       </div>
 
-      <div className="relative">
-        {chatInputElement}
-      </div>
+      {chatInputElement}
 
       {/* Minimap — absolutely positioned on right edge, full ChatWindow height */}
       <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: MINIMAP_WIDTH }}>

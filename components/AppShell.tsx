@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Toaster } from "sonner";
 import { SessionSidebar } from "./SessionSidebar";
 import { BranchNavigator } from "./BranchNavigator";
 import { useTheme } from "@/hooks/useTheme";
@@ -349,8 +350,6 @@ export function AppShell() {
   // Show chat area if a session is selected, or if we have a cwd to start a new session in
   const effectiveNewSessionCwd = newSessionCwd ?? (selectedSession === null && activeCwd ? activeCwd : null);
   const showChat = selectedSession !== null || effectiveNewSessionCwd !== null;
-  // While restoring initial session from URL, don't show the placeholder
-  const showPlaceholder = initialSessionRestored && !showChat;
 
 
   const sidebarContent = (
@@ -697,52 +696,26 @@ export function AppShell() {
 
         </div>
 
-        {/* Chat content */}
+        {/* Chat content — always render ChatWindow; it handles empty/loading/error states internally */}
         <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-          {showChat ? (
-            <ChatWindow
-              key={sessionKey}
-              session={selectedSession}
-              newSessionCwd={effectiveNewSessionCwd}
-              onAgentEnd={handleAgentEnd}
-              onSessionCreated={handleSessionCreated}
-              onSessionForked={handleSessionForked}
-              modelsRefreshKey={modelsRefreshKey}
-              chatInputRef={chatInputRef}
-              onBranchDataChange={handleBranchDataChange}
-              onSystemPromptChange={handleSystemPromptChange}
-              onSessionStatsChange={handleSessionStatsChange}
-              onContextUsageChange={handleContextUsageChange}
-              recentCwds={recentCwds}
-              homeDir={homeDir}
-              onCwdSelect={handleCwdChange}
-              onCwdDefault={handleCwdDefault}
-            />
-          ) : showPlaceholder ? (
-            activeCwd ? (
-              <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, userSelect: "none", pointerEvents: "none" }}>
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--text-dim)", opacity: 0.5 }}>
-                  <rect x="2" y="3" width="20" height="14" rx="2" />
-                  <line x1="8" y1="21" x2="16" y2="21" />
-                  <line x1="12" y1="17" x2="12" y2="21" />
-                </svg>
-                <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text)" }}>No session selected</div>
-                <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6, textAlign: "center", maxWidth: 320 }}>
-                  Pick a session from the sidebar or&#10;enter a message to start a new one.
-                </div>
-              </div>
-            ) : (
-              <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, userSelect: "none", pointerEvents: "none" }}>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--accent)", opacity: 0.6 }}>
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
-                <div style={{ fontSize: 20, fontWeight: 600, color: "var(--text)" }}>Pi Agent Web</div>
-                <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6, textAlign: "center", maxWidth: 360 }}>
-                  Select a project directory from the sidebar,&#10;then add models in <strong style={{ color: "var(--text)", fontWeight: 500 }}>Settings</strong> to get started.
-                </div>
-              </div>
-            )
-          ) : null}
+          <ChatWindow
+            key={sessionKey}
+            session={selectedSession}
+            newSessionCwd={effectiveNewSessionCwd}
+            onAgentEnd={handleAgentEnd}
+            onSessionCreated={handleSessionCreated}
+            onSessionForked={handleSessionForked}
+            modelsRefreshKey={modelsRefreshKey}
+            chatInputRef={chatInputRef}
+            onBranchDataChange={handleBranchDataChange}
+            onSystemPromptChange={handleSystemPromptChange}
+            onSessionStatsChange={handleSessionStatsChange}
+            onContextUsageChange={handleContextUsageChange}
+            recentCwds={recentCwds}
+            homeDir={homeDir}
+            onCwdSelect={handleCwdChange}
+            onCwdDefault={handleCwdDefault}
+          />
         </div>
       </div>
 
@@ -785,6 +758,17 @@ export function AppShell() {
     {skillsConfigOpen && (activeCwd ?? selectedSession?.cwd ?? newSessionCwd) && (
       <SkillsConfig cwd={(activeCwd ?? selectedSession?.cwd ?? newSessionCwd)!} onClose={() => setSkillsConfigOpen(false)} />
     )}
+    <Toaster
+      position="top-center"
+      toastOptions={{
+        style: {
+          background: "var(--bg-panel)",
+          color: "var(--text)",
+          border: "1px solid var(--border)",
+          fontSize: 13,
+        },
+      }}
+    />
     </>
   );
 }
