@@ -68,6 +68,53 @@ function copyText(text: string): Promise<void> {
   }
 }
 
+type ToolCallState = "running" | "error" | "done" | "pending";
+
+function getToolResultText(result?: ToolResultMessage): string | null {
+  return result
+    ? result.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text).join("\n")
+    : null;
+}
+
+function isEmptyToolResult(text: string | null): boolean {
+  return text !== null && (text.trim() === "(no output)" || text.trim() === "");
+}
+
+function getToolState(result: ToolResultMessage | undefined, isRunning?: boolean): ToolCallState {
+  if (result?.isError) return "error";
+  if (result) return "done";
+  return isRunning ? "running" : "pending";
+}
+
+function getToolStateColor(state: ToolCallState): string {
+  if (state === "error") return "var(--danger)";
+  if (state === "done") return "var(--success)";
+  if (state === "running") return "var(--accent)";
+  return "var(--text-dim)";
+}
+
+function getToolResultPreview(result?: ToolResultMessage): string {
+  const text = getToolResultText(result);
+  if (text === null || isEmptyToolResult(text)) return "";
+  return text.trim().replace(/\s+/g, " ").slice(0, 120);
+}
+
+function ToolStateDot({ state }: { state: ToolCallState }) {
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: 6,
+        height: 6,
+        borderRadius: "50%",
+        background: getToolStateColor(state),
+        flexShrink: 0,
+        ...(state === "running" ? { animation: "pulse 1.5s ease-in-out infinite" } : {}),
+      }}
+    />
+  );
+}
+
 export function MessageView({ message, isStreaming, toolResults, modelNames, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, showTimestamp, prevTimestamp, onRetry, onEditResend }: Props) {
   if (message.role === "user") {
     return <UserMessageView message={message as UserMessage} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onEditResend={onEditResend} />;
@@ -607,24 +654,15 @@ function BlockView({ blocks, toolResults, isStreaming, streamingDurations, think
 
   const flushToolCalls = () => {
     if (toolCallRun.length === 0) return;
-    if (toolCallRun.length === 1) {
-      const { block, idx } = toolCallRun[0];
-      const result = toolResults?.get(block.toolCallId);
-      const duration = toolCallDurations.get(block.toolCallId);
-      elements.push(
-        <ToolCallBlock key={idx} block={block} result={result} isRunning={isStreaming && !result} duration={duration} />
-      );
-    } else {
-      elements.push(
-        <ToolCallsGroup
-          key={`group-${toolCallRun[0].idx}`}
-          blocks={toolCallRun.map(tc => tc.block)}
-          toolResults={toolResults}
-          isStreaming={isStreaming}
-          toolCallDurations={toolCallDurations}
-        />
-      );
-    }
+    elements.push(
+      <ToolCallsGroup
+        key={`tools-${toolCallRun[0].idx}`}
+        blocks={toolCallRun.map(tc => tc.block)}
+        toolResults={toolResults}
+        isStreaming={isStreaming}
+        toolCallDurations={toolCallDurations}
+      />
+    );
     toolCallRun = [];
   };
 
@@ -812,43 +850,56 @@ function ThinkingBlock({ block, duration, isStreaming }: { block: ThinkingConten
 }
 
 
-function ToolCallBlock({ block, result, isRunning, duration, group, isFirst, isLast }: {
+function ToolCallBlock({ block, result, isRunning, duration, isFirst, isLast }: {
   block: ToolCallContent;
   result?: ToolResultMessage;
   isRunning?: boolean;
   duration?: number;
-  group?: boolean;
   isFirst?: boolean;
   isLast?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const inputStr = JSON.stringify(block.input, null, 2);
-
-  // Result display
-  const resultText = result
-    ? result.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text).join("\n")
-    : null;
-  const resultIsEmpty = resultText === null ? false : (resultText.trim() === "(no output)" || resultText.trim() === "");
+  const resultText = getToolResultText(result);
+  const resultIsEmpty = isEmptyToolResult(resultText);
   const isError = result?.isError ?? false;
+  const state = getToolState(result, isRunning);
+  const resultPreview = getToolResultPreview(result);
 
-  const br = group
-    ? isFirst && isLast ? 7 : isFirst ? "7px 7px 0 0" : isLast ? "0 0 7px 7px" : 0
-    : 7;
+  useEffect(() => {
+    if (isError) setExpanded(true);
+  }, [isError]);
 
   return (
-    <div
-      style={{
-        borderRadius: br,
-        overflow: "hidden",
-        fontSize: 12,
-        borderTop: "1px solid var(--border)",
-        borderRight: "1px solid var(--border)",
-        borderBottom: "1px solid var(--border)",
-        borderLeft: group ? "none" : "1px solid var(--border)",
-        background: "var(--bg-panel)",
-      }}
-    >
-      {/* ── Tool call header ── */}
+    <div style={{ position: "relative", paddingLeft: 18, paddingBottom: isLast ? 0 : 2 }}>
+      {!isLast && (
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: 5,
+            top: isFirst ? 15 : 0,
+            bottom: -2,
+            width: 1,
+            background: "var(--border)",
+          }}
+        />
+      )}
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: 2,
+          top: 11,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 7,
+          height: 7,
+        }}
+      >
+        <ToolStateDot state={state} />
+      </span>
       <button
         onClick={() => setExpanded((v) => !v)}
         style={{
@@ -856,22 +907,32 @@ function ToolCallBlock({ block, result, isRunning, duration, group, isFirst, isL
           alignItems: "center",
           gap: 7,
           width: "100%",
-          padding: "6px 10px",
+          minHeight: 28,
+          padding: "4px 6px",
           background: "none",
           border: "none",
           color: "var(--text-muted)",
           cursor: "pointer",
-          fontSize: 13,
+          fontSize: 12,
+          fontFamily: "var(--font-mono)",
           textAlign: "left",
           minWidth: 0,
+          borderRadius: 5,
         }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-subtle)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
       >
-        <span style={{ color: result ? (isError ? "var(--danger)" : "var(--success)") : "var(--text-muted)", fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 12, flexShrink: 0 }}>
+        <span style={{ color: getToolStateColor(state), fontWeight: 600, flexShrink: 0 }}>
           {block.toolName}
         </span>
-        <span style={{ color: "var(--text-dim)", fontFamily: "var(--font-mono)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+        <span style={{ color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: resultPreview ? "0 1 auto" : 1, minWidth: 0 }}>
           {getToolPreview(block)}
         </span>
+        {resultPreview && (
+          <span style={{ color: isError ? "var(--danger)" : "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+            {resultPreview}
+          </span>
+        )}
         {duration !== undefined && (
           <span style={{ fontSize: 12, color: "var(--text-dim)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
         )}
@@ -880,9 +941,17 @@ function ToolCallBlock({ block, result, isRunning, duration, group, isFirst, isL
         </svg>
       </button>
 
-      {/* ── Expanded: input args + paired result ── */}
       {expanded && (
-        <div style={{ animation: "fade-in-up 200ms ease" }}>
+        <div
+          style={{
+            margin: "2px 0 8px 6px",
+            border: "1px solid var(--border)",
+            borderRadius: 7,
+            overflow: "hidden",
+            background: "var(--bg-panel)",
+            animation: "fade-in-up 160ms ease",
+          }}
+        >
         <pre
           style={{
             margin: 0,
@@ -921,13 +990,13 @@ export function ToolCallsGroup({ blocks, toolResults, isStreaming, toolCallDurat
   isStreaming?: boolean;
   toolCallDurations?: Map<string, number>;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const [hovered, setHovered] = useState(false);
-  const mountRef = useRef(Date.now());
+  const [showAll, setShowAll] = useState(false);
+  const mountRef = useRef(0);
   const [elapsed, setElapsed] = useState(0);
 
   // Real-time timer during streaming
   useEffect(() => {
+    if (mountRef.current === 0) mountRef.current = Date.now();
     if (!isStreaming) { setElapsed(Math.round((Date.now() - mountRef.current) / 1000)); return; }
     const tick = () => setElapsed(Math.round((Date.now() - mountRef.current) / 1000));
     tick();
@@ -937,54 +1006,47 @@ export function ToolCallsGroup({ blocks, toolResults, isStreaming, toolCallDurat
 
   const allDone = blocks.every(b => toolResults?.has(b.toolCallId));
   const showTimer = elapsed > 0;
+  const states = blocks.map((block) => getToolState(toolResults?.get(block.toolCallId), isStreaming && !toolResults?.has(block.toolCallId)));
+  const failedCount = states.filter((state) => state === "error").length;
+  const runningCount = states.filter((state) => state === "running").length;
+  const doneCount = states.filter((state) => state === "done").length;
+  const stateSummary = failedCount > 0
+    ? `${failedCount} failed`
+    : runningCount > 0
+      ? `${runningCount} running`
+      : allDone
+        ? `${doneCount} done`
+        : "pending";
+  const defaultVisibleCount = failedCount > 0 ? blocks.length : 3;
+  const visibleBlocks = showAll ? blocks : blocks.slice(0, defaultVisibleCount);
+  const hiddenCount = blocks.length - visibleBlocks.length;
 
   return (
     <div
       style={{
-        paddingLeft: 11,
-        borderLeft: "1.5px solid var(--border)",
+        margin: "6px 0",
         display: "flex",
         flexDirection: "column",
+        gap: 2,
       }}
     >
-      {/* ── Group header ── */}
-      <button
-        onClick={() => setExpanded(v => !v)}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+      <div
         style={{
           display: "flex",
           alignItems: "center",
           gap: 8,
-          padding: "5px 2px",
-          marginLeft: -11,
-          paddingLeft: 11,
-          background: "none",
-          border: "none",
-          borderRadius: 5,
-          color: hovered ? "var(--text)" : "var(--text-dim)",
-          cursor: "pointer",
+          paddingLeft: 18,
+          color: "var(--text-dim)",
           fontSize: 12,
           fontFamily: "var(--font-mono)",
-          textAlign: "left",
-          width: `calc(100% + 11px)`,
-          transition: "color 0.15s ease",
         }}
       >
-        <svg
-          width="9" height="9" viewBox="0 0 10 10" fill="none"
-          stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-          style={{ flexShrink: 0, transform: expanded ? "rotate(90deg)" : "none", transition: "transform 0.15s ease" }}
-        >
-          <polyline points="3 2 6 5 3 8" />
-        </svg>
-        <span
-          key={blocks.length}
-          style={{ fontWeight: 600, color: "var(--text)", flexShrink: 0, animation: "fade-in-up 200ms ease" }}
-        >
-          {blocks.length} tools
+        <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>
+          Tools
         </span>
-        <span style={{ flex: 1 }} />
+        <span style={{ color: failedCount > 0 ? "var(--danger)" : runningCount > 0 ? "var(--accent)" : "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+          {blocks.length} steps · {stateSummary}
+        </span>
         {showTimer && (
           <span style={{
             flexShrink: 0, fontVariantNumeric: "tabular-nums",
@@ -994,33 +1056,46 @@ export function ToolCallsGroup({ blocks, toolResults, isStreaming, toolCallDurat
             {elapsed}s
           </span>
         )}
-      </button>
+      </div>
 
-      {/* ── Expanded items (conditionally rendered, mount triggers fade-in-up) ── */}
-      {expanded && (
-        <div style={{ display: "flex", flexDirection: "column", animation: "fade-in-up 180ms ease" }}>
-          {blocks.map((block, i) => {
-            const result = toolResults?.get(block.toolCallId);
-            return (
-              <div
-                key={i}
-                style={{
-                  marginTop: i === 0 ? 0 : -1,
-                }}
-              >
-                <ToolCallBlock
-                  block={block}
-                  result={result}
-                  isRunning={isStreaming && !result}
-                  duration={toolCallDurations?.get(block.toolCallId)}
-                  group={true}
-                  isFirst={i === 0}
-                  isLast={i === blocks.length - 1}
-                />
-              </div>
-            );
-          })}
-        </div>
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        {visibleBlocks.map((block, i) => {
+          const result = toolResults?.get(block.toolCallId);
+          return (
+            <ToolCallBlock
+              key={block.toolCallId}
+              block={block}
+              result={result}
+              isRunning={isStreaming && !result}
+              duration={toolCallDurations?.get(block.toolCallId)}
+              isFirst={i === 0}
+              isLast={i === visibleBlocks.length - 1 && hiddenCount === 0}
+            />
+          );
+        })}
+      </div>
+
+      {hiddenCount > 0 && (
+        <button
+          onClick={() => setShowAll(true)}
+          style={{
+            alignSelf: "flex-start",
+            marginLeft: 18,
+            marginTop: 2,
+            padding: "2px 6px",
+            background: "none",
+            border: "none",
+            borderRadius: 5,
+            color: "var(--text-dim)",
+            cursor: "pointer",
+            fontSize: 12,
+            fontFamily: "var(--font-mono)",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-subtle)"; e.currentTarget.style.color = "var(--text-muted)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--text-dim)"; }}
+        >
+          Show {hiddenCount} more
+        </button>
       )}
     </div>
   );

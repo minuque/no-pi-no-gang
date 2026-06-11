@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AgentMessage, SessionInfo, SessionTreeNode, ToolResultMessage } from "@/lib/types";
+import type { AgentMessage, SessionInfo, SessionTreeNode, ToolCallContent, ToolResultMessage } from "@/lib/types";
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, MINIMAP_WIDTH } from "./ChatMinimap";
 import { SessionLoading } from "./SessionLoading";
-import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
+import { useAgentSession, type AgentEventStatus, type AgentPhase } from "@/hooks/useAgentSession";
 import { useChatScroll } from "@/hooks/useChatScroll";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import { useTheme } from "@/hooks/useTheme";
@@ -99,13 +99,115 @@ function Typewriter({ phrases }: { phrases: string[] }) {
   );
 }
 
+function eventStatusLabel(status: AgentEventStatus): string | null {
+  if (status === "connecting") return "SSE connecting";
+  if (status === "connected") return "SSE connected";
+  if (status === "reconnecting") return "SSE reconnecting";
+  return null;
+}
+
+function AgentStatusBar({
+  agentRunning,
+  agentPhase,
+  eventStatus,
+  isCompacting,
+  compactError,
+  retryInfo,
+  thinkingLevel,
+  toolPreset,
+}: {
+  agentRunning: boolean;
+  agentPhase: AgentPhase;
+  eventStatus: AgentEventStatus;
+  isCompacting: boolean;
+  compactError: string | null;
+  retryInfo: { attempt: number; maxAttempts: number; errorMessage?: string } | null;
+  thinkingLevel: string;
+  toolPreset: "none" | "default" | "full";
+}) {
+  const items: { label: string; tone?: "warn" | "danger" | "active" }[] = [];
+  if (agentRunning) items.push({ label: phaseLabel(agentPhase), tone: "active" });
+  if (isCompacting) items.push({ label: "Compacting context", tone: "active" });
+  if (retryInfo) items.push({ label: `Retry ${retryInfo.attempt}/${retryInfo.maxAttempts}`, tone: "warn" });
+  if (compactError) items.push({ label: `Compaction failed: ${compactError}`, tone: "danger" });
+  const eventLabel = agentRunning ? eventStatusLabel(eventStatus) : null;
+  if (eventLabel) items.push({ label: eventLabel, tone: eventStatus === "reconnecting" ? "warn" : undefined });
+  if (toolPreset === "none") items.push({ label: "No tools", tone: "warn" });
+  if (agentRunning && thinkingLevel !== "auto") items.push({ label: `Thinking ${thinkingLevel}` });
+
+  if (items.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        flexShrink: 0,
+        padding: "8px 16px 0",
+        paddingRight: 16 + MINIMAP_WIDTH,
+        animation: "fade-in-up 0.2s ease both",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 1148,
+          margin: "0 auto",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          minHeight: 28,
+          overflow: "hidden",
+          fontFamily: "var(--font-mono)",
+          fontSize: 12,
+          color: "var(--text-dim)",
+        }}
+      >
+        {items.map((item, idx) => {
+          const color =
+            item.tone === "danger" ? "var(--danger)" :
+            item.tone === "warn" ? "var(--warn)" :
+            item.tone === "active" ? "var(--text-muted)" :
+            "var(--text-dim)";
+          return (
+            <span
+              key={`${item.label}-${idx}`}
+              title={item.label}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                minWidth: 0,
+                maxWidth: idx === 0 ? "45%" : "28%",
+                color,
+              }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: "50%",
+                  background: "currentColor",
+                  flexShrink: 0,
+                  ...(item.tone === "active" ? { animation: "codex-status-dot 1.25s ease-in-out infinite" } : {}),
+                }}
+              />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {item.label}
+              </span>
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, recentCwds, homeDir = "", onCwdSelect, onCwdDefault }: Props) {
   const {
     data, loading, error, messages, entryIds, streamState, commands,
-    agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, thinkingLevel,
+    agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
     retryInfo, contextUsage, forkingEntryId,
     displayModel: displayModelValue, sessionStats,
-    agentPhase,
+    isCompacting, compactError, agentPhase, eventStatus,
     activeLeafId,
     isNew,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
@@ -272,6 +374,50 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     return map;
   }, [messages]);
 
+  const renderedMessages = useMemo(() => {
+    const items: Array<{
+      msg: AgentMessage;
+      entryId: string;
+      originalIndex: number;
+    }> = [];
+
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i];
+      if (msg.role === "toolResult") continue;
+
+      if (msg.role === "assistant") {
+        const content = msg.content;
+        const isToolCallOnly = Array.isArray(content) &&
+          content.length > 0 &&
+          content.every((b): b is ToolCallContent => b.type === "toolCall");
+
+        if (isToolCallOnly) {
+          const last = items[items.length - 1];
+          if (last?.msg.role === "assistant") {
+            const tagged = content.map((b) => ({ ...b, _sourceTs: msg.timestamp }));
+            last.msg = {
+              ...last.msg,
+              content: [...last.msg.content, ...tagged],
+            };
+            continue;
+          }
+        }
+      }
+
+      items.push({ msg, entryId: entryIds[i], originalIndex: i });
+    }
+
+    let lastAssistantIdx = -1;
+    for (let i = items.length - 1; i >= 0; i--) {
+      if (items[i].msg.role === "assistant") {
+        lastAssistantIdx = i;
+        break;
+      }
+    }
+
+    return { items, lastAssistantIdx };
+  }, [messages, entryIds]);
+
   // Last assistant index (for Retry button)
   // Initial scroll to bottom when session loads with existing messages.
   const didInitialScroll = useRef(false);
@@ -315,6 +461,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       homeDir={homeDir}
       onCwdSelect={onCwdSelect}
       onCwdDefault={onCwdDefault}
+      toolPreset={toolPreset}
       streamingTokens={streamingTokens}
       streamingTps={streamingTps}
       agentStatus={agentRunning ? phaseLabel(agentPhase) : undefined}
@@ -419,6 +566,16 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         </div>
       ) : (
       <>
+      <AgentStatusBar
+        agentRunning={agentRunning}
+        agentPhase={agentPhase}
+        eventStatus={eventStatus}
+        isCompacting={isCompacting}
+        compactError={compactError}
+        retryInfo={retryInfo}
+        thinkingLevel={thinkingLevel}
+        toolPreset={toolPreset}
+      />
       <div className="flex-1 overflow-hidden relative" style={{ paddingRight: MINIMAP_WIDTH, animation: "fade-in-up 0.35s ease both" }}>
         {/* ── Native scroll viewport ── */}
         <div
@@ -426,53 +583,10 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
           className="h-full overflow-y-auto [scrollbar-width:none]"
         >
           <div ref={scrollContentRef} style={{ paddingTop: 16 }}>
-            {/* Completed messages — merge consecutive toolCall-only assistants into the previous assistant with text */}
-            {(() => {
-              // Build merged render list: absorb toolCall-only assistants into the preceding assistant
-              const items: Array<{
-                msg: AgentMessage;
-                entryId: string;
-                originalIndex: number;
-              }> = [];
-
-              for (let i = 0; i < messages.length; i++) {
-                const msg = messages[i];
-                if (msg.role === "toolResult") continue;
-
-                if (msg.role === "assistant") {
-                  const content = msg.content;
-                  const isToolCallOnly = Array.isArray(content) &&
-                    content.length > 0 &&
-                    content.every((b: any) => b.type === "toolCall");
-
-                  if (isToolCallOnly) {
-                    const last = items[items.length - 1];
-                    if (last?.msg.role === "assistant") {
-                      const tagged = (content as any[]).map((b: any) =>
-                        b.type === "toolCall" ? { ...b, _sourceTs: msg.timestamp } : b
-                      );
-                      last.msg = {
-                        ...last.msg,
-                        content: [...(last.msg.content as any[]), ...tagged],
-                      };
-                      continue;
-                    }
-                  }
-                }
-
-                items.push({ msg, entryId: entryIds[i], originalIndex: i });
-              }
-
-              const lastAssistantMergedIdx = (() => {
-                for (let i = items.length - 1; i >= 0; i--) {
-                  if (items[i].msg.role === "assistant") return i;
-                }
-                return -1;
-              })();
-
-              return items.map(({ msg, entryId, originalIndex }, idx) => {
-                const prevItem = idx > 0 ? items[idx - 1] : undefined;
-                const nextItem = idx < items.length - 1 ? items[idx + 1] : undefined;
+            {/* Completed messages */}
+            {renderedMessages.items.map(({ msg, entryId, originalIndex }, idx) => {
+                const prevItem = idx > 0 ? renderedMessages.items[idx - 1] : undefined;
+                const nextItem = idx < renderedMessages.items.length - 1 ? renderedMessages.items[idx + 1] : undefined;
 
                 const prevAssistantEntryId =
                   msg.role === "user" && prevItem?.msg.role === "assistant"
@@ -484,14 +598,45 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                   showTimestamp = true;
                   // Suppress if the next rendered message before a user is also an assistant
                   if (nextItem?.msg.role === "assistant") showTimestamp = false;
-                  if (showTimestamp && streamState.isStreaming && idx === items.length - 1) {
+                  if (showTimestamp && streamState.isStreaming && idx === renderedMessages.items.length - 1) {
                     showTimestamp = false;
                   }
                 }
-                const isLastAssistant = msg.role === "assistant" && idx === lastAssistantMergedIdx && !streamState.isStreaming;
+                const isLastAssistant = msg.role === "assistant" && idx === renderedMessages.lastAssistantIdx && !streamState.isStreaming;
+                const anchorTitle = [
+                  entryId ? `entry ${entryId}` : null,
+                  activeLeafId ? `leaf ${activeLeafId}` : null,
+                  activeBranch ? `branch ${activeBranch}` : "branch main",
+                ].filter(Boolean).join("\n");
 
                 return (
-                  <div key={entryId ?? originalIndex} className="mx-auto max-w-[1148px] px-4">
+                  <div key={entryId ?? originalIndex} className="relative mx-auto max-w-[1148px] px-4">
+                    {entryId && (
+                      <span
+                        title={anchorTitle}
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          top: 4,
+                          transform: "translateX(-50%)",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: 18,
+                          height: 18,
+                          borderRadius: 9999,
+                          border: "1px solid var(--border)",
+                          background: "var(--bg)",
+                          color: msg.role === "user" ? "var(--accent)" : "var(--text-dim)",
+                          fontSize: 10,
+                          fontFamily: "var(--font-mono)",
+                          pointerEvents: "auto",
+                          opacity: 0.75,
+                        }}
+                      >
+                        {msg.role === "user" ? "U" : "A"}
+                      </span>
+                    )}
                     <MessageView
                       message={msg}
                       toolResults={toolResultsMap}
@@ -509,8 +654,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                     />
                   </div>
                 );
-              });
-            })()}
+              })}
 
             {/* Streaming content */}
             {streamState.isStreaming && streamState.streamingMessage && (
