@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * Standard chat-UI approach used by ChatGPT, Claude, etc.:
  * - A single shouldAutoScroll ref tracks whether the user wants to stay at bottom.
  * - It becomes false when the user scrolls up, true when they scroll to bottom.
- * - Streaming follow uses one requestAnimationFrame loop controlled by agentRunning.
+ * - Streaming follow reacts to content height changes instead of writing scrollTop every frame.
  * - Hot-path scroll/stream state lives in refs; React state only updates on transitions.
  */
 export interface UseChatScrollOptions {
@@ -22,6 +22,17 @@ const BOTTOM_THRESHOLD_PX = 8;
 
 export function useChatScroll({ follow = false, onAtBottomChange }: UseChatScrollOptions = {}) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [containerElement, setContainerElement] = useState<HTMLDivElement | null>(null);
+  const setContainerRef = useCallback((node: HTMLDivElement | null) => {
+    containerRef.current = node;
+    setContainerElement(node);
+  }, []);
+  const [contentElement, setContentElement] = useState<HTMLDivElement | null>(null);
+  const contentRef = useCallback((node: HTMLDivElement | null) => {
+    setContentElement(node);
+  }, []);
+  const followRef = useRef(follow);
+  followRef.current = follow;
   const onAtBottomChangeRef = useRef(onAtBottomChange);
   onAtBottomChangeRef.current = onAtBottomChange;
 
@@ -36,6 +47,7 @@ export function useChatScroll({ follow = false, onAtBottomChange }: UseChatScrol
 
   // Track the last scroll position to detect user-initiated scroll-up
   const lastScrollTopRef = useRef(0);
+  const followFrameRef = useRef<number | null>(null);
   const touchYRef = useRef<number | null>(null);
 
   // -- Helpers --
@@ -60,6 +72,17 @@ export function useChatScroll({ follow = false, onAtBottomChange }: UseChatScrol
     lastScrollTopRef.current = el.scrollTop;
     updateAtBottom(true);
   }, [updateAtBottom]);
+
+  const scheduleFollowBottom = useCallback(() => {
+    if (!followRef.current || !shouldAutoScrollRef.current || followFrameRef.current !== null) return;
+
+    followFrameRef.current = requestAnimationFrame(() => {
+      followFrameRef.current = null;
+      if (followRef.current && shouldAutoScrollRef.current) {
+        followBottom();
+      }
+    });
+  }, [followBottom]);
 
   const scrollToBottom = useCallback(
     (behavior: ScrollBehavior = "instant") => {
@@ -102,8 +125,9 @@ export function useChatScroll({ follow = false, onAtBottomChange }: UseChatScrol
     const el = containerRef.current;
     if (el && event.deltaY < 0 && el.scrollTop > 0) {
       shouldAutoScrollRef.current = false;
+      updateAtBottom(false);
     }
-  }, []);
+  }, [updateAtBottom]);
 
   const handleTouchStart = useCallback((event: TouchEvent) => {
     touchYRef.current = event.touches[0]?.clientY ?? null;
@@ -115,13 +139,14 @@ export function useChatScroll({ follow = false, onAtBottomChange }: UseChatScrol
     const el = containerRef.current;
     if (el && prevY !== null && nextY !== null && nextY > prevY && el.scrollTop > 0) {
       shouldAutoScrollRef.current = false;
+      updateAtBottom(false);
     }
     touchYRef.current = nextY;
-  }, []);
+  }, [updateAtBottom]);
 
   // -- Attach scroll listener --
   useEffect(() => {
-    const el = containerRef.current;
+    const el = containerElement;
     if (!el) return;
 
     lastScrollTopRef.current = el.scrollTop;
@@ -136,25 +161,34 @@ export function useChatScroll({ follow = false, onAtBottomChange }: UseChatScrol
       el.removeEventListener("touchstart", handleTouchStart);
       el.removeEventListener("touchmove", handleTouchMove);
     };
-  }, [handleScroll, handleTouchMove, handleTouchStart, handleWheel]);
+  }, [containerElement, handleScroll, handleTouchMove, handleTouchStart, handleWheel]);
 
   useEffect(() => {
     if (!follow) return;
+    scheduleFollowBottom();
+  }, [follow, scheduleFollowBottom]);
 
-    let frame = 0;
-    const tick = () => {
-      if (shouldAutoScrollRef.current) {
-        followBottom();
+  useEffect(() => {
+    const el = containerElement;
+    const content = contentElement ?? el?.firstElementChild;
+    if (!el || !content) return;
+
+    const ro = new ResizeObserver(scheduleFollowBottom);
+    ro.observe(content);
+
+    return () => {
+      ro.disconnect();
+      if (followFrameRef.current !== null) {
+        cancelAnimationFrame(followFrameRef.current);
+        followFrameRef.current = null;
       }
-      frame = requestAnimationFrame(tick);
     };
-
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [follow, followBottom]);
+  }, [containerElement, contentElement, scheduleFollowBottom]);
 
   return {
     containerRef,
+    setContainerRef,
+    contentRef,
     scrollToBottom,
     shouldAutoScrollRef,
     isAtBottom,

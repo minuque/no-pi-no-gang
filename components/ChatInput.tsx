@@ -39,6 +39,7 @@ interface Props {
   onCwdDefault?: () => void;
   streamingTokens?: number;
   streamingTps?: number | null;
+  agentStatus?: string;
 }
 
 export interface ChatInputHandle {
@@ -75,6 +76,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   onCwdDefault,
   streamingTokens,
   streamingTps,
+  agentStatus,
 }: Props, ref) {
   const [value, setValue] = useState("");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
@@ -602,12 +604,39 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         {isStreaming && (
         <div style={{
           display: "flex", alignItems: "center", gap: 8,
-          marginBottom: 8, height: 20, fontSize: 12, color: "var(--text-dim)",
+          marginBottom: 8, minHeight: 20, fontSize: 12, color: "var(--text-dim)",
           fontFamily: "var(--font-mono)",
+          overflow: "hidden",
         }}>
-          {/* Pi favicon */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/favicon.ico" alt="" style={{ width: 16, height: 16, flexShrink: 0 }} />
+          {agentStatus && (
+            <span style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              minWidth: 0,
+              color: "var(--text-muted)",
+              animation: "codex-status-enter 160ms ease-out both",
+            }}>
+              <span aria-hidden style={{
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                flexShrink: 0,
+                background: "currentColor",
+                boxShadow: "0 0 0 0 color-mix(in oklab, currentColor, transparent 45%)",
+                animation: "codex-status-dot 1.25s ease-in-out infinite",
+              }} />
+              <span style={{
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                animation: "codex-status-breathe 1.8s ease-in-out infinite",
+              }}>
+                {agentStatus}
+              </span>
+            </span>
+          )}
           {isStreaming && streamingTps != null && streamingTps > 0 && (() => {
             const tier = streamingTps >= 50 ? "high" : streamingTps >= 20 ? "mid" : "low";
             return (
@@ -616,13 +645,14 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 background: `var(--ui-tps-${tier}-bg)`,
                 color: `var(--ui-tps-${tier}-fg)`,
                 fontSize: 11, fontWeight: 500, lineHeight: "18px",
+                flexShrink: 0,
               }}>
                 {streamingTps.toFixed(1)} t/s
               </span>
             );
           })()}
           {isStreaming && streamingTokens !== undefined && streamingTokens > 0 && (
-            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
               <svg width="11" height="11" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="5" y1="1.5" x2="5" y2="8.5" /><polyline points="2 6 5 8.5 8 6" />
               </svg>

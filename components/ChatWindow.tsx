@@ -255,6 +255,8 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   // ── Native scroll controller (replaces Virtuoso) ──
   const {
     containerRef: scrollContainerRef,
+    setContainerRef: setScrollContainerRef,
+    contentRef: scrollContentRef,
     scrollToBottom,
     isAtBottom,
   } = useChatScroll({ follow: agentRunning });
@@ -315,6 +317,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       onCwdDefault={onCwdDefault}
       streamingTokens={streamingTokens}
       streamingTps={streamingTps}
+      agentStatus={agentRunning ? phaseLabel(agentPhase) : undefined}
     />
   );
 
@@ -419,10 +422,10 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       <div className="flex-1 overflow-hidden relative" style={{ paddingRight: MINIMAP_WIDTH, animation: "fade-in-up 0.35s ease both" }}>
         {/* ── Native scroll viewport ── */}
         <div
-          ref={scrollContainerRef}
+          ref={setScrollContainerRef}
           className="h-full overflow-y-auto [scrollbar-width:none]"
         >
-          <div style={{ paddingTop: 16 }}>
+          <div ref={scrollContentRef} style={{ paddingTop: 16 }}>
             {/* Completed messages — merge consecutive toolCall-only assistants into the previous assistant with text */}
             {(() => {
               // Build merged render list: absorb toolCall-only assistants into the preceding assistant
@@ -517,13 +520,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                   isStreaming
                   modelNames={modelNames}
                 />
-              </div>
-            )}
-
-            {/* Phase indicator (agent running, no message yet) */}
-            {agentRunning && !streamState.streamingMessage && (
-              <div className="mx-auto max-w-[1148px] px-4 py-2 text-[13px]" style={{ color: "var(--text-muted)" }}>
-                <span className="animate-[pulse_1.5s_infinite]">{phaseLabel(agentPhase)}</span>
               </div>
             )}
 

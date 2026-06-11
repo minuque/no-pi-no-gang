@@ -450,6 +450,21 @@ span.linenumber {
   50% { opacity: 0.5; }
 }
 
+@keyframes codex-status-enter {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes codex-status-dot {
+  0%, 100% { opacity: 0.45; transform: scale(0.86); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes codex-status-breathe {
+  0%, 100% { opacity: 0.72; }
+  50% { opacity: 1; }
+}
+
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
