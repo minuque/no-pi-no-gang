@@ -37,6 +37,7 @@ interface Props {
   homeDir?: string;
   onCwdSelect?: (cwd: string) => void;
   onCwdDefault?: () => void;
+  toolPreset?: "none" | "default" | "full";
   streamingTokens?: number;
   streamingTps?: number | null;
   agentStatus?: string;
@@ -74,6 +75,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   homeDir = "",
   onCwdSelect,
   onCwdDefault,
+  toolPreset = "default",
   streamingTokens,
   streamingTps,
   agentStatus,
@@ -1002,6 +1004,29 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 </div>
               )}
             </div>
+
+            {toolPreset === "none" && (
+              <span
+                title="Tools are disabled for the next request"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                  padding: "4px 10px", height: 28,
+                  background: "color-mix(in oklab, var(--warn), transparent 92%)",
+                  border: "1px solid color-mix(in oklab, var(--warn), transparent 72%)",
+                  borderRadius: 9999,
+                  color: "var(--warn)",
+                  fontSize: 11,
+                  fontFamily: "var(--font-body)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                </svg>
+                No tools
+              </span>
+            )}
 
             {/* 🌿 Branch pill */}
             <div ref={branchDropdownRef} style={{ position: "relative" }}>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useReducer } from "react";
-import type { AgentMessage, SessionInfo, SessionTreeNode } from "@/lib/types";
+import type { AgentMessage, AssistantMessage, SessionInfo, SessionTreeNode, ToolCallContent } from "@/lib/types";
 import { normalizeToolCalls } from "@/lib/normalize";
 import { sendAgentCommand } from "@/lib/agent-client";
 import { toast } from "sonner";
@@ -55,6 +55,8 @@ export type AgentPhase =
   | { kind: "running_tools"; tools: { id: string; name: string }[] }
   | { kind: "running_skill"; skill: string }
   | null;
+
+export type AgentEventStatus = "idle" | "connecting" | "connected" | "reconnecting";
 
 export interface UseAgentSessionOptions {
   session: SessionInfo | null;
@@ -119,6 +121,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [isCompacting, setIsCompacting] = useState(false);
   const [compactError, setCompactError] = useState<string | null>(null);
   const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
+  const [eventStatus, setEventStatus] = useState<AgentEventStatus>("idle");
   const [commands, setCommands] = useState<{ name: string; description: string }[]>([]);
 
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -230,9 +233,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
     }
+    setEventStatus("connecting");
     const es = new EventSource(`/api/agent/${encodeURIComponent(sid)}/events`);
     eventSourceRef.current = es;
+    es.onopen = () => {
+      if (eventSourceRef.current === es) setEventStatus("connected");
+    };
     es.onmessage = (e) => {
+      if (eventSourceRef.current === es) setEventStatus("connected");
       try {
         const event = JSON.parse(e.data) as AgentEvent;
         handleAgentEventRef.current?.(event);
@@ -242,11 +250,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     };
     es.onerror = () => {
       if (eventSourceRef.current === es && agentRunningRef.current) {
+        setEventStatus("reconnecting");
         es.close();
         eventSourceRef.current = null;
         setTimeout(() => {
           if (agentRunningRef.current) connectEvents(sid);
         }, 1000);
+      } else if (eventSourceRef.current === es) {
+        setEventStatus("idle");
       }
     };
   }, []);
@@ -255,12 +266,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     agentRunningRef.current = agentRunning;
   }, [agentRunning]);
 
-  const isToolCallOnly = (msg: AgentMessage): boolean => {
+  const isToolCallOnly = (msg: AgentMessage): msg is AssistantMessage & { content: ToolCallContent[] } => {
     if (msg.role !== "assistant") return false;
     const content = msg.content;
     return Array.isArray(content) &&
       content.length > 0 &&
-      content.every((b: any) => b.type === "toolCall");
+      content.every((b): b is ToolCallContent => b.type === "toolCall");
   };
 
   const mergeToolCallMessages = (msgs: AgentMessage[]): AgentMessage[] => {
@@ -269,12 +280,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (!isToolCallOnly(msg)) { result.push(msg); continue; }
       const last = result[result.length - 1];
       if (last?.role === "assistant") {
-        const tagged = (msg.content as any[]).map((b: any) =>
-          b.type === "toolCall" ? { ...b, _sourceTs: msg.timestamp } : b
-        );
+        const tagged = msg.content.map((b) => ({ ...b, _sourceTs: msg.timestamp }));
         result[result.length - 1] = {
           ...last,
-          content: [...(last.content as any[]), ...tagged],
+          content: [...last.content, ...tagged],
         };
       } else {
         result.push(msg);
@@ -296,6 +305,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       case "agent_end":
         setAgentRunning(false);
         setAgentPhase(null);
+        setEventStatus("idle");
         setRetryInfo(null);
         dispatch({ type: "end" });
         // Bump gen so loadSession below captures a generation that any
@@ -724,6 +734,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     return () => {
       eventSourceRef.current?.close();
       eventSourceRef.current = null;
+      setEventStatus("idle");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -776,7 +787,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, toolPreset, thinkingLevel,
     retryInfo, contextUsage, systemPrompt, forkingEntryId,
     isCompacting, compactError, currentModel, displayModel, sessionStats,
-    agentPhase,
+    agentPhase, eventStatus,
     isNew,
     // Refs
     sessionIdRef, eventSourceRef,
