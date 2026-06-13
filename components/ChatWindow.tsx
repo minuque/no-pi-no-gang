@@ -64,6 +64,30 @@ const TYPEWRITER_PHRASES = [
   "rubber-duck with me.",
 ];
 
+const USER_ANCHOR_MAX_VISIBLE = 9;
+const USER_ANCHOR_ROW_HEIGHT = 28;
+const USER_ANCHOR_PANEL_PADDING_Y = 14;
+const USER_ANCHOR_PANEL_WIDTH = 224;
+
+function getMessageText(message: AgentMessage): string {
+  const content = message.content;
+  if (typeof content === "string") return content;
+  return content
+    .map((block) => block.type === "text" && "text" in block ? block.text : "")
+    .filter(Boolean)
+    .join("\n");
+}
+
+function summarizeUserMessage(message: AgentMessage, fallback: string): string {
+  const text = getMessageText(message).replace(/\s+/g, " ").trim();
+  if (!text) return fallback;
+  return text.length > 28 ? `${text.slice(0, 28)}...` : text;
+}
+
+function getUserMessageTitle(message: AgentMessage): string | undefined {
+  return getMessageText(message).replace(/\s+/g, " ").trim() || undefined;
+}
+
 function Typewriter({ phrases }: { phrases: string[] }) {
   const [phraseIdx, setPhraseIdx] = useState(() => Math.floor(Math.random() * phrases.length));
   const [text, setText] = useState("");
@@ -315,6 +339,68 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     return { items, lastAssistantIdx };
   }, [messages, entryIds]);
 
+  const userMessageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const [activeUserAnchorId, setActiveUserAnchorId] = useState<string | null>(null);
+  const [showUserAnchorPanel, setShowUserAnchorPanel] = useState(false);
+
+  const userAnchors = useMemo(() => {
+    return renderedMessages.items
+      .filter(({ msg }) => msg.role === "user")
+      .map(({ msg, entryId, originalIndex }, index) => {
+        const id = entryId ?? `message-${originalIndex}`;
+        return {
+          id,
+          index: index + 1,
+          label: summarizeUserMessage(msg, `User message ${index + 1}`),
+          title: getUserMessageTitle(msg),
+        };
+      });
+  }, [renderedMessages.items]);
+
+  const activeUserAnchorIndex = Math.max(0, userAnchors.findIndex((anchor) => anchor.id === activeUserAnchorId));
+  const firstVisibleAnchorIndex = Math.max(0, Math.min(activeUserAnchorIndex - 4, Math.max(0, userAnchors.length - USER_ANCHOR_MAX_VISIBLE)));
+  const visibleUserAnchors = userAnchors.slice(firstVisibleAnchorIndex, firstVisibleAnchorIndex + USER_ANCHOR_MAX_VISIBLE);
+  const userAnchorPanelHeight = visibleUserAnchors.length * USER_ANCHOR_ROW_HEIGHT + USER_ANCHOR_PANEL_PADDING_Y * 2;
+
+  const scrollToUserAnchor = useCallback((id: string) => {
+    const node = userMessageRefs.current.get(id);
+    if (!node) return;
+    setActiveUserAnchorId(id);
+    node.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || userAnchors.length === 0) return;
+
+    const updateActiveAnchor = () => {
+      const containerTop = container.getBoundingClientRect().top;
+      const targetY = containerTop + Math.min(container.clientHeight * 0.32, 220);
+      let activeId = userAnchors[0].id;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+
+      for (const anchor of userAnchors) {
+        const node = userMessageRefs.current.get(anchor.id);
+        if (!node) continue;
+        const distance = Math.abs(node.getBoundingClientRect().top - targetY);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          activeId = anchor.id;
+        }
+      }
+
+      setActiveUserAnchorId((current) => current === activeId ? current : activeId);
+    };
+
+    updateActiveAnchor();
+    container.addEventListener("scroll", updateActiveAnchor, { passive: true });
+    window.addEventListener("resize", updateActiveAnchor);
+    return () => {
+      container.removeEventListener("scroll", updateActiveAnchor);
+      window.removeEventListener("resize", updateActiveAnchor);
+    };
+  }, [scrollContainerRef, userAnchors]);
+
   // Last assistant index (for Retry button)
   // Initial scroll to bottom when session loads with existing messages.
   const didInitialScroll = useRef(false);
@@ -496,8 +582,17 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                   activeBranch ? `branch ${activeBranch}` : "branch main",
                 ].filter(Boolean).join("\n");
 
+                const messageAnchorId = entryId ?? `message-${originalIndex}`;
+
                 return (
-                  <div key={entryId ?? originalIndex} className="relative mx-auto max-w-[1148px] px-4">
+                  <div
+                    key={entryId ?? originalIndex}
+                    ref={msg.role === "user" ? (node) => {
+                      if (node) userMessageRefs.current.set(messageAnchorId, node);
+                      else userMessageRefs.current.delete(messageAnchorId);
+                    } : undefined}
+                    className="relative mx-auto max-w-[1148px] px-4"
+                  >
                     {entryId && (
                       <span
                         title={anchorTitle}
@@ -558,6 +653,194 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             <div style={{ height: 24 }} />
           </div>
         </div>
+
+        {userAnchors.length > 1 && (
+          <nav
+            className="hidden xl:flex"
+            aria-label="User message navigator"
+            onMouseEnter={() => setShowUserAnchorPanel(true)}
+            onMouseLeave={() => setShowUserAnchorPanel(false)}
+            onFocus={() => setShowUserAnchorPanel(true)}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                setShowUserAnchorPanel(false);
+              }
+            }}
+            style={{
+              position: "absolute",
+              right: 18,
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 9,
+              width: 42,
+              height: userAnchorPanelHeight,
+              flexDirection: "column",
+              alignItems: "flex-end",
+              justifyContent: "center",
+              overflow: "visible",
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                width: 28,
+                height: userAnchorPanelHeight,
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 0,
+                padding: `${USER_ANCHOR_PANEL_PADDING_Y}px 0`,
+                pointerEvents: "auto",
+              }}
+            >
+              {visibleUserAnchors.map((anchor) => {
+                const active = activeUserAnchorId === anchor.id;
+                return (
+                  <button
+                    key={anchor.id}
+                    type="button"
+                    aria-label={`Jump to prompt ${anchor.index}: ${anchor.label}`}
+                    aria-current={active ? "location" : undefined}
+                    onClick={() => scrollToUserAnchor(anchor.id)}
+                    style={{
+                      width: 20,
+                      height: USER_ANCHOR_ROW_HEIGHT,
+                      padding: 0,
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "flex-end",
+                    }}
+                    onMouseEnter={(e) => {
+                      const line = e.currentTarget.firstElementChild as HTMLElement | null;
+                      if (line && !active) line.style.background = "var(--text-muted)";
+                    }}
+                    onMouseLeave={(e) => {
+                      const line = e.currentTarget.firstElementChild as HTMLElement | null;
+                      if (line && !active) line.style.background = "var(--border)";
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      style={{
+                        width: active ? 11 : 7,
+                        height: active ? 3 : 2,
+                        borderRadius: 9999,
+                        background: active ? "var(--accent)" : "var(--border)",
+                        transition: "width 0.12s ease, background 0.12s ease",
+                      }}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+
+            {showUserAnchorPanel && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: USER_ANCHOR_PANEL_WIDTH,
+                  maxWidth: "min(224px, calc(100vw - 560px))",
+                  height: userAnchorPanelHeight,
+                  pointerEvents: "auto",
+                }}
+              >
+                <style>{`
+                  @keyframes user-anchor-panel-in {
+                    from { opacity: 0; transform: translateX(12px) scale(0.98); }
+                    to { opacity: 1; transform: translateX(0) scale(1); }
+                  }
+                `}</style>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 0,
+                    padding: `${USER_ANCHOR_PANEL_PADDING_Y}px 10px`,
+                    height: userAnchorPanelHeight,
+                    overflow: "hidden",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    background: "#242527",
+                    boxShadow: "0 22px 55px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.04)",
+                    backdropFilter: "blur(14px)",
+                    animation: "user-anchor-panel-in 180ms cubic-bezier(.2,.8,.2,1) both",
+                  }}
+                >
+                  {visibleUserAnchors.map((anchor) => {
+                    const active = activeUserAnchorId === anchor.id;
+                    return (
+                      <button
+                        key={anchor.id}
+                        type="button"
+                        title={anchor.title && anchor.title !== anchor.label ? anchor.title : undefined}
+                        aria-label={`Jump to prompt ${anchor.index}: ${anchor.label}`}
+                        aria-current={active ? "location" : undefined}
+                        onClick={() => scrollToUserAnchor(anchor.id)}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "minmax(0, 1fr) 18px",
+                          alignItems: "center",
+                          gap: 12,
+                          minHeight: USER_ANCHOR_ROW_HEIGHT,
+                          padding: "0 8px 0 10px",
+                          border: "none",
+                          borderRadius: 7,
+                          background: "transparent",
+                          color: active ? "#f3f3f4" : "rgba(232, 232, 234, 0.56)",
+                          cursor: "pointer",
+                          fontSize: 14,
+                          lineHeight: 1.15,
+                          fontWeight: active ? 500 : 400,
+                          textAlign: "left",
+                          letterSpacing: "-0.02em",
+                          transition: "color 160ms ease, background 160ms ease, transform 160ms ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!active) {
+                            e.currentTarget.style.color = "#e8e8ea";
+                            e.currentTarget.style.background = "rgba(255, 255, 255, 0.055)";
+                          }
+                          const marker = e.currentTarget.lastElementChild as HTMLElement | null;
+                          if (marker && !active) marker.style.background = "rgba(255, 255, 255, 0.50)";
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!active) {
+                            e.currentTarget.style.color = "rgba(232, 232, 234, 0.58)";
+                            e.currentTarget.style.background = "transparent";
+                          }
+                          const marker = e.currentTarget.lastElementChild as HTMLElement | null;
+                          if (marker && !active) marker.style.background = "rgba(255, 255, 255, 0.22)";
+                        }}
+                      >
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {anchor.label}
+                        </span>
+                        <span
+                          aria-hidden
+                          style={{
+                            justifySelf: "end",
+                            width: active ? 13 : 10,
+                            height: active ? 4 : 3,
+                            borderRadius: 9999,
+                            background: active ? "#6da2ff" : "rgba(255, 255, 255, 0.22)",
+                            transition: "width 160ms ease, height 160ms ease, background 160ms ease",
+                          }}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </nav>
+        )}
 
         {/* Scroll-to-bottom button */}
         {!isAtBottom && (
