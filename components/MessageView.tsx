@@ -977,7 +977,7 @@ function ToolCallBlock({ block, result, isRunning, duration, isFirst, isLast }: 
 
 
 
-export function ToolCallsGroup({ blocks, toolResults, isStreaming, toolCallDurations }: {
+function ToolCallsGroup({ blocks, toolResults, isStreaming, toolCallDurations }: {
   blocks: ToolCallContent[];
   toolResults?: Map<string, ToolResultMessage>;
   isStreaming?: boolean;
