@@ -199,6 +199,13 @@ export function AppShell() {
   const [homeDir, setHomeDir] = useState("");
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
 
+  // Set document.title to project name
+  const effectiveCwd = selectedSession?.cwd ?? newSessionCwd ?? activeCwd;
+  useEffect(() => {
+    const name = effectiveCwd ? effectiveCwd.split(/[/\\]/).filter(Boolean).pop() : null;
+    document.title = name ?? "no-pi-no-gang";
+  }, [effectiveCwd]);
+
   useEffect(() => {
     fetch("/api/home").then((r) => r.json()).then((d: { home?: string }) => {
       if (d.home) setHomeDir(d.home);
@@ -556,7 +563,7 @@ export function AppShell() {
                   borderTop: activeTopPanel === "system" ? "2px solid var(--accent)" : "2px solid transparent",
                   cursor: "pointer",
                   color: activeTopPanel === "system" ? "var(--text)" : "var(--text-muted)",
-                  fontSize: 11, whiteSpace: "nowrap", transition: "color 0.1s, background 0.1s",
+                  fontSize: 12, whiteSpace: "nowrap", transition: "color 0.1s, background 0.1s",
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = activeTopPanel === "system" ? "var(--text)" : "var(--text-muted)"; }}

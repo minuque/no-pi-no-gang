@@ -570,7 +570,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         flexShrink: 0,
         background: "transparent",
         padding: "0 16px 8px",
-        paddingRight: 52, // 16px base + 36px for ChatMinimap alignment
+        paddingRight: 16,
       }}
     >
       {/* Hidden file input */}
@@ -676,7 +676,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 padding: "1px 6px", borderRadius: 4,
                 background: `var(--ui-tps-${tier}-bg)`,
                 color: `var(--ui-tps-${tier}-fg)`,
-                fontSize: 11, fontWeight: 500, lineHeight: "18px",
+                fontSize: 12, fontWeight: 500, lineHeight: "18px",
                 flexShrink: 0,
               }}>
                 {streamingTps.toFixed(1)} t/s
@@ -829,7 +829,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   onClick={() => selectCommand(cmd.name)}
                 >
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, flexShrink: 0 }}>/{cmd.name}</span>
-                  <span style={{ fontSize: 11, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis" }}>{cmd.description}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis" }}>{cmd.description}</span>
                 </button>
               ))}
             </div>
@@ -888,7 +888,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   border: "1px solid var(--border)", borderRadius: 9999,
                   color: cwdDropdownOpen ? "var(--text)" : "var(--text-muted)",
                   cursor: isStreaming ? "not-allowed" : "pointer",
-                  fontSize: 11, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
+                  fontSize: 12, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
                   opacity: isStreaming ? 0.5 : 1,
                   transition: "background 0.12s, color 0.12s",
                 }}
@@ -926,7 +926,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                         background: "none",
                         border: "none", borderBottom: "1px solid var(--border)",
                         color: "var(--text-muted)", cursor: "pointer", textAlign: "left",
-                        fontSize: 11, fontFamily: "var(--font-mono)",
+                        fontSize: 12, fontFamily: "var(--font-mono)",
                         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                       }}
                       title={cwd}
@@ -948,7 +948,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                         background: "none", border: "none",
                         borderTop: (recentCwds ?? []).length > 0 ? "1px solid var(--border)" : "none",
                         color: "var(--text-muted)", cursor: "pointer", textAlign: "left",
-                        fontSize: 11,
+                        fontSize: 12,
                       }}
                     >
                       <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -972,7 +972,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                         width: "100%", padding: "8px 10px",
                         background: "none", border: "none",
                         color: "var(--text-muted)", cursor: "pointer", textAlign: "left",
-                        fontSize: 11,
+                        fontSize: 12,
                       }}
                     >
                       <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" style={{ flexShrink: 0 }}>
@@ -992,13 +992,13 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                         }}
                         placeholder="/path/to/project"
                         style={{
-                          width: "100%", fontSize: 11, fontFamily: "var(--font-mono)",
+                          width: "100%", fontSize: 12, fontFamily: "var(--font-mono)",
                           padding: "5px 8px", border: "1px solid var(--accent)", borderRadius: 5,
                           outline: "none", background: "var(--bg)", color: "var(--text)", boxSizing: "border-box",
                         }}
                       />
                       {cwdCustomError && (
-                        <div style={{ marginTop: 5, color: "var(--danger)", fontSize: 11, lineHeight: 1.35, overflowWrap: "anywhere" }}>
+                        <div style={{ marginTop: 5, color: "var(--danger)", fontSize: 12, lineHeight: 1.35, overflowWrap: "anywhere" }}>
                           {cwdCustomError}
                         </div>
                       )}
@@ -1008,7 +1008,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                           disabled={cwdCustomValidating || !cwdCustomValue.trim()}
                           style={{
                             flex: 1, padding: "4px 0", background: "var(--accent-hover)", border: "none", borderRadius: 5,
-                            color: "var(--accent-on)", fontSize: 11, fontWeight: 600,
+                            color: "var(--accent-on)", fontSize: 12, fontWeight: 600,
                             cursor: cwdCustomValidating || !cwdCustomValue.trim() ? "not-allowed" : "pointer",
                             opacity: cwdCustomValidating || !cwdCustomValue.trim() ? 0.65 : 1,
                           }}
@@ -1019,7 +1019,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                           onClick={() => { setCwdCustomOpen(false); setCwdCustomValue(""); setCwdCustomError(null); }}
                           style={{
                             flex: 1, padding: "4px 0", background: "var(--bg-hover)", border: "1px solid var(--border)",
-                            borderRadius: 5, color: "var(--text-muted)", fontSize: 11, cursor: "pointer",
+                            borderRadius: 5, color: "var(--text-muted)", fontSize: 12, cursor: "pointer",
                           }}
                         >
                           Cancel
@@ -1041,7 +1041,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   border: "1px solid color-mix(in oklab, var(--warn), transparent 72%)",
                   borderRadius: 9999,
                   color: "var(--warn)",
-                  fontSize: 11,
+                  fontSize: 12,
                   fontFamily: "var(--font-body)",
                   whiteSpace: "nowrap",
                 }}
@@ -1067,7 +1067,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   border: "1px solid var(--border)", borderRadius: 9999,
                   color: branchDropdownOpen ? "var(--text)" : "var(--text-muted)",
                   cursor: isStreaming ? "not-allowed" : "pointer",
-                  fontSize: 11, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
+                  fontSize: 12, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
                   opacity: isStreaming ? 0.5 : 1,
                   transition: "background 0.12s, color 0.12s",
                 }}
@@ -1154,7 +1154,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                       borderRadius: 9999,
                       color: "var(--text-muted)",
                       cursor: isStreaming ? "not-allowed" : "pointer",
-                      fontSize: 11,
+                      fontSize: 12,
                       opacity: isStreaming ? 0.5 : 1,
                       transition: "background 0.12s, color 0.12s",
                       fontFamily: "var(--font-body)",
@@ -1203,7 +1203,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                           {(modelsByProvider.length > 1) && (
                             <div style={{
                               padding: "6px 12px 4px",
-                              fontSize: 10, fontWeight: 600, color: "var(--text-dim)",
+                              fontSize: 12, fontWeight: 600, color: "var(--text-dim)",
                               textTransform: "uppercase", letterSpacing: "0.07em",
                               borderTop: gi > 0 ? "1px solid var(--border)" : "none",
                             }}>
@@ -1258,7 +1258,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                     borderRadius: 9999,
                     color: "var(--text-muted)",
                     cursor: isStreaming ? "not-allowed" : "pointer",
-                    fontSize: 11,
+                    fontSize: 12,
                     opacity: isStreaming ? 0.5 : 1,
                     transition: "background 0.12s, color 0.12s",
                     fontFamily: "var(--font-body)",
@@ -1324,9 +1324,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                             : <span style={{ width: 10, flexShrink: 0 }} />}
                           <span style={{ flex: 1 }}>
                             {displayLabel}
-                            {showOriginal && <span style={{ fontSize: 10, color: "var(--text-dim)", fontFamily: "var(--font-mono)", marginLeft: 5 }}>({lvl})</span>}
+                            {showOriginal && <span style={{ fontSize: 12, color: "var(--text-dim)", fontFamily: "var(--font-mono)", marginLeft: 5 }}>({lvl})</span>}
                           </span>
-                          <span style={{ fontSize: 11, color: "var(--text-dim)", marginLeft: 8 }}>{desc}</span>
+                          <span style={{ fontSize: 12, color: "var(--text-dim)", marginLeft: 8 }}>{desc}</span>
                         </button>
                       );
                     })}
@@ -1347,7 +1347,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   padding: "4px 10px", height: 28,
                   background: "none", border: "1px solid var(--border)", borderRadius: 9999,
                   color: "var(--text-muted)", cursor: "default",
-                  fontSize: 11, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
+                  fontSize: 12, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
                 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                     <circle cx="12" cy="12" r="10" />
@@ -1366,7 +1366,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   display: "flex", flexDirection: "column", gap: 8, minWidth: 200,
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <span style={{ color: "var(--text-muted)", fontSize: 11, fontWeight: 500 }}>Context window</span>
+                    <span style={{ color: "var(--text-muted)", fontSize: 12, fontWeight: 500 }}>Context window</span>
                     <span style={{ color: "var(--text)", fontSize: 12, fontWeight: 600, fontFamily: "var(--font-mono)" }}>
                       {contextUsage.percent != null ? `${Math.round(contextUsage.percent)}%` : "—"}
                     </span>
@@ -1381,7 +1381,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                       }} />
                     </div>
                   )}
-                  <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-dim)", fontSize: 11, fontFamily: "var(--font-mono)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-dim)", fontSize: 12, fontFamily: "var(--font-mono)" }}>
                     <span>{contextUsage.tokens != null ? `${(contextUsage.tokens / 1000).toFixed(1).replace(/\.0$/, "")}k tokens` : "—"}</span>
                     <span>{contextUsage.contextWindow != null
                       ? (contextUsage.contextWindow >= 1_000_000

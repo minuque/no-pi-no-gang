@@ -1,8 +1,8 @@
 # TODO.md
 
 ## 背景语义
-
-Pi Agent Web 的改进方向是强化自身设计哲学：
+ 
+当前的改进方向是强化自身设计哲学：
 
 - 会话即文件：`.jsonl` 是可读、可重建、可迁移的事实源。
 - 运行态独立：进行中的 Agent 不应只依附当前 ChatWindow；`TaskSession` 是运行事实源，`.jsonl` 是历史事实源。

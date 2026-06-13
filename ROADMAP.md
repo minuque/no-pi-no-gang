@@ -391,7 +391,6 @@ AppShell
 ├── ChatWindow             主聊天区
 │   ├── MessageView[]      消息列表（Virtuoso 虚拟滚动）
 │   ├── ChatInput          输入框
-│   └── ChatMinimap        右侧缩略导航
 ├── ModelsConfig           模型配置面板
 ├── SkillsConfig           技能配置面板
 └── ToolPanel              工具开关面板

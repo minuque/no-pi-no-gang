@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentMessage, SessionInfo, SessionTreeNode, ToolCallContent, ToolResultMessage } from "@/lib/types";
 import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
-import { ChatMinimap, MINIMAP_WIDTH } from "./ChatMinimap";
 import { SessionLoading } from "./SessionLoading";
 import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
 import { useChatScroll } from "@/hooks/useChatScroll";
@@ -451,10 +450,10 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 </span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
-                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   web <span style={{ color: "var(--text)" }}>v{process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0"}</span>
                 </span>
-                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   pi <span style={{ color: "var(--text)" }}>v{process.env.NEXT_PUBLIC_PI_VERSION ?? "0.0.0"}</span>
                 </span>
               </div>
@@ -464,7 +463,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         </div>
       ) : (
       <>
-      <div className="flex-1 overflow-hidden relative" style={{ paddingRight: MINIMAP_WIDTH, animation: "fade-in-up 0.35s ease both" }}>
+      <div className="flex-1 overflow-hidden relative" style={{ animation: "fade-in-up 0.35s ease both" }}>
         {/* ── Native scroll viewport ── */}
         <div
           ref={setScrollContainerRef}
@@ -516,7 +515,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                           border: "1px solid var(--border)",
                           background: "var(--bg)",
                           color: msg.role === "user" ? "var(--accent)" : "var(--text-dim)",
-                          fontSize: 10,
+                          fontSize: 12,
                           fontFamily: "var(--font-mono)",
                           pointerEvents: "auto",
                           opacity: 0.75,
@@ -566,7 +565,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             position: "absolute",
             bottom: 12,
             left: 0,
-            right: MINIMAP_WIDTH,
+            right: 0,
             display: "flex",
             justifyContent: "center",
             zIndex: 10,
@@ -610,16 +609,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       </div>
 
       {chatInputElement}
-
-      {/* Minimap — absolutely positioned on right edge, full ChatWindow height */}
-      <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: MINIMAP_WIDTH }}>
-        <ChatMinimap
-          messages={messages}
-          streamingMessage={streamState.streamingMessage}
-          scrollContainer={scrollContainerRef}
-          virtual
-        />
-      </div>
       </>
       )}
     </div>

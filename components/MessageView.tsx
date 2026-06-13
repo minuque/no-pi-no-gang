@@ -241,7 +241,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
                   padding: "3px 10px", height: 24,
                   background: "none", border: "1px solid var(--border)",
                   borderRadius: 5, color: "var(--text-dim)", cursor: "pointer",
-                  fontSize: 11,
+                  fontSize: 12,
                 }}
               >
                 Cancel
@@ -255,7 +255,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
                   border: "none",
                   borderRadius: 5, color: editValue.trim() ? "var(--accent-on)" : "var(--text-dim)",
                   cursor: editValue.trim() ? "pointer" : "not-allowed",
-                  fontSize: 11, fontWeight: 600,
+                  fontSize: 12, fontWeight: 600,
                 }}
               >
                 Send
@@ -343,7 +343,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
                   borderRadius: 5,
                   color: "var(--text-dim)",
                   cursor: "pointer",
-                  fontSize: 11, fontWeight: 400,
+                  fontSize: 12, fontWeight: 400,
                   whiteSpace: "nowrap",
                   transition: "color 0.12s",
                 }}
@@ -368,7 +368,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
                 borderRadius: 5,
                 color: copied ? "var(--accent)" : "var(--text-dim)",
                 cursor: "pointer",
-                fontSize: 11, fontWeight: 400,
+                fontSize: 12, fontWeight: 400,
                 whiteSpace: "nowrap",
                 transition: "color 0.12s",
               }}
@@ -402,7 +402,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
                     borderRadius: 5,
                     color: "var(--text-dim)",
                     cursor: "pointer",
-                    fontSize: 11, fontWeight: 400,
+                    fontSize: 12, fontWeight: 400,
                     whiteSpace: "nowrap",
                     transition: "color 0.12s",
                   }}
@@ -428,7 +428,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
                     borderRadius: 5,
                     color: forking ? "var(--accent)" : "var(--text-dim)",
                     cursor: forking ? "not-allowed" : "pointer",
-                    fontSize: 11, fontWeight: 400,
+                    fontSize: 12, fontWeight: 400,
                     whiteSpace: "nowrap",
                     transition: "color 0.12s",
                   }}
@@ -446,7 +446,7 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
               )}
             </div>
           )}
-          {time && <span style={{ fontSize: 10, color: "var(--text-dim)" }}>{time}</span>}
+          {time && <span style={{ fontSize: 12, color: "var(--text-dim)" }}>{time}</span>}
         </div>
       )}
     </div>
@@ -585,7 +585,7 @@ function AssistantMessageView({
               borderRadius: 5,
               color: "var(--text-dim)",
               cursor: "pointer",
-              fontSize: 11, fontWeight: 400,
+              fontSize: 12, fontWeight: 400,
               whiteSpace: "nowrap",
               transition: "opacity 0.12s, color 0.12s",
             }}
@@ -610,7 +610,7 @@ function AssistantMessageView({
               borderRadius: 5,
               color: copied ? "var(--accent)" : "var(--text-dim)",
               cursor: "pointer",
-              fontSize: 11, fontWeight: 400,
+              fontSize: 12, fontWeight: 400,
               whiteSpace: "nowrap",
               transition: "opacity 0.12s, color 0.12s",
             }}
@@ -631,7 +631,7 @@ function AssistantMessageView({
           </button>
         )}
         {time && !isStreaming && (
-          <span style={{ fontSize: 10, color: "var(--text-dim)", marginLeft: "auto" }}>{time}</span>
+          <span style={{ fontSize: 12, color: "var(--text-dim)", marginLeft: "auto" }}>{time}</span>
         )}
       </div>
     </div>
@@ -815,7 +815,7 @@ function ThinkingBlock({ block, duration, isStreaming }: { block: ThinkingConten
           </span>
         )}
         {duration !== undefined && (
-          <span style={{ fontSize: 11, fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
+          <span style={{ fontSize: 12, fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
         )}
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
           <polyline points="2 3.5 5 6.5 8 3.5" />

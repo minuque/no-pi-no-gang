@@ -48,7 +48,7 @@ html, body {
   background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 15px;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -91,7 +91,7 @@ pre, code {
    hierarchy, comfortable vertical rhythm, subtle blockquote/table tints. */
 
 .markdown-body {
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.65;
   color: var(--text);
   word-break: break-word;

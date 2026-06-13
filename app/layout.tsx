@@ -9,7 +9,7 @@ import "@fontsource/jetbrains-mono/700-italic.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Pi Agent Web",
+  title: "no-pi-no-gang",
   description: "Pi Coding Agent Web Interface",
 };
 

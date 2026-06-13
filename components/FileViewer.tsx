@@ -45,7 +45,7 @@ function DownloadLink({ filePath, label = "Download" }: { filePath: string; labe
         border: "1px solid var(--border)",
         borderRadius: 5,
         padding: "2px 8px",
-        fontSize: 11,
+        fontSize: 12,
         lineHeight: 1.4,
         background: "var(--bg-hover)",
         flexShrink: 0,
@@ -198,7 +198,7 @@ function DiffView({ oldContent, newContent }: { oldContent: string; newContent: 
                 padding: "2px 16px",
                 color: "var(--text-dim)",
                 background: "var(--bg-panel)",
-                fontSize: 11,
+                fontSize: 12,
                 borderTop: "1px solid var(--border)",
                 borderBottom: "1px solid var(--border)",
               }}
@@ -243,7 +243,7 @@ function DiffView({ oldContent, newContent }: { oldContent: string; newContent: 
                   textAlign: "right",
                   color: "var(--text-dim)",
                   userSelect: "none",
-                  fontSize: 11,
+                  fontSize: 12,
                   lineHeight: 1.6,
                   borderRight: "1px solid var(--border)",
                   background: "var(--bg-panel)",
@@ -342,7 +342,7 @@ function ImageViewer({ filePath, cwd }: { filePath: string; cwd?: string }) {
           gap: 12,
           padding: "4px 16px",
           borderBottom: "1px solid var(--border)",
-          fontSize: 11,
+          fontSize: 12,
           color: "var(--text-dim)",
           background: "var(--bg)",
           flexShrink: 0,
@@ -476,7 +476,7 @@ function AudioViewer({ filePath, cwd }: { filePath: string; cwd?: string }) {
           gap: 12,
           padding: "4px 16px",
           borderBottom: "1px solid var(--border)",
-          fontSize: 11,
+          fontSize: 12,
           color: "var(--text-dim)",
           background: "var(--bg)",
           flexShrink: 0,
@@ -610,7 +610,7 @@ function DocumentViewer({ filePath, cwd }: { filePath: string; cwd?: string }) {
           gap: 12,
           padding: "4px 16px",
           borderBottom: "1px solid var(--border)",
-          fontSize: 11,
+          fontSize: 12,
           color: "var(--text-dim)",
           background: "var(--bg)",
           flexShrink: 0,
@@ -791,7 +791,7 @@ function TextFileViewer({ filePath, cwd }: Props) {
           gap: 12,
           padding: "4px 16px",
           borderBottom: "1px solid var(--border)",
-          fontSize: 11,
+          fontSize: 12,
           color: "var(--text-dim)",
           background: "var(--bg)",
           flexShrink: 0,
@@ -828,7 +828,7 @@ function TextFileViewer({ filePath, cwd }: Props) {
             <button
               onClick={() => setViewMode("source")}
               style={{
-                padding: "2px 8px", fontSize: 11, border: "none", cursor: "pointer",
+                padding: "2px 8px", fontSize: 12, border: "none", cursor: "pointer",
                 background: viewMode === "source" ? "var(--bg-selected)" : "var(--bg-hover)",
                 color: viewMode === "source" ? "var(--text)" : "var(--text-muted)",
                 fontWeight: viewMode === "source" ? 600 : 400,
@@ -839,7 +839,7 @@ function TextFileViewer({ filePath, cwd }: Props) {
             <button
               onClick={() => setViewMode("diff")}
               style={{
-                padding: "2px 8px", fontSize: 11, border: "none", borderLeft: "1px solid var(--border)", cursor: "pointer",
+                padding: "2px 8px", fontSize: 12, border: "none", borderLeft: "1px solid var(--border)", cursor: "pointer",
                 background: viewMode === "diff" ? "var(--bg-selected)" : "var(--bg-hover)",
                 color: viewMode === "diff" ? "var(--text)" : "var(--text-muted)",
                 fontWeight: viewMode === "diff" ? 600 : 400,
@@ -856,7 +856,7 @@ function TextFileViewer({ filePath, cwd }: Props) {
             onClick={() => setWrapLines((v) => !v)}
             title={wrapLines ? "Disable word wrap" : "Enable word wrap"}
             style={{
-              padding: "2px 8px", fontSize: 11, cursor: "pointer",
+              padding: "2px 8px", fontSize: 12, cursor: "pointer",
               background: wrapLines ? "var(--bg-selected)" : "var(--bg-hover)",
               color: wrapLines ? "var(--text)" : "var(--text-muted)",
               border: "1px solid var(--border)", borderRadius: 5,
@@ -873,7 +873,7 @@ function TextFileViewer({ filePath, cwd }: Props) {
             <button
               onClick={() => setPreviewMode(false)}
               style={{
-                padding: "2px 8px", fontSize: 11, border: "none", cursor: "pointer",
+                padding: "2px 8px", fontSize: 12, border: "none", cursor: "pointer",
                 background: !previewMode ? "var(--bg-selected)" : "var(--bg-hover)",
                 color: !previewMode ? "var(--text)" : "var(--text-muted)",
                 fontWeight: !previewMode ? 600 : 400,
@@ -884,7 +884,7 @@ function TextFileViewer({ filePath, cwd }: Props) {
             <button
               onClick={() => setPreviewMode(true)}
               style={{
-                padding: "2px 8px", fontSize: 11, border: "none", borderLeft: "1px solid var(--border)", cursor: "pointer",
+                padding: "2px 8px", fontSize: 12, border: "none", borderLeft: "1px solid var(--border)", cursor: "pointer",
                 background: previewMode ? "var(--bg-selected)" : "var(--bg-hover)",
                 color: previewMode ? "var(--text)" : "var(--text-muted)",
                 fontWeight: previewMode ? 600 : 400,
@@ -901,7 +901,7 @@ function TextFileViewer({ filePath, cwd }: Props) {
             <button
               onClick={() => setPreviewMode(true)}
               style={{
-                padding: "2px 8px", fontSize: 11, border: "none", cursor: "pointer",
+                padding: "2px 8px", fontSize: 12, border: "none", cursor: "pointer",
                 background: previewMode ? "var(--bg-selected)" : "var(--bg-hover)",
                 color: previewMode ? "var(--text)" : "var(--text-muted)",
                 fontWeight: previewMode ? 600 : 400,
@@ -912,7 +912,7 @@ function TextFileViewer({ filePath, cwd }: Props) {
             <button
               onClick={() => setPreviewMode(false)}
               style={{
-                padding: "2px 8px", fontSize: 11, border: "none", borderLeft: "1px solid var(--border)", cursor: "pointer",
+                padding: "2px 8px", fontSize: 12, border: "none", borderLeft: "1px solid var(--border)", cursor: "pointer",
                 background: !previewMode ? "var(--bg-selected)" : "var(--bg-hover)",
                 color: !previewMode ? "var(--text)" : "var(--text-muted)",
                 fontWeight: !previewMode ? 600 : 400,

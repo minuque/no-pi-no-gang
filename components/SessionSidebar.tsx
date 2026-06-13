@@ -418,17 +418,17 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       {/* Session list */}
       <div style={{ flex: "1 1 auto", overflowY: "auto", minHeight: 80 }}>
         {loading && (
-          <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 11, letterSpacing: "0.02em" }}>
+          <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 12, letterSpacing: "0.02em" }}>
             Loading sessions...
           </div>
         )}
         {error && (
-          <div style={{ padding: "12px 16px", color: "var(--danger)", fontSize: 11 }}>
+          <div style={{ padding: "12px 16px", color: "var(--danger)", fontSize: 12 }}>
             {error}
           </div>
         )}
         {!loading && !error && cwdGroups.length === 0 && (
-          <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 11 }}>
+          <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 12 }}>
             No sessions
           </div>
         )}
@@ -506,8 +506,8 @@ function CwdGroupSection({
             <span style={{
               flex: 1, minWidth: 0,
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              fontSize: 12, fontWeight: isActive ? 600 : 500,
-              lineHeight: "18px",
+              fontSize: 13, fontWeight: isActive ? 600 : 500,
+              lineHeight: "19px",
             }}>
               {getCwdLabel(group.cwd)}
             </span>
@@ -517,8 +517,8 @@ function CwdGroupSection({
           <div style={{
             marginTop: 1,
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            color: "var(--text-dim)", fontSize: 9.5,
-            fontFamily: "var(--font-mono)", lineHeight: "14px",
+            color: "var(--text-dim)", fontSize: 10.5,
+            fontFamily: "var(--font-mono)", lineHeight: "15px",
             opacity: 0.65,
           }}>
             {group.cwd}
@@ -528,7 +528,7 @@ function CwdGroupSection({
           <div style={{
             marginTop: 3,
             display: "flex", alignItems: "center", gap: 8,
-            color: "var(--text-dim)", fontSize: 10.5,
+            color: "var(--text-dim)", fontSize: 11.5,
           }}>
             <span>{group.sessions.length} session{group.sessions.length !== 1 ? "s" : ""}</span>
             {group.forkCount > 0 && (
@@ -567,7 +567,7 @@ function CwdGroupSection({
           {empty ? (
             <div style={{
               padding: "12px 12px 10px 4px",
-              color: "var(--text-dim)", fontSize: 11,
+              color: "var(--text-dim)", fontSize: 12,
               opacity: 0.6,
             }}>
               No sessions in this project
@@ -751,7 +751,7 @@ function SessionItem({
       {confirmDelete ? (
         <>
           <span style={{
-            flex: 1, minWidth: 0, fontSize: 11.5, color: "var(--text)",
+            flex: 1, minWidth: 0, fontSize: 12.5, color: "var(--text)",
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}>
             Delete <b>&ldquo;{title.slice(0, 24)}{title.length > 24 ? "…" : ""}&rdquo;</b>?
@@ -771,7 +771,7 @@ function SessionItem({
           }}
           autoFocus
           style={{
-            flex: 1, fontSize: 12, padding: "4px 7px",
+            flex: 1, fontSize: 13, padding: "4px 7px",
             border: "1px solid var(--accent)", borderRadius: 4,
             outline: "none", background: "var(--bg)", color: "var(--text)",
             height: 28,
@@ -785,8 +785,8 @@ function SessionItem({
           {/* Text content */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontSize: 12.5, fontWeight: isSelected ? 500 : 400,
-              lineHeight: "17px",
+              fontSize: 13.5, fontWeight: isSelected ? 500 : 400,
+              lineHeight: "18px",
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               color: "var(--text)",
             }} title={title}>
@@ -795,16 +795,16 @@ function SessionItem({
             <div style={{
               marginTop: 1,
               display: "flex", alignItems: "center", gap: 6,
-              color: "var(--text-dim)", fontSize: 10.5,
+              color: "var(--text-dim)", fontSize: 11.5,
             }}>
               {/* Session type badge */}
               <span style={{
                 display: "inline-flex", alignItems: "center",
-                height: 15, padding: "0 4px", borderRadius: 3,
+                height: 16, padding: "0 5px", borderRadius: 3,
                 background: isFork ? "var(--bg-hover)" : "none",
                 border: isFork ? "1px solid var(--border)" : "none",
-                color: "var(--text-dim)", fontSize: 9.5,
-                fontFamily: "var(--font-mono)", lineHeight: "15px",
+                color: "var(--text-dim)", fontSize: 10.5,
+                fontFamily: "var(--font-mono)", lineHeight: "16px",
                 flexShrink: 0,
                 opacity: isFork ? 0.7 : 0.5,
               }}>
@@ -900,7 +900,7 @@ const btnDanger: React.CSSProperties = {
   height: 26, padding: "0 10px",
   background: "var(--danger)", border: "none",
   borderRadius: 5, color: "var(--accent-on)",
-  cursor: "pointer", fontSize: 11, fontWeight: 600,
+  cursor: "pointer", fontSize: 12, fontWeight: 600,
   whiteSpace: "nowrap",
 };
 
@@ -909,6 +909,6 @@ const btnGhost: React.CSSProperties = {
   height: 26, padding: "0 10px",
   background: "var(--bg)", border: "1px solid var(--border)",
   borderRadius: 5, color: "var(--text-muted)",
-  cursor: "pointer", fontSize: 11, fontWeight: 500,
+  cursor: "pointer", fontSize: 12, fontWeight: 500,
   whiteSpace: "nowrap",
 };
