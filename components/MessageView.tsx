@@ -863,10 +863,6 @@ function ToolCallBlock({ block, result, isRunning, duration, isFirst, isLast }: 
   const state = getToolState(result, isRunning);
   const resultPreview = getToolResultPreview(result);
 
-  useEffect(() => {
-    if (isError) setExpanded(true);
-  }, [isError]);
-
   return (
     <div style={{ position: "relative", paddingLeft: 18, paddingBottom: isLast ? 0 : 2 }}>
       {!isLast && (
@@ -1014,7 +1010,7 @@ export function ToolCallsGroup({ blocks, toolResults, isStreaming, toolCallDurat
       : allDone
         ? `${doneCount} done`
         : "pending";
-  const defaultVisibleCount = failedCount > 0 ? blocks.length : 3;
+  const defaultVisibleCount = 3;
   const visibleBlocks = showAll ? blocks : blocks.slice(0, defaultVisibleCount);
   const hiddenCount = blocks.length - visibleBlocks.length;
 

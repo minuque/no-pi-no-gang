@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import type { SessionInfo } from "@/lib/types";
 
 import { useTheme } from "@/hooks/useTheme";
@@ -48,7 +48,18 @@ function getRecentCwds(sessions: SessionInfo[]): string[] {
     .map(([cwd]) => cwd);
 }
 
+function getCwdLabel(cwd: string): string {
+  const normalized = cwd.replace(/[\\/]+$/, "");
+  return normalized.split(/[\\/]/).filter(Boolean).pop() || normalized || "Unknown project";
+}
 
+interface CwdSessionGroup {
+  cwd: string;
+  sessions: SessionInfo[];
+  tree: SessionTreeNode[];
+  modified: string;
+  forkCount: number;
+}
 
 interface SessionTreeNode {
   session: SessionInfo;
@@ -99,6 +110,26 @@ function buildSessionTree(sessions: SessionInfo[]): SessionTreeNode[] {
   return roots;
 }
 
+function buildCwdSessionGroups(sessions: SessionInfo[]): CwdSessionGroup[] {
+  const byCwd = new Map<string, SessionInfo[]>();
+  for (const session of sessions) {
+    if (!session.cwd) continue;
+    const group = byCwd.get(session.cwd);
+    if (group) group.push(session);
+    else byCwd.set(session.cwd, [session]);
+  }
+
+  return [...byCwd.entries()]
+    .map(([cwd, groupSessions]) => ({
+      cwd,
+      sessions: groupSessions,
+      tree: buildSessionTree(groupSessions),
+      modified: groupSessions.reduce((latest, session) => session.modified > latest ? session.modified : latest, ""),
+      forkCount: groupSessions.filter((session) => Boolean(session.parentSessionId)).length,
+    }))
+    .sort((a, b) => b.modified.localeCompare(a.modified));
+}
+
 function PiAgentTitle() {
   const { isDark } = useTheme();
 
@@ -106,8 +137,134 @@ function PiAgentTitle() {
     <img
       src={isDark ? "/pi-logo-on-dark.svg" : "/pi-logo-on-light.svg"}
       alt="Pi Agent Web"
-      style={{ height: 24, width: "auto" }}
+      style={{ height: 22, width: "auto", opacity: 0.85 }}
     />
+  );
+}
+
+// Shared icon components — tiny, crisp, inline
+function IconFolder({ active }: { active: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+      stroke={active ? "var(--accent)" : "var(--text-dim)"}
+      strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+      style={{ flexShrink: 0, opacity: active ? 1 : 0.6 }}
+    >
+      <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z" />
+    </svg>
+  );
+}
+
+function IconChevron({ collapsed, size = 12 }: { collapsed: boolean; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 10 10" fill="none"
+      stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"
+      style={{
+        transform: collapsed ? "none" : "rotate(180deg)",
+        transition: "transform 0.2s ease",
+      }}
+    >
+      <polyline points="2 3.5 5 6.5 8 3.5" />
+    </svg>
+  );
+}
+
+function IconFork() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+      stroke="var(--text-dim)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+      style={{ flexShrink: 0, opacity: 0.5 }}
+    >
+      <line x1="6" y1="3" x2="6" y2="15" />
+      <circle cx="18" cy="6" r="3" />
+      <circle cx="6" cy="18" r="3" />
+      <path d="M18 9a9 9 0 0 1-9 9" />
+    </svg>
+  );
+}
+
+function IconPlus() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+function IconRefresh() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+    </svg>
+  );
+}
+
+function IconCheck() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function IconEdit() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+    </svg>
+  );
+}
+
+function IconTrash() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  );
+}
+
+// ─── Header action button ───
+function HeaderBtn({
+  onClick, disabled, title, children, active: activeColor,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  title: string;
+  children: React.ReactNode;
+  active?: boolean;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const active = !disabled && (hovered || activeColor);
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "center",
+        width: 28, height: 28, padding: 0,
+        background: active ? "var(--bg-hover)" : "none",
+        border: "none",
+        borderRadius: 6,
+        color: activeColor ? "var(--success)" : active ? "var(--text)" : "var(--text-muted)",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.35 : 1,
+        transition: "background 0.15s, color 0.15s",
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -116,6 +273,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sessionRefreshDone, setSessionRefreshDone] = useState(false);
+  const [collapsedCwds, setCollapsedCwds] = useState<Set<string>>(() => new Set());
   const sessionRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadSessions = useCallback(async (showLoading = false) => {
@@ -148,166 +306,292 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
 
   const restoredRef = useRef(false);
 
+  const validateCwd = useCallback(async (cwd: string): Promise<string | null> => {
+    try {
+      const res = await fetch("/api/cwd/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cwd }),
+      });
+      const data = await res.json().catch(() => ({})) as { cwd?: string };
+      return res.ok ? (data.cwd ?? cwd) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   // Auto-select cwd and restore session from URL on first load
   useEffect(() => {
     if (allSessions.length === 0) return;
+    let cancelled = false;
 
     if (!selCwd) {
       // If restoring a session, set cwd to match that session
-      if (initialSessionId && !restoredRef.current) {
-        restoredRef.current = true;
-        const target = allSessions.find((s) => s.id === initialSessionId);
-        if (target) {
-          onCwdChange?.(target.cwd);
-          onSelectSession(target, true);
-          return;
+      if (initialSessionId) {
+        if (!restoredRef.current) {
+          restoredRef.current = true;
+          const target = allSessions.find((s) => s.id === initialSessionId);
+          if (target) {
+            onSelectSession(target, true);
+            onCwdChange?.(target.cwd);
+            return;
+          }
+          onInitialRestoreDone?.();
         }
-        onInitialRestoreDone?.();
+        return;
       }
       const cwds = getRecentCwds(allSessions);
-      if (cwds.length > 0) onCwdChange?.(cwds[0]);
+      void (async () => {
+        for (const cwd of cwds) {
+          const validCwd = await validateCwd(cwd);
+          if (cancelled) return;
+          if (validCwd) {
+            onCwdChange?.(validCwd);
+            return;
+          }
+        }
+      })();
     }
-  }, [allSessions, selCwd, initialSessionId, onSelectSession, onCwdChange, onInitialRestoreDone]);
+    return () => { cancelled = true; };
+  }, [allSessions, selCwd, initialSessionId, onSelectSession, onCwdChange, onInitialRestoreDone, validateCwd]);
 
   const handleNewSession = useCallback(() => {
     if (!selCwd) return;
-    // Generate a temporary UUID client-side — no backend call needed.
-    // Pi will be spawned lazily when the user sends the first message.
     const tempId = typeof crypto.randomUUID === "function"
       ? crypto.randomUUID()
       : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
     onNewSession?.(tempId, selCwd);
   }, [selCwd, onNewSession]);
 
-  const filteredSessions = selCwd
-    ? allSessions.filter((s) => s.cwd === selCwd)
-    : allSessions;
+  const cwdGroups = useMemo(() => {
+    const groups = buildCwdSessionGroups(allSessions);
+    if (selCwd && !groups.some((group) => group.cwd === selCwd)) {
+      return [{
+        cwd: selCwd,
+        sessions: [],
+        tree: [],
+        modified: "",
+        forkCount: 0,
+      }, ...groups];
+    }
+    return groups;
+  }, [allSessions, selCwd]);
 
-  // Build parent-child tree within the filtered set
-  const sessionTree = buildSessionTree(filteredSessions);
+  const handleSelectCwd = useCallback((cwd: string) => {
+    onCwdChange?.(cwd);
+    setCollapsedCwds((prev) => {
+      if (!prev.has(cwd)) return prev;
+      const next = new Set(prev);
+      next.delete(cwd);
+      return next;
+    });
+  }, [onCwdChange]);
+
+  const handleToggleCwd = useCallback((cwd: string) => {
+    setCollapsedCwds((prev) => {
+      const next = new Set(prev);
+      if (next.has(cwd)) next.delete(cwd);
+      else next.add(cwd);
+      return next;
+    });
+  }, []);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-      {/* Header — 36px aligns with chat top bar */}
-      <div
-        style={{
-          display: "flex", alignItems: "center",
-          height: 36, padding: "0 8px",
-          borderBottom: "1px solid var(--border)",
-          flexShrink: 0,
-        }}
-      >
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: "var(--bg)" }}>
+      {/* Header */}
+      <div style={{
+        display: "flex", alignItems: "center",
+        height: 36, padding: "0 10px",
+        borderBottom: "1px solid var(--border)",
+        flexShrink: 0, gap: 10,
+      }}>
         <PiAgentTitle />
-        <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-            <button
-              onClick={handleNewSession}
-              disabled={!selCwd}
-              title={selCwd ? "New session" : "Select a project first"}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center",
-                width: 26, height: 26,
-                background: "none",
-                border: "none",
-                borderRadius: 5,
-                color: selCwd ? "var(--text-muted)" : "var(--text-dim)",
-                cursor: selCwd ? "pointer" : "not-allowed",
-                opacity: selCwd ? 1 : 0.4,
-                transition: "background 0.1s, color 0.1s",
-              }}
-              onMouseEnter={(e) => {
-                if (!selCwd) return;
-                e.currentTarget.style.background = "var(--bg-hover)";
-                e.currentTarget.style.color = "var(--text)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "none";
-                e.currentTarget.style.color = "var(--text-muted)";
-              }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            </button>
-            <button
-              onClick={() => loadSessions(false)}
-              title="Refresh sessions"
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center",
-                width: 26, height: 26,
-                background: "none",
-                border: "none",
-                borderRadius: 5,
-                color: sessionRefreshDone ? "var(--success)" : "var(--text-muted)",
-                cursor: "pointer",
-                transition: "background 0.1s, color 0.1s",
-              }}
-              onMouseEnter={(e) => {
-                if (sessionRefreshDone) return;
-                e.currentTarget.style.background = "var(--bg-hover)";
-                e.currentTarget.style.color = "var(--text)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "none";
-                e.currentTarget.style.color = sessionRefreshDone ? "var(--success)" : "var(--text-muted)";
-              }}
-            >
-              {sessionRefreshDone ? (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-                </svg>
-              )}
-            </button>
-          </div>
+        <div style={{ flex: 1 }} />
+        <HeaderBtn onClick={handleNewSession} disabled={!selCwd} title={selCwd ? "New session" : "Select a project first"}>
+          <IconPlus />
+        </HeaderBtn>
+        <HeaderBtn onClick={() => loadSessions(false)} title="Refresh sessions" active={sessionRefreshDone}>
+          {sessionRefreshDone ? <IconCheck /> : <IconRefresh />}
+        </HeaderBtn>
       </div>
 
       {/* Session list */}
-      <div style={{ flex: "1 1 auto", overflowY: "auto", padding: "0", minHeight: 80 }}>
+      <div style={{ flex: "1 1 auto", overflowY: "auto", minHeight: 80 }}>
         {loading && (
-          <div style={{ padding: "16px 14px", color: "var(--text-muted)", fontSize: 12 }}>
-            Loading...
+          <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 11, letterSpacing: "0.02em" }}>
+            Loading sessions...
           </div>
         )}
         {error && (
-          <div style={{ padding: "12px 14px", color: "var(--danger)", fontSize: 12 }}>
+          <div style={{ padding: "12px 16px", color: "var(--danger)", fontSize: 11 }}>
             {error}
           </div>
         )}
-        {!loading && !error && filteredSessions.length === 0 && (
-          <div style={{ padding: "16px 14px", color: "var(--text-muted)", fontSize: 12 }}>
-            No sessions found
+        {!loading && !error && cwdGroups.length === 0 && (
+          <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 11 }}>
+            No sessions
           </div>
         )}
-        {sessionTree.map((node) => (
-          <SessionTreeItem
-            key={node.session.id}
-            node={node}
+        {cwdGroups.map((group) => (
+          <CwdGroupSection
+            key={group.cwd}
+            group={group}
             selectedSessionId={selectedSessionId}
+            isActive={group.cwd === selCwd}
+            isCollapsed={collapsedCwds.has(group.cwd)}
+            onSelectCwd={handleSelectCwd}
+            onToggleCwd={handleToggleCwd}
             onSelectSession={onSelectSession}
             onRenamed={loadSessions}
             onSessionDeleted={(id) => {
               onSessionDeleted?.(id);
               loadSessions();
             }}
-            depth={0}
           />
         ))}
       </div>
-
-      </div>
+    </div>
   );
 }
 
+// ─── CWD Group Section ───
+function CwdGroupSection({
+  group, selectedSessionId, isActive, isCollapsed,
+  onSelectCwd, onToggleCwd, onSelectSession, onRenamed, onSessionDeleted,
+}: {
+  group: CwdSessionGroup;
+  selectedSessionId: string | null;
+  isActive: boolean;
+  isCollapsed: boolean;
+  onSelectCwd: (cwd: string) => void;
+  onToggleCwd: (cwd: string) => void;
+  onSelectSession: (s: SessionInfo) => void;
+  onRenamed?: () => void;
+  onSessionDeleted?: (id: string) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const empty = group.sessions.length === 0;
+
+  return (
+    <section style={{ borderBottom: "1px solid var(--border)" }}>
+      <div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          display: "flex", alignItems: "stretch",
+          minHeight: 50,
+          background: isActive
+            ? "color-mix(in oklab, var(--accent), transparent 94%)"
+            : hovered ? "var(--bg-hover)" : "transparent",
+          borderLeft: isActive
+            ? "2px solid var(--accent)"
+            : "2px solid transparent",
+          transition: "background 0.12s",
+        }}
+      >
+        {/* Content area */}
+        <button
+          onClick={() => onSelectCwd(group.cwd)}
+          title={group.cwd}
+          style={{
+            flex: 1, minWidth: 0,
+            padding: "8px 0 8px 12px",
+            background: "none", border: "none",
+            cursor: "pointer", textAlign: "left", color: "var(--text)",
+          }}
+        >
+          {/* Project name row */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+            <IconFolder active={isActive} />
+            <span style={{
+              flex: 1, minWidth: 0,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              fontSize: 12, fontWeight: isActive ? 600 : 500,
+              lineHeight: "18px",
+            }}>
+              {getCwdLabel(group.cwd)}
+            </span>
+          </div>
+
+          {/* Path */}
+          <div style={{
+            marginTop: 1,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            color: "var(--text-dim)", fontSize: 9.5,
+            fontFamily: "var(--font-mono)", lineHeight: "14px",
+            opacity: 0.65,
+          }}>
+            {group.cwd}
+          </div>
+
+          {/* Metadata row */}
+          <div style={{
+            marginTop: 3,
+            display: "flex", alignItems: "center", gap: 8,
+            color: "var(--text-dim)", fontSize: 10.5,
+          }}>
+            <span>{group.sessions.length} session{group.sessions.length !== 1 ? "s" : ""}</span>
+            {group.forkCount > 0 && (
+              <span style={{ color: "var(--text-dim)", opacity: 0.7 }}>
+                {group.forkCount} fork{group.forkCount !== 1 ? "s" : ""}
+              </span>
+            )}
+            {group.modified && (
+              <span title={group.modified} style={{ opacity: 0.55 }}>
+                {formatRelativeTime(group.modified)}
+              </span>
+            )}
+          </div>
+        </button>
+
+        {/* Chevron — right side */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleCwd(group.cwd); }}
+          title={isCollapsed ? "Expand" : "Collapse"}
+          style={{
+            display: "flex", alignItems: "flex-start", justifyContent: "center",
+            width: 30, paddingTop: 14, flexShrink: 0,
+            background: "none", border: "none",
+            color: "var(--text-dim)", cursor: "pointer",
+            opacity: hovered || isActive ? 0.7 : 0.35,
+            transition: "opacity 0.15s",
+          }}
+        >
+          <IconChevron collapsed={isCollapsed} />
+        </button>
+      </div>
+
+      {/* Session tree */}
+      {!isCollapsed && (
+        <div style={{ padding: "4px 0 8px 12px" }}>
+          {empty ? (
+            <div style={{
+              padding: "12px 12px 10px 4px",
+              color: "var(--text-dim)", fontSize: 11,
+              opacity: 0.6,
+            }}>
+              No sessions in this project
+            </div>
+          ) : group.tree.map((node) => (
+            <SessionTreeItem
+              key={node.session.id}
+              node={node}
+              selectedSessionId={selectedSessionId}
+              onSelectSession={onSelectSession}
+              onRenamed={onRenamed}
+              onSessionDeleted={onSessionDeleted}
+              depth={0}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ─── Session Tree Item (recursive) ───
 function SessionTreeItem({
-  node,
-  selectedSessionId,
-  onSelectSession,
-  onRenamed,
-  onSessionDeleted,
-  depth,
+  node, selectedSessionId, onSelectSession, onRenamed, onSessionDeleted, depth,
 }: {
   node: SessionTreeNode;
   selectedSessionId: string | null;
@@ -321,30 +605,18 @@ function SessionTreeItem({
 
   return (
     <div>
-      <div style={{ position: "relative" }}>
-        {/* Indent line for child sessions */}
-        {depth > 0 && (
-          <div style={{
-            position: "absolute",
-            left: depth * 12 + 6,
-            top: 0, bottom: 0,
-            width: 1,
-            background: "var(--border)",
-            pointerEvents: "none",
-          }} />
-        )}
-        <SessionItem
-          session={node.session}
-          isSelected={node.session.id === selectedSessionId}
-          onClick={() => onSelectSession(node.session)}
-          onRenamed={onRenamed}
-          onDeleted={(id) => onSessionDeleted?.(id)}
-          depth={depth}
-          hasChildren={hasChildren}
-          collapsed={collapsed}
-          onToggleCollapse={() => setCollapsed((v) => !v)}
-        />
-      </div>
+      <SessionItem
+        session={node.session}
+        isSelected={node.session.id === selectedSessionId}
+        onClick={() => onSelectSession(node.session)}
+        onRenamed={onRenamed}
+        onDeleted={(id) => onSessionDeleted?.(id)}
+        depth={depth}
+        hasChildren={hasChildren}
+        childCount={node.children.length}
+        collapsed={collapsed}
+        onToggleCollapse={() => setCollapsed((v) => !v)}
+      />
       {hasChildren && !collapsed && (
         <div>
           {node.children.map((child) => (
@@ -364,16 +636,11 @@ function SessionTreeItem({
   );
 }
 
+// ─── Single Session Item ───
 function SessionItem({
-  session,
-  isSelected,
-  onClick,
-  onRenamed,
-  onDeleted,
-  depth = 0,
-  hasChildren = false,
-  collapsed = false,
-  onToggleCollapse,
+  session, isSelected, onClick, onRenamed, onDeleted,
+  depth = 0, hasChildren = false, childCount = 0,
+  collapsed = false, onToggleCollapse,
 }: {
   session: SessionInfo;
   isSelected: boolean;
@@ -382,6 +649,7 @@ function SessionItem({
   onDeleted?: (id: string) => void;
   depth?: number;
   hasChildren?: boolean;
+  childCount?: number;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }) {
@@ -393,6 +661,7 @@ function SessionItem({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const title = session.name || session.firstMessage.slice(0, 50) || session.id.slice(0, 12);
+  const isFork = Boolean(session.parentSessionId) || depth > 0;
 
   const startRename = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -439,77 +708,58 @@ function SessionItem({
     setConfirmDelete(false);
   }, []);
 
-  // Fixed-height outer wrapper — content swaps in place so the list never reflows
-  const ITEM_HEIGHT = 54;
+  const rowH = 46;
+
+  // Depth thread color — fades with depth, forms vertical line when same-depth items stack
+  const depthColor = depth === 0
+    ? "color-mix(in oklab, var(--accent), transparent 86%)"
+    : depth === 1
+      ? "color-mix(in oklab, var(--accent), transparent 92%)"
+      : "color-mix(in oklab, var(--accent), transparent 95%)";
+
+  const borderColor = confirmDelete
+    ? "var(--danger)"
+    : isSelected
+      ? "var(--accent)"
+      : depthColor;
 
   return (
     <div
       onClick={confirmDelete || renaming ? undefined : onClick}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); }}
+      onMouseLeave={() => setHovered(false)}
       style={{
-        height: ITEM_HEIGHT,
-        display: "flex",
-        alignItems: "center",
-        marginLeft: depth > 0 ? depth * 12 + 6 : 0,
-        paddingLeft: depth > 0 ? 8 : 14,
-        paddingRight: 8,
+        height: rowH,
+        display: "flex", alignItems: "center",
+        marginLeft: depth * 14,
+        paddingLeft: 6, paddingRight: 6,
         cursor: confirmDelete || renaming ? "default" : "pointer",
         background: confirmDelete
-          ? "color-mix(in oklab, var(--danger), transparent 94%)"
-          : isSelected ? "var(--bg-selected)" : hovered ? "var(--bg-hover)" : "transparent",
-        borderLeft: confirmDelete
-          ? "2px solid var(--danger)"
-          : isSelected ? "2px solid var(--accent)" : "2px solid transparent",
-        transition: "background 0.1s",
-        opacity: deleting ? 0.5 : 1,
-        gap: 6,
+          ? "color-mix(in oklab, var(--danger), transparent 93%)"
+          : isSelected
+            ? "color-mix(in oklab, var(--accent), transparent 93%)"
+            : hovered ? "var(--bg-hover)" : "transparent",
+        borderLeft: `2px solid ${borderColor}`,
+        borderRadius: "0 5px 5px 0",
+        transition: "background 0.1s, border-color 0.15s",
+        opacity: deleting ? 0.4 : 1,
+        gap: 5,
         overflow: "hidden",
+        marginBottom: 1,
       }}
     >
       {confirmDelete ? (
-        /* ── Delete confirmation: same height, two flat buttons ── */
         <>
-          <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            Delete <span style={{ fontWeight: 600 }}>&ldquo;{title.slice(0, 22)}{title.length > 22 ? "…" : ""}&rdquo;</span>?
-          </div>
-          <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-            <button
-              onClick={handleDeleteConfirm}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-                height: 30, padding: "0 11px",
-                background: "var(--danger)", border: "none",
-                borderRadius: 6, color: "var(--accent-on)",
-                cursor: "pointer", fontSize: 12, fontWeight: 600,
-                whiteSpace: "nowrap",
-              }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                <path d="M10 11v6M14 11v6" />
-                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-              </svg>
-              Delete
-            </button>
-            <button
-              onClick={handleDeleteCancel}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center",
-                height: 30, padding: "0 11px",
-                background: "var(--bg)", border: "1px solid var(--border)",
-                borderRadius: 6, color: "var(--text-muted)",
-                cursor: "pointer", fontSize: 12, fontWeight: 500,
-                whiteSpace: "nowrap",
-              }}
-            >
-              Cancel
-            </button>
-          </div>
+          <span style={{
+            flex: 1, minWidth: 0, fontSize: 11.5, color: "var(--text)",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            Delete <b>&ldquo;{title.slice(0, 24)}{title.length > 24 ? "…" : ""}&rdquo;</b>?
+          </span>
+          <button onClick={handleDeleteConfirm} style={btnDanger}>Delete</button>
+          <button onClick={handleDeleteCancel} style={btnGhost}>Cancel</button>
         </>
       ) : renaming ? (
-        /* ── Rename: input fills the same row ── */
         <input
           ref={inputRef}
           value={renameValue}
@@ -521,132 +771,144 @@ function SessionItem({
           }}
           autoFocus
           style={{
-            flex: 1,
-            fontSize: 12,
-            padding: "5px 8px",
-            border: "1px solid var(--accent)",
-            borderRadius: 5,
-            outline: "none",
-            background: "var(--bg)",
-            color: "var(--text)",
-            height: 30,
+            flex: 1, fontSize: 12, padding: "4px 7px",
+            border: "1px solid var(--accent)", borderRadius: 4,
+            outline: "none", background: "var(--bg)", color: "var(--text)",
+            height: 28,
           }}
         />
       ) : (
-        /* ── Normal view ── */
         <>
-          {/* Fork indicator for child sessions */}
-          {depth > 0 && (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text-dim)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-              <line x1="6" y1="3" x2="6" y2="15" />
-              <circle cx="18" cy="6" r="3" />
-              <circle cx="6" cy="18" r="3" />
-              <path d="M18 9a9 9 0 0 1-9 9" />
-            </svg>
-          )}
+          {/* Fork icon */}
+          {isFork && <IconFork />}
+
+          {/* Text content */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: isSelected ? 500 : 400,
-                lineHeight: 1.4,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                color: "var(--text)",
-              }}
-              title={title}
-            >
+            <div style={{
+              fontSize: 12.5, fontWeight: isSelected ? 500 : 400,
+              lineHeight: "17px",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              color: "var(--text)",
+            }} title={title}>
               {title}
             </div>
-            <div style={{ marginTop: 2, display: "flex", gap: 8, color: "var(--text-dim)", fontSize: 11 }}>
-              <span title={session.modified}>{formatRelativeTime(session.modified)}</span>
-              <span>{session.messageCount} msgs</span>
+            <div style={{
+              marginTop: 1,
+              display: "flex", alignItems: "center", gap: 6,
+              color: "var(--text-dim)", fontSize: 10.5,
+            }}>
+              {/* Session type badge */}
+              <span style={{
+                display: "inline-flex", alignItems: "center",
+                height: 15, padding: "0 4px", borderRadius: 3,
+                background: isFork ? "var(--bg-hover)" : "none",
+                border: isFork ? "1px solid var(--border)" : "none",
+                color: "var(--text-dim)", fontSize: 9.5,
+                fontFamily: "var(--font-mono)", lineHeight: "15px",
+                flexShrink: 0,
+                opacity: isFork ? 0.7 : 0.5,
+              }}>
+                {isFork ? "fork" : "root"}
+              </span>
+              <span title={session.modified} style={{ opacity: 0.55 }}>
+                {formatRelativeTime(session.modified)}
+              </span>
+              <span style={{ opacity: 0.5 }}>
+                {session.messageCount} msg{session.messageCount !== 1 ? "s" : ""}
+              </span>
+              {childCount > 0 && (
+                <span style={{ opacity: 0.45 }}>
+                  {childCount} fork{childCount !== 1 ? "s" : ""}
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Collapse toggle — always visible when has children */}
+          {/* Fork collapse toggle */}
           {hasChildren && (
             <button
               onClick={(e) => { e.stopPropagation(); onToggleCollapse?.(); }}
               title={collapsed ? "Expand forks" : "Collapse forks"}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center",
-                width: 20, height: 20, padding: 0, flexShrink: 0,
+                width: 18, height: 18, padding: 0, flexShrink: 0,
                 background: "none", border: "none",
                 color: "var(--text-dim)", cursor: "pointer",
-                transform: collapsed ? "rotate(-90deg)" : "none",
-                transition: "transform 0.15s",
+                opacity: hovered ? 0.6 : 0.3,
+                transition: "opacity 0.15s",
               }}
             >
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="2 3.5 5 6.5 8 3.5" />
-              </svg>
+              <IconChevron collapsed={collapsed} size={10} />
             </button>
           )}
 
-          {/* Action buttons — shown on hover */}
-          {hovered && (
-            <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
-              <button
-                onClick={startRename}
-                title="Rename"
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 32, height: 32, padding: 0,
-                  background: "var(--bg-hover)", border: "1px solid var(--border)",
-                  borderRadius: 7, color: "var(--text-muted)",
-                  cursor: "pointer", flexShrink: 0,
-                  transition: "background 0.12s, color 0.12s, border-color 0.12s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "var(--bg-selected)";
-                  e.currentTarget.style.color = "var(--accent)";
-                  e.currentTarget.style.borderColor = "color-mix(in oklab, var(--accent), transparent 65%)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "var(--bg-hover)";
-                  e.currentTarget.style.color = "var(--text-muted)";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-                </svg>
-              </button>
-              <button
-                onClick={handleDeleteClick}
-                title="Delete"
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 32, height: 32, padding: 0,
-                  background: "var(--bg-hover)", border: "1px solid var(--border)",
-                  borderRadius: 7, color: "var(--text-muted)",
-                  cursor: "pointer", flexShrink: 0,
-                  transition: "background 0.12s, color 0.12s, border-color 0.12s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "color-mix(in oklab, var(--danger), transparent 92%)";
-                  e.currentTarget.style.color = "var(--danger)";
-                  e.currentTarget.style.borderColor = "color-mix(in oklab, var(--danger), transparent 65%)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "var(--bg-hover)";
-                  e.currentTarget.style.color = "var(--text-muted)";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                  <path d="M10 11v6M14 11v6" />
-                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                </svg>
-              </button>
-            </div>
-          )}
+          {/* Hover action buttons */}
+          <div style={{
+            display: "flex", gap: 2, flexShrink: 0,
+            opacity: hovered ? 1 : 0,
+            transition: "opacity 0.12s",
+          }}>
+            <button
+              onClick={startRename}
+              title="Rename"
+              style={btnIcon}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--bg-selected)";
+                e.currentTarget.style.color = "var(--accent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "var(--bg-hover)";
+                e.currentTarget.style.color = "var(--text-muted)";
+              }}
+            >
+              <IconEdit />
+            </button>
+            <button
+              onClick={handleDeleteClick}
+              title="Delete"
+              style={btnIcon}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "color-mix(in oklab, var(--danger), transparent 90%)";
+                e.currentTarget.style.color = "var(--danger)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "var(--bg-hover)";
+                e.currentTarget.style.color = "var(--text-muted)";
+              }}
+            >
+              <IconTrash />
+            </button>
+          </div>
         </>
       )}
     </div>
   );
 }
+
+// ─── Shared button styles ───
+const btnIcon: React.CSSProperties = {
+  display: "flex", alignItems: "center", justifyContent: "center",
+  width: 28, height: 28, padding: 0,
+  background: "var(--bg-hover)", border: "1px solid var(--border)",
+  borderRadius: 6, color: "var(--text-muted)",
+  cursor: "pointer", flexShrink: 0,
+  transition: "background 0.12s, color 0.12s, border-color 0.12s",
+};
+
+const btnDanger: React.CSSProperties = {
+  display: "flex", alignItems: "center", justifyContent: "center",
+  height: 26, padding: "0 10px",
+  background: "var(--danger)", border: "none",
+  borderRadius: 5, color: "var(--accent-on)",
+  cursor: "pointer", fontSize: 11, fontWeight: 600,
+  whiteSpace: "nowrap",
+};
+
+const btnGhost: React.CSSProperties = {
+  display: "flex", alignItems: "center", justifyContent: "center",
+  height: 26, padding: "0 10px",
+  background: "var(--bg)", border: "1px solid var(--border)",
+  borderRadius: 5, color: "var(--text-muted)",
+  cursor: "pointer", fontSize: 11, fontWeight: 500,
+  whiteSpace: "nowrap",
+};

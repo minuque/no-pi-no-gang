@@ -251,6 +251,36 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     }
   }, [cwdCustomValue, cwdCustomValidating, onCwdSelect]);
 
+  const selectRecentCwd = useCallback(async (cwd: string) => {
+    setCwdCustomValidating(true);
+    setCwdCustomError(null);
+    try {
+      const res = await fetch("/api/cwd/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cwd }),
+      });
+      const data = await res.json().catch(() => ({})) as { cwd?: string; error?: string };
+      if (!res.ok || data.error) {
+        setCwdCustomOpen(true);
+        setCwdCustomValue(cwd);
+        setCwdCustomError(data.error ?? `HTTP ${res.status}`);
+        return;
+      }
+      onCwdSelect?.(data.cwd ?? cwd);
+      setCwdDropdownOpen(false);
+      setCwdCustomOpen(false);
+      setCwdCustomValue("");
+      setCwdCustomError(null);
+    } catch (e) {
+      setCwdCustomOpen(true);
+      setCwdCustomValue(cwd);
+      setCwdCustomError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCwdCustomValidating(false);
+    }
+  }, [onCwdSelect]);
+
   const handleCwdDefault = useCallback(async () => {
     try {
       const res = await fetch("/api/default-cwd", { method: "POST" });
@@ -889,11 +919,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   {(recentCwds ?? []).map((cwd) => (
                     <button
                       key={cwd}
-                      onClick={() => {
-                        onCwdSelect?.(cwd);
-                        setCwdDropdownOpen(false);
-                        setCwdCustomOpen(false); setCwdCustomValue(""); setCwdCustomError(null);
-                      }}
+                      onClick={() => { void selectRecentCwd(cwd); }}
                       style={{
                         display: "flex", alignItems: "center", gap: 7,
                         width: "100%", padding: "8px 10px",

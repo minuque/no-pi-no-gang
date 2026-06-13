@@ -44,7 +44,3 @@ npm run dev   # 端口 7777
 
 **浏览会话**（只读）：通过 `lib/session-reader.ts` 直接读取 `.jsonl` 文件——不创建 AgentSession。
 **发送消息**：`lib/rpc-manager.ts` 中的 `startRpcSession()` 在进程内创建 AgentSession。
-
----
-
-

@@ -6,7 +6,7 @@ import { MessageView } from "./MessageView";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { ChatMinimap, MINIMAP_WIDTH } from "./ChatMinimap";
 import { SessionLoading } from "./SessionLoading";
-import { useAgentSession, type AgentEventStatus, type AgentPhase } from "@/hooks/useAgentSession";
+import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
 import { useChatScroll } from "@/hooks/useChatScroll";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import { useTheme } from "@/hooks/useTheme";
@@ -99,115 +99,13 @@ function Typewriter({ phrases }: { phrases: string[] }) {
   );
 }
 
-function eventStatusLabel(status: AgentEventStatus): string | null {
-  if (status === "connecting") return "SSE connecting";
-  if (status === "connected") return "SSE connected";
-  if (status === "reconnecting") return "SSE reconnecting";
-  return null;
-}
-
-function AgentStatusBar({
-  agentRunning,
-  agentPhase,
-  eventStatus,
-  isCompacting,
-  compactError,
-  retryInfo,
-  thinkingLevel,
-  toolPreset,
-}: {
-  agentRunning: boolean;
-  agentPhase: AgentPhase;
-  eventStatus: AgentEventStatus;
-  isCompacting: boolean;
-  compactError: string | null;
-  retryInfo: { attempt: number; maxAttempts: number; errorMessage?: string } | null;
-  thinkingLevel: string;
-  toolPreset: "none" | "default" | "full";
-}) {
-  const items: { label: string; tone?: "warn" | "danger" | "active" }[] = [];
-  if (agentRunning) items.push({ label: phaseLabel(agentPhase), tone: "active" });
-  if (isCompacting) items.push({ label: "Compacting context", tone: "active" });
-  if (retryInfo) items.push({ label: `Retry ${retryInfo.attempt}/${retryInfo.maxAttempts}`, tone: "warn" });
-  if (compactError) items.push({ label: `Compaction failed: ${compactError}`, tone: "danger" });
-  const eventLabel = agentRunning ? eventStatusLabel(eventStatus) : null;
-  if (eventLabel) items.push({ label: eventLabel, tone: eventStatus === "reconnecting" ? "warn" : undefined });
-  if (toolPreset === "none") items.push({ label: "No tools", tone: "warn" });
-  if (agentRunning && thinkingLevel !== "auto") items.push({ label: `Thinking ${thinkingLevel}` });
-
-  if (items.length === 0) return null;
-
-  return (
-    <div
-      style={{
-        flexShrink: 0,
-        padding: "8px 16px 0",
-        paddingRight: 16 + MINIMAP_WIDTH,
-        animation: "fade-in-up 0.2s ease both",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 1148,
-          margin: "0 auto",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          minHeight: 28,
-          overflow: "hidden",
-          fontFamily: "var(--font-mono)",
-          fontSize: 12,
-          color: "var(--text-dim)",
-        }}
-      >
-        {items.map((item, idx) => {
-          const color =
-            item.tone === "danger" ? "var(--danger)" :
-            item.tone === "warn" ? "var(--warn)" :
-            item.tone === "active" ? "var(--text-muted)" :
-            "var(--text-dim)";
-          return (
-            <span
-              key={`${item.label}-${idx}`}
-              title={item.label}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                minWidth: 0,
-                maxWidth: idx === 0 ? "45%" : "28%",
-                color,
-              }}
-            >
-              <span
-                aria-hidden
-                style={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: "50%",
-                  background: "currentColor",
-                  flexShrink: 0,
-                  ...(item.tone === "active" ? { animation: "codex-status-dot 1.25s ease-in-out infinite" } : {}),
-                }}
-              />
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {item.label}
-              </span>
-            </span>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, recentCwds, homeDir = "", onCwdSelect, onCwdDefault }: Props) {
   const {
     data, loading, error, messages, entryIds, streamState, commands,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
     retryInfo, contextUsage, forkingEntryId,
     displayModel: displayModelValue, sessionStats,
-    isCompacting, compactError, agentPhase, eventStatus,
+    agentPhase,
     activeLeafId,
     isNew,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
@@ -566,16 +464,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         </div>
       ) : (
       <>
-      <AgentStatusBar
-        agentRunning={agentRunning}
-        agentPhase={agentPhase}
-        eventStatus={eventStatus}
-        isCompacting={isCompacting}
-        compactError={compactError}
-        retryInfo={retryInfo}
-        thinkingLevel={thinkingLevel}
-        toolPreset={toolPreset}
-      />
       <div className="flex-1 overflow-hidden relative" style={{ paddingRight: MINIMAP_WIDTH, animation: "fade-in-up 0.35s ease both" }}>
         {/* ── Native scroll viewport ── */}
         <div
