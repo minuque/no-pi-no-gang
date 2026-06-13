@@ -1,10 +1,10 @@
 ---
-title: pi-web 架构路线图
+title: no-pi-no-gang 架构路线图
 date: 2026-06-10
 tags:
   - architecture
   - roadmap
-  - pi-web
+  - no-pi-no-gang
 aliases:
   - ROADMAP
   - 架构文档
@@ -13,21 +13,21 @@ aliases:
 # ROADMAP
 
 > [!abstract] 阅读路线
-> 由远到近理解 pi-web：**架构 → 持久层 → API/通信 → 数据流 → 状态 → UI**。
+> 由远到近理解 no-pi-no-gang：**架构 → 持久层 → API/通信 → 数据流 → 状态 → UI**。
 > 首选深读 §2（四层架构图）和 §5（三条数据流），其余章节按需查阅。
 
 ---
 
 ## 1. 项目定位
 
-pi-web 是 [pi 编程智能体](https://github.com/badlogic/pi-mono) 的 Web 界面。它本身不实现智能体逻辑——智能体由 `@earendil-works/pi-coding-agent` 提供，pi-web 负责：
+no-pi-no-gang 是 [pi 编程智能体](https://github.com/badlogic/pi-mono) 的 Web 界面。它本身不实现智能体逻辑——智能体由 `@earendil-works/pi-coding-agent` 提供，no-pi-no-gang 负责：
 
 - 在浏览器中 ==展示== 本地 `.jsonl` 会话文件
 - 通过 ==进程内 RPC== 驱动 AgentSession，将事件 ==流式转发== 到浏览器
 - 提供 ==会话管理== UI（分叉、分支、压缩等）
 
 > [!note] 核心约束
-> pi-web **不实现智能体逻辑**。所有 AI 能力来自进程内 `AgentSession`，pi-web 只是它的 Web 外壳。
+> no-pi-no-gang **不实现智能体逻辑**。所有 AI 能力来自进程内 `AgentSession`，no-pi-no-gang 只是它的 Web 外壳。
 
 ---
 
@@ -128,8 +128,8 @@ flowchart TB
 ### 2.3 文件地图
 
 ```
-pi-web/
-├── bin/pi-web.js              CLI 入口，spawn Next.js
+no-pi-no-gang/
+├── bin/no-pi-no-gang.js         CLI 入口，spawn Next.js
 ├── app/
 │   ├── layout.tsx             RootLayout
 │   ├── page.tsx               Home → AppShell
@@ -282,7 +282,7 @@ flowchart TD
 
 ## 5. 数据流全景
 
-pi-web 有三条独立的数据流路径，交汇于 `.jsonl` 文件和 `session-reader.ts`。
+no-pi-no-gang 有三条独立的数据流路径，交汇于 `.jsonl` 文件和 `session-reader.ts`。
 
 ### 5.1 浏览流（只读）
 

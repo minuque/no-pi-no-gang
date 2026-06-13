@@ -1,4 +1,4 @@
-# pi-web 通信流程图
+# no-pi-no-gang 通信流程图
 
 ```mermaid
 sequenceDiagram

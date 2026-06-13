@@ -1,10 +1,10 @@
 {
-  "name": "@minuque/pi-agent-web",
+  "name": "@minuque/no-pi-no-gang",
   "version": "0.0.1",
   "description": "Web UI for the pi coding agent",
   "license": "MIT",
   "bin": {
-    "pi-web": "bin/pi-web.js"
+    "no-pi-no-gang": "bin/no-pi-no-gang.js"
   },
   "files": [
     "bin",

@@ -1,4 +1,4 @@
-# pi-web
+# no-pi-no-gang
 
 <p align="center">
   <img src="public/pi-logo-on-light.svg" alt="pi logo" width="120" />
@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@agegr/pi-web"><img src="https://img.shields.io/npm/v/@agegr/pi-web" alt="npm version" /></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/@agegr/pi-web" alt="license" /></a>
+  <a href="https://www.npmjs.com/package/@agegr/no-pi-no-gang"><img src="https://img.shields.io/npm/v/@agegr/no-pi-no-gang" alt="npm version" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/@agegr/no-pi-no-gang" alt="license" /></a>
 </p>
 
 ## 功能
