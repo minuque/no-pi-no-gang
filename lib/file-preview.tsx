@@ -11,30 +11,29 @@ import { encodeFilePathForApi, getFileName } from "@/lib/file-paths";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-export const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif"]);
-export const AUDIO_EXTS = new Set(["mp3", "wav", "ogg", "oga", "opus", "m4a", "aac", "flac", "weba", "webm"]);
-export const DOCUMENT_PREVIEW_EXTS = new Set(["pdf", "docx"]);
-export const DOCX_PREVIEW_MAX_BYTES = 10 * 1024 * 1024;
+const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif"]);
+const AUDIO_EXTS = new Set(["mp3", "wav", "ogg", "oga", "opus", "m4a", "aac", "flac", "weba", "webm"]);
+const DOCUMENT_PREVIEW_EXTS = new Set(["pdf", "docx"]);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-export function isImagePath(filePath: string): boolean {
+function isImagePath(filePath: string): boolean {
   const base = getFileName(filePath);
   const ext = base.toLowerCase().split(".").pop() ?? "";
   return IMAGE_EXTS.has(ext);
 }
 
-export function isAudioPath(filePath: string): boolean {
+function isAudioPath(filePath: string): boolean {
   const base = getFileName(filePath);
   const ext = base.toLowerCase().split(".").pop() ?? "";
   return AUDIO_EXTS.has(ext);
 }
 
-export function getFileExt(filePath: string): string {
+function getFileExt(filePath: string): string {
   return getFileName(filePath).toLowerCase().split(".").pop() ?? "";
 }
 
-export function isDocumentPreviewPath(filePath: string): boolean {
+function isDocumentPreviewPath(filePath: string): boolean {
   return DOCUMENT_PREVIEW_EXTS.has(getFileExt(filePath));
 }
 
