@@ -1,24 +1,23 @@
 "use client";
 
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vs } from "react-syntax-highlighter/dist/cjs/styles/prism";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
-
+import bash from "react-syntax-highlighter/dist/cjs/languages/prism/bash";
+import css from "react-syntax-highlighter/dist/cjs/languages/prism/css";
+import go from "react-syntax-highlighter/dist/cjs/languages/prism/go";
+import java from "react-syntax-highlighter/dist/cjs/languages/prism/java";
+import javascript from "react-syntax-highlighter/dist/cjs/languages/prism/javascript";
+import json from "react-syntax-highlighter/dist/cjs/languages/prism/json";
+import markdown from "react-syntax-highlighter/dist/cjs/languages/prism/markdown";
+import markup from "react-syntax-highlighter/dist/cjs/languages/prism/markup";
+import python from "react-syntax-highlighter/dist/cjs/languages/prism/python";
+import rust from "react-syntax-highlighter/dist/cjs/languages/prism/rust";
+import sql from "react-syntax-highlighter/dist/cjs/languages/prism/sql";
 /* register the most common code-block languages to avoid loading all ~200 */
 import tsx from "react-syntax-highlighter/dist/cjs/languages/prism/tsx";
 import typescript from "react-syntax-highlighter/dist/cjs/languages/prism/typescript";
-import javascript from "react-syntax-highlighter/dist/cjs/languages/prism/javascript";
-import python from "react-syntax-highlighter/dist/cjs/languages/prism/python";
-import bash from "react-syntax-highlighter/dist/cjs/languages/prism/bash";
-import json from "react-syntax-highlighter/dist/cjs/languages/prism/json";
-import css from "react-syntax-highlighter/dist/cjs/languages/prism/css";
-import markup from "react-syntax-highlighter/dist/cjs/languages/prism/markup";
-import sql from "react-syntax-highlighter/dist/cjs/languages/prism/sql";
 import yaml from "react-syntax-highlighter/dist/cjs/languages/prism/yaml";
-import go from "react-syntax-highlighter/dist/cjs/languages/prism/go";
-import rust from "react-syntax-highlighter/dist/cjs/languages/prism/rust";
-import java from "react-syntax-highlighter/dist/cjs/languages/prism/java";
-import markdown from "react-syntax-highlighter/dist/cjs/languages/prism/markdown";
+import { vs } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
 
 SyntaxHighlighter.registerLanguage("tsx", tsx);
 SyntaxHighlighter.registerLanguage("typescript", typescript);

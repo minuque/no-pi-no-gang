@@ -2,6 +2,13 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
+// View Transitions API isn't in TypeScript DOM types yet.
+declare global {
+  interface Document {
+    startViewTransition?(cb: () => void): { finished: Promise<void> };
+  }
+}
+
 type Theme = "light" | "dark";
 
 const listeners = new Set<() => void>();
@@ -50,9 +57,9 @@ export function useTheme() {
     // Browser-native smooth crossfade between old/new theme snapshots.
     // The `theme-switching` class adds brief color transitions so inline-
     // styled elements also adopt the new theme smoothly during the crossfade.
-    if ("startViewTransition" in document && typeof (document as any).startViewTransition === "function") {
+    if ("startViewTransition" in document && typeof document.startViewTransition === "function") {
       document.documentElement.classList.add("theme-switching");
-      const vt = (document as any).startViewTransition(() => apply());
+      const vt = document.startViewTransition!(() => apply());
       const done = () => document.documentElement.classList.remove("theme-switching");
       vt.finished.then(done).catch(done);
       return;
@@ -121,10 +128,14 @@ export function useTheme() {
     const REVEAL_DELAY = 340; // 420ms expand − 80ms overlap
     const revealTimer = setTimeout(reveal, REVEAL_DELAY);
 
-    overlay.addEventListener("transitionend", () => {
-      clearTimeout(revealTimer);
-      reveal();
-    }, { once: true });
+    overlay.addEventListener(
+      "transitionend",
+      () => {
+        clearTimeout(revealTimer);
+        reveal();
+      },
+      { once: true },
+    );
 
     // Absolute safety timeout
     setTimeout(reveal, 600);

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
-import { WorkspaceTree } from "./WorkspaceTree";
+import { useCallback, useEffect, useRef, useState } from "react";
+
 import WorkspacePreview from "./WorkspacePreview";
+import { WorkspaceTree } from "./WorkspaceTree";
 
 interface Props {
   open: boolean;
@@ -24,7 +25,9 @@ export function WorkspacePanel({ open, cwd, onClose, onAddToChat }: Props) {
   });
 
   const treeWidthRef = useRef(treeWidth);
-  useEffect(() => { treeWidthRef.current = treeWidth; }, [treeWidth]);
+  useEffect(() => {
+    treeWidthRef.current = treeWidth;
+  }, [treeWidth]);
 
   // Reset selected file when cwd changes
   useEffect(() => {
@@ -33,72 +36,142 @@ export function WorkspacePanel({ open, cwd, onClose, onAddToChat }: Props) {
 
   // Persist tree width
   useEffect(() => {
-    try { localStorage.setItem("pi-workspace-tree-width", String(treeWidth)); } catch {}
+    try {
+      localStorage.setItem("pi-workspace-tree-width", String(treeWidth));
+    } catch {}
   }, [treeWidth]);
 
   // Resizer drag state
   const dragState = useRef({ active: false, startX: 0, startWidth: 0 });
   const handleDragStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
-    document.body.classList.add('is-dragging');
+    document.body.classList.add("is-dragging");
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     dragState.current = { active: true, startX: e.clientX, startWidth: treeWidthRef.current };
   }, []);
   const handleDragMove = useCallback((e: React.PointerEvent) => {
     if (!dragState.current.active) return;
-    const w = Math.min(340, Math.max(180, dragState.current.startWidth + e.clientX - dragState.current.startX));
+    const w = Math.min(
+      340,
+      Math.max(180, dragState.current.startWidth + e.clientX - dragState.current.startX),
+    );
     treeWidthRef.current = w;
     setTreeWidth(w);
   }, []);
   const handleDragEnd = useCallback(() => {
     if (!dragState.current.active) return;
     dragState.current.active = false;
-    document.body.classList.remove('is-dragging');
-    try { localStorage.setItem("pi-workspace-tree-width", String(treeWidthRef.current)); } catch {}
+    document.body.classList.remove("is-dragging");
+    try {
+      localStorage.setItem("pi-workspace-tree-width", String(treeWidthRef.current));
+    } catch {}
   }, []);
 
   if (!cwd) return null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: "var(--bg)" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        overflow: "hidden",
+        background: "var(--bg)",
+      }}
+    >
       {/* Header bar — 36px, matches chat top bar */}
-      <div style={{
-        display: "flex", alignItems: "center", height: 36, flexShrink: 0,
-        padding: "0 4px", borderBottom: "1px solid var(--border)", background: "var(--bg-panel)",
-      }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          height: 36,
+          flexShrink: 0,
+          padding: "0 4px",
+          borderBottom: "1px solid var(--border)",
+          background: "var(--bg-panel)",
+        }}
+      >
         <button
           onClick={onClose}
           title="Close workspace panel"
           style={{
-            display: "flex", alignItems: "center", justifyContent: "center",
-            width: 24, height: 24, padding: 0,
-            background: "none", border: "none", borderRadius: 4,
-            color: "var(--text-muted)", cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 24,
+            height: 24,
+            padding: 0,
+            background: "none",
+            border: "none",
+            borderRadius: 4,
+            color: "var(--text-muted)",
+            cursor: "pointer",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; e.currentTarget.style.color = "var(--text)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--text-muted)"; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--bg-hover)";
+            e.currentTarget.style.color = "var(--text)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "none";
+            e.currentTarget.style.color = "var(--text-muted)";
+          }}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
         <button
           onClick={() => setRefreshKey((k) => k + 1)}
           title="Refresh file tree"
           style={{
-            display: "flex", alignItems: "center", justifyContent: "center",
-            width: 24, height: 24, padding: 0,
-            background: "none", border: "none", borderRadius: 4,
-            color: "var(--text-muted)", cursor: "pointer", marginLeft: 2,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 24,
+            height: 24,
+            padding: 0,
+            background: "none",
+            border: "none",
+            borderRadius: 4,
+            color: "var(--text-muted)",
+            cursor: "pointer",
+            marginLeft: 2,
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; e.currentTarget.style.color = "var(--text)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--text-muted)"; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--bg-hover)";
+            e.currentTarget.style.color = "var(--text)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "none";
+            e.currentTarget.style.color = "var(--text-muted)";
+          }}
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
           </svg>
         </button>
-        <div style={{ marginLeft: "auto", color: "var(--text-dim)", fontSize: 11, paddingRight: 6 }}>
+        <div
+          style={{ marginLeft: "auto", color: "var(--text-dim)", fontSize: 11, paddingRight: 6 }}
+        >
           Workspace
         </div>
       </div>
@@ -106,11 +179,16 @@ export function WorkspacePanel({ open, cwd, onClose, onAddToChat }: Props) {
       {/* Body — flex row */}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         {/* Tree side */}
-        <div style={{
-          width: treeWidth, minWidth: treeWidth, overflow: "hidden",
-          display: "flex", flexDirection: "column",
-          background: "var(--bg-panel)",
-        }}>
+        <div
+          style={{
+            width: treeWidth,
+            minWidth: treeWidth,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            background: "var(--bg-panel)",
+          }}
+        >
           <WorkspaceTree
             cwd={cwd}
             onSelectFile={setSelectedFilePath}

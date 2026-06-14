@@ -125,11 +125,7 @@ export function ContextMenu({ items, point, onClose, minWidth = 160 }: Props) {
               border: "none",
               borderRadius: 4,
               cursor: disabled ? "default" : "pointer",
-              color: disabled
-                ? "var(--text-muted)"
-                : item.danger
-                  ? "var(--danger)"
-                  : "var(--text)",
+              color: disabled ? "var(--text-muted)" : item.danger ? "var(--danger)" : "var(--text)",
               opacity: disabled ? 0.4 : 1,
               textAlign: "left",
               whiteSpace: "nowrap",
@@ -145,7 +141,15 @@ export function ContextMenu({ items, point, onClose, minWidth = 160 }: Props) {
             }}
           >
             {item.icon && (
-              <span style={{ flexShrink: 0, display: "flex", alignItems: "center", width: 16, justifyContent: "center" }}>
+              <span
+                style={{
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  width: 16,
+                  justifyContent: "center",
+                }}
+              >
                 {item.icon}
               </span>
             )}

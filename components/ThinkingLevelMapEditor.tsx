@@ -3,15 +3,15 @@
 import type React from "react";
 
 const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
-type ThinkingLevel = typeof THINKING_LEVELS[number];
+type ThinkingLevel = (typeof THINKING_LEVELS)[number];
 
 const LEVEL_COLORS: Record<ThinkingLevel, string> = {
-  off:     "var(--text-dim)",
+  off: "var(--text-dim)",
   minimal: "#6b7280",
-  low:     "#60a5fa",
-  medium:  "#a78bfa",
-  high:    "#f472b6",
-  xhigh:   "#fb923c",
+  low: "#60a5fa",
+  medium: "#a78bfa",
+  high: "#f472b6",
+  xhigh: "#fb923c",
 };
 
 export function ThinkingLevelMapEditor({
@@ -37,8 +37,11 @@ export function ThinkingLevelMapEditor({
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {THINKING_LEVELS.map((level) => {
         const raw = map[level];
-        const state: "omit" | "null" | "string" =
-          !(level in map) ? "omit" : raw === null ? "null" : "string";
+        const state: "omit" | "null" | "string" = !(level in map)
+          ? "omit"
+          : raw === null
+            ? "null"
+            : "string";
         const strVal = typeof raw === "string" ? raw : "";
         const color = LEVEL_COLORS[level];
 
@@ -78,20 +81,41 @@ export function ThinkingLevelMapEditor({
             }}
           >
             {/* Level badge */}
-            <div style={{ display: "flex", alignItems: "center", gap: 5, width: 68, flexShrink: 0 }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0, opacity: state === "null" ? 0.3 : 1 }} />
-              <span style={{
-                fontSize: 11,
-                fontFamily: "var(--font-mono)",
-                color: state === "null" ? "var(--text-dim)" : "var(--text-muted)",
-                textDecoration: state === "null" ? "line-through" : "none",
-              }}>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: 5, width: 68, flexShrink: 0 }}
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: color,
+                  flexShrink: 0,
+                  opacity: state === "null" ? 0.3 : 1,
+                }}
+              />
+              <span
+                style={{
+                  fontSize: 11,
+                  fontFamily: "var(--font-mono)",
+                  color: state === "null" ? "var(--text-dim)" : "var(--text-muted)",
+                  textDecoration: state === "null" ? "line-through" : "none",
+                }}
+              >
                 {level}
               </span>
             </div>
 
             {/* Default + Disabled buttons */}
-            <div style={{ display: "flex", borderRadius: 5, border: "1px solid var(--border)", overflow: "hidden", flexShrink: 0 }}>
+            <div
+              style={{
+                display: "flex",
+                borderRadius: 5,
+                border: "1px solid var(--border)",
+                overflow: "hidden",
+                flexShrink: 0,
+              }}
+            >
               <button
                 onClick={() => setLevel(level, "omit")}
                 style={{ ...btnBase, ...(state === "omit" ? btnActive : {}) }}
@@ -100,24 +124,43 @@ export function ThinkingLevelMapEditor({
               </button>
               <button
                 onClick={() => setLevel(level, null)}
-                style={{ ...btnBase, borderLeft: "1px solid var(--border)", ...(state === "null" ? btnActiveDisabled : {}) }}
+                style={{
+                  ...btnBase,
+                  borderLeft: "1px solid var(--border)",
+                  ...(state === "null" ? btnActiveDisabled : {}),
+                }}
               >
                 Disabled
               </button>
             </div>
 
             {/* Custom button + input fused */}
-            <div style={{ display: "flex", borderRadius: 5, border: `1px solid ${state === "string" ? "var(--accent)" : "var(--border)"}`, overflow: "hidden", transition: "border-color 0.1s" }}>
+            <div
+              style={{
+                display: "flex",
+                borderRadius: 5,
+                border: `1px solid ${state === "string" ? "var(--accent)" : "var(--border)"}`,
+                overflow: "hidden",
+                transition: "border-color 0.1s",
+              }}
+            >
               <button
                 onClick={() => setLevel(level, strVal || level)}
-                style={{ ...btnBase, ...(state === "string" ? btnActive : {}), borderRight: "1px solid var(--border)", flexShrink: 0 }}
+                style={{
+                  ...btnBase,
+                  ...(state === "string" ? btnActive : {}),
+                  borderRight: "1px solid var(--border)",
+                  flexShrink: 0,
+                }}
               >
                 Custom
               </button>
               <input
                 value={strVal}
                 onChange={(e) => setLevel(level, e.target.value)}
-                onFocus={() => { if (state !== "string") setLevel(level, strVal || level); }}
+                onFocus={() => {
+                  if (state !== "string") setLevel(level, strVal || level);
+                }}
                 placeholder={level}
                 maxLength={10}
                 style={{

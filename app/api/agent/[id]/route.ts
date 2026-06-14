@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
-import { resolveSessionPath } from "@/lib/session-reader";
-import { startRpcSession, getRpcSession } from "@/lib/rpc-manager";
+
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 
+import { getRpcSession, startRpcSession } from "@/lib/rpc-manager";
+import { resolveSessionPath } from "@/lib/session-reader";
+
 // POST /api/agent/[id] - Send a command to an existing session
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   try {
-    const body = await req.json() as { type: string; [key: string]: unknown };
+    const body = (await req.json()) as { type: string; [key: string]: unknown };
 
     // Fast path: already-running session
     const existing = getRpcSession(id);
@@ -37,10 +36,7 @@ export async function POST(
 }
 
 // GET /api/agent/[id] - Get current agent state
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   try {

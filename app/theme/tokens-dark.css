@@ -61,8 +61,8 @@ html.dark {
    * ════════════════════════════════════════════════════════════════════ */
   --fg: #d4d4d4;
   --fg-2: #b8b8b8;
-  --muted: #959595;  /* bumped from #8a8a8a for WCAG AA 4.5:1 on --bg-hover */
-  --meta: #858585;   /* bumped from #7a7a7a for readability on dark surfaces */
+  --muted: #959595; /* bumped from #8a8a8a for WCAG AA 4.5:1 on --bg-hover */
+  --meta: #858585; /* bumped from #7a7a7a for readability on dark surfaces */
 
   /* ════════════════════════════════════════════════════════════════════
    * BORDER — 两级边框 (提升可见度)
@@ -128,7 +128,7 @@ html.dark {
    * 保留 sans 做 UI 文字，mono 用于代码块/markdown code span。
    * ════════════════════════════════════════════════════════════════════ */
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', "Cascadia Code", Consolas, "Courier New", monospace;
+  --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
 
   /* 基准 15px — 比 VSCode 编辑器大 1px，适配 Web 视距 */
   --text-xs: 11px;
@@ -270,7 +270,7 @@ html.dark {
    */
   --ui-msg-user-bg: #2c2c30;
   --ui-msg-user-border: none;
-  --ui-msg-user-shadow: 0 1px 3px rgba(0,0,0,0.22);
+  --ui-msg-user-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
   --ui-msg-user-hover-bg: #323236;
   --ui-msg-agent-accent-line: 2px solid var(--accent);
   --ui-msg-padding: 12px 16px;
@@ -350,10 +350,10 @@ html.dark {
    */
   --ui-tps-high-bg: #0e2a3d;
   --ui-tps-high-fg: var(--accent);
-  --ui-tps-mid-bg:  #0d2f29;
-  --ui-tps-mid-fg:  var(--success);
-  --ui-tps-low-bg:  #332a0d;
-  --ui-tps-low-fg:  var(--warn);
+  --ui-tps-mid-bg: #0d2f29;
+  --ui-tps-mid-fg: var(--success);
+  --ui-tps-low-bg: #332a0d;
+  --ui-tps-low-fg: var(--warn);
 
   /* --- 工具栏 / 快捷操作 ---
    * editorGroup.emptyBackground = 同 editor
@@ -419,8 +419,8 @@ html.dark {
   --assistant-bg: var(--bg);
   --tool-bg: var(--surface);
   --bg-subtle: rgba(255, 255, 255, 0.05);
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.50), 0 2px 4px rgba(0, 0, 0, 0.30);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.60), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.35);
 }

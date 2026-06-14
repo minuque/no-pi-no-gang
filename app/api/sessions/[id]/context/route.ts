@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { SessionManager } from "@earendil-works/pi-coding-agent";
-import { resolveSessionPath, buildSessionContext } from "@/lib/session-reader";
 
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+import { SessionManager } from "@earendil-works/pi-coding-agent";
+
+import { buildSessionContext, resolveSessionPath } from "@/lib/session-reader";
+
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const url = new URL(req.url);
   const leafId = url.searchParams.get("leafId") ?? undefined;

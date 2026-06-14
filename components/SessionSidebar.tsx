@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import type { SessionEntry, SessionInfo, SessionTreeNode as BranchTreeNode } from "@/lib/types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useTheme } from "@/hooks/useTheme";
+import type { SessionTreeNode as BranchTreeNode, SessionEntry, SessionInfo } from "@/lib/types";
 
 interface Props {
   selectedSessionId: string | null;
@@ -203,7 +203,10 @@ function buildCwdSessionGroups(sessions: SessionInfo[]): CwdSessionGroup[] {
       cwd,
       sessions: groupSessions,
       tree: buildSessionTree(groupSessions),
-      modified: groupSessions.reduce((latest, session) => session.modified > latest ? session.modified : latest, ""),
+      modified: groupSessions.reduce(
+        (latest, session) => (session.modified > latest ? session.modified : latest),
+        "",
+      ),
     }))
     .sort((a, b) => b.modified.localeCompare(a.modified));
 }
@@ -215,7 +218,9 @@ function PiAgentTitle() {
     <img
       src={isDark ? "/pi-logo-on-dark.svg" : "/pi-logo-on-light.svg"}
       alt="No Pi No Gang"
-      width={22} height={22} style={{ opacity: 0.85 }}
+      width={22}
+      height={22}
+      style={{ opacity: 0.85 }}
     />
   );
 }
@@ -223,9 +228,15 @@ function PiAgentTitle() {
 // Shared icon components — tiny, crisp, inline
 function IconFolder({ active }: { active: boolean }) {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
       stroke={active ? "var(--accent)" : "var(--text-dim)"}
-      strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       style={{ flexShrink: 0, opacity: active ? 1 : 0.6 }}
     >
       <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z" />
@@ -235,8 +246,15 @@ function IconFolder({ active }: { active: boolean }) {
 
 function IconChevron({ collapsed, size = 12 }: { collapsed: boolean; size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 10 10" fill="none"
-      stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 10 10"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       style={{
         transform: collapsed ? "none" : "rotate(180deg)",
         transition: "transform 0.2s ease",
@@ -249,8 +267,15 @@ function IconChevron({ collapsed, size = 12 }: { collapsed: boolean; size?: numb
 
 function IconFork() {
   return (
-    <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
-      stroke="var(--text-dim)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="var(--text-dim)"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
       style={{ flexShrink: 0, opacity: 0.5 }}
     >
       <line x1="6" y1="3" x2="6" y2="15" />
@@ -263,8 +288,16 @@ function IconFork() {
 
 function IconPlus() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M12 5v14M5 12h14" />
     </svg>
   );
@@ -272,8 +305,16 @@ function IconPlus() {
 
 function IconRefresh() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
     </svg>
   );
@@ -281,8 +322,16 @@ function IconRefresh() {
 
 function IconCheck() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );
@@ -290,8 +339,16 @@ function IconCheck() {
 
 function IconEdit() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
     </svg>
   );
@@ -299,8 +356,16 @@ function IconEdit() {
 
 function IconTrash() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="3 6 5 6 21 6" />
       <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
       <path d="M10 11v6M14 11v6" />
@@ -311,7 +376,11 @@ function IconTrash() {
 
 // ─── Header action button ───
 function HeaderBtn({
-  onClick, disabled, title, children, active: activeColor,
+  onClick,
+  disabled,
+  title,
+  children,
+  active: activeColor,
 }: {
   onClick: () => void;
   disabled?: boolean;
@@ -328,8 +397,12 @@ function HeaderBtn({
       disabled={disabled}
       title={title}
       style={{
-        display: "flex", alignItems: "center", justifyContent: "center",
-        width: 28, height: 28, padding: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 28,
+        height: 28,
+        padding: 0,
         background: active ? "var(--bg-hover)" : "none",
         border: "none",
         borderRadius: 6,
@@ -347,9 +420,20 @@ function HeaderBtn({
 }
 
 export function SessionSidebar({
-  selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone,
-  refreshKey, onSessionDeleted, selectedCwd: selCwd, onCwdChange, onSessionsChange,
-  branchTree = [], branchActiveLeafId = null, onBranchLeafChange, branchSwitchDisabled = false,
+  selectedSessionId,
+  onSelectSession,
+  onNewSession,
+  initialSessionId,
+  onInitialRestoreDone,
+  refreshKey,
+  onSessionDeleted,
+  selectedCwd: selCwd,
+  onCwdChange,
+  onSessionsChange,
+  branchTree = [],
+  branchActiveLeafId = null,
+  onBranchLeafChange,
+  branchSwitchDisabled = false,
 }: Props) {
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -363,7 +447,7 @@ export function SessionSidebar({
       if (showLoading) setLoading(true);
       const res = await fetch("/api/sessions");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json() as { sessions: SessionInfo[] };
+      const data = (await res.json()) as { sessions: SessionInfo[] };
       setAllSessions(data.sessions);
       onSessionsChange?.(data.sessions);
       setError(null);
@@ -395,7 +479,7 @@ export function SessionSidebar({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cwd }),
       });
-      const data = await res.json().catch(() => ({})) as { cwd?: string };
+      const data = (await res.json().catch(() => ({}))) as { cwd?: string };
       return res.ok ? (data.cwd ?? cwd) : null;
     } catch {
       return null;
@@ -434,26 +518,40 @@ export function SessionSidebar({
         }
       })();
     }
-    return () => { cancelled = true; };
-  }, [allSessions, selCwd, initialSessionId, onSelectSession, onCwdChange, onInitialRestoreDone, validateCwd]);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    allSessions,
+    selCwd,
+    initialSessionId,
+    onSelectSession,
+    onCwdChange,
+    onInitialRestoreDone,
+    validateCwd,
+  ]);
 
   const handleNewSession = useCallback(() => {
     if (!selCwd) return;
-    const tempId = typeof crypto.randomUUID === "function"
-      ? crypto.randomUUID()
-      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    const tempId =
+      typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
     onNewSession?.(tempId, selCwd);
   }, [selCwd, onNewSession]);
 
   const cwdGroups = useMemo(() => {
     const groups = buildCwdSessionGroups(allSessions);
     if (selCwd && !groups.some((group) => group.cwd === selCwd)) {
-      return [{
-        cwd: selCwd,
-        sessions: [],
-        tree: [],
-        modified: "",
-      }, ...groups];
+      return [
+        {
+          cwd: selCwd,
+          sessions: [],
+          tree: [],
+          modified: "",
+        },
+        ...groups,
+      ];
     }
     return groups;
   }, [allSessions, selCwd]);
@@ -470,15 +568,18 @@ export function SessionSidebar({
     });
   }, [cwdGroups, selectedSessionId]);
 
-  const handleSelectCwd = useCallback((cwd: string) => {
-    onCwdChange?.(cwd);
-    setExpandedCwds((prev) => {
-      if (prev.has(cwd)) return prev;
-      const next = new Set(prev);
-      next.add(cwd);
-      return next;
-    });
-  }, [onCwdChange]);
+  const handleSelectCwd = useCallback(
+    (cwd: string) => {
+      onCwdChange?.(cwd);
+      setExpandedCwds((prev) => {
+        if (prev.has(cwd)) return prev;
+        const next = new Set(prev);
+        next.add(cwd);
+        return next;
+      });
+    },
+    [onCwdChange],
+  );
 
   const handleToggleCwd = useCallback((cwd: string) => {
     setExpandedCwds((prev) => {
@@ -492,18 +593,31 @@ export function SessionSidebar({
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
       {/* Header */}
-      <div style={{
-        display: "flex", alignItems: "center",
-        height: 44, padding: "0 10px",
-        borderBottom: "1px solid var(--border)",
-        flexShrink: 0, gap: 10,
-      }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          height: 44,
+          padding: "0 10px",
+          borderBottom: "1px solid var(--border)",
+          flexShrink: 0,
+          gap: 10,
+        }}
+      >
         <PiAgentTitle />
         <div style={{ flex: 1 }} />
-        <HeaderBtn onClick={handleNewSession} disabled={!selCwd} title={selCwd ? "New session" : "Select a project first"}>
+        <HeaderBtn
+          onClick={handleNewSession}
+          disabled={!selCwd}
+          title={selCwd ? "New session" : "Select a project first"}
+        >
           <IconPlus />
         </HeaderBtn>
-        <HeaderBtn onClick={() => loadSessions(false)} title="Refresh sessions" active={sessionRefreshDone}>
+        <HeaderBtn
+          onClick={() => loadSessions(false)}
+          title="Refresh sessions"
+          active={sessionRefreshDone}
+        >
           {sessionRefreshDone ? <IconCheck /> : <IconRefresh />}
         </HeaderBtn>
       </div>
@@ -511,14 +625,19 @@ export function SessionSidebar({
       {/* Session list */}
       <div style={{ flex: "1 1 auto", overflowY: "auto", minHeight: 80 }}>
         {loading && (
-          <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 12, letterSpacing: "0.02em" }}>
+          <div
+            style={{
+              padding: "20px 16px",
+              color: "var(--text-dim)",
+              fontSize: 12,
+              letterSpacing: "0.02em",
+            }}
+          >
             Loading sessions...
           </div>
         )}
         {error && (
-          <div style={{ padding: "12px 16px", color: "var(--danger)", fontSize: 12 }}>
-            {error}
-          </div>
+          <div style={{ padding: "12px 16px", color: "var(--danger)", fontSize: 12 }}>{error}</div>
         )}
         {!loading && !error && cwdGroups.length === 0 && (
           <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 12 }}>
@@ -553,9 +672,19 @@ export function SessionSidebar({
 
 // ─── CWD Group Section ───
 function CwdGroupSection({
-  group, selectedSessionId, isActive, isCollapsed,
-  onSelectCwd, onToggleCwd, onSelectSession, onRenamed, onSessionDeleted,
-  branchTree, branchActiveLeafId, onBranchLeafChange, branchSwitchDisabled,
+  group,
+  selectedSessionId,
+  isActive,
+  isCollapsed,
+  onSelectCwd,
+  onToggleCwd,
+  onSelectSession,
+  onRenamed,
+  onSessionDeleted,
+  branchTree,
+  branchActiveLeafId,
+  onBranchLeafChange,
+  branchSwitchDisabled,
 }: {
   group: CwdSessionGroup;
   selectedSessionId: string | null;
@@ -580,14 +709,15 @@ function CwdGroupSection({
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
-          display: "flex", alignItems: "stretch",
+          display: "flex",
+          alignItems: "stretch",
           minHeight: 50,
           background: isActive
             ? "color-mix(in oklab, var(--accent), transparent 94%)"
-            : hovered ? "var(--bg-hover)" : "transparent",
-          borderLeft: isActive
-            ? "2px solid var(--accent)"
-            : "2px solid transparent",
+            : hovered
+              ? "var(--bg-hover)"
+              : "transparent",
+          borderLeft: isActive ? "2px solid var(--accent)" : "2px solid transparent",
           transition: "background 0.12s",
         }}
       >
@@ -596,60 +726,90 @@ function CwdGroupSection({
           onClick={() => onSelectCwd(group.cwd)}
           title={group.cwd}
           style={{
-            flex: 1, minWidth: 0,
+            flex: 1,
+            minWidth: 0,
             padding: "8px 0 8px 12px",
-            background: "none", border: "none",
-            cursor: "pointer", textAlign: "left", color: "var(--text)",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            textAlign: "left",
+            color: "var(--text)",
           }}
         >
           {/* Project name row */}
           <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
             <IconFolder active={isActive} />
-            <span style={{
-              flex: 1, minWidth: 0,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              fontSize: 13, fontWeight: isActive ? 600 : 500,
-              lineHeight: "19px",
-            }}>
+            <span
+              style={{
+                flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                fontSize: 13,
+                fontWeight: isActive ? 600 : 500,
+                lineHeight: "19px",
+              }}
+            >
               {getCwdLabel(group.cwd)}
             </span>
           </div>
 
           {/* Path */}
-          <div style={{
-            marginTop: 1,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            color: "var(--text-dim)", fontSize: 10.5,
-            fontFamily: "var(--font-mono)", lineHeight: "15px",
-            opacity: 0.65,
-          }}>
+          <div
+            style={{
+              marginTop: 1,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              color: "var(--text-dim)",
+              fontSize: 10.5,
+              fontFamily: "var(--font-mono)",
+              lineHeight: "15px",
+              opacity: 0.65,
+            }}
+          >
             {group.cwd}
           </div>
 
           {/* Metadata row */}
-          <div style={{
-            marginTop: 3,
-            display: "flex", alignItems: "center", gap: 8,
-            color: "var(--text-dim)", fontSize: 11.5,
-          }}>
-            <span>{group.sessions.length} session{group.sessions.length !== 1 ? "s" : ""}</span>
+          <div
+            style={{
+              marginTop: 3,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              color: "var(--text-dim)",
+              fontSize: 11.5,
+            }}
+          >
+            <span>
+              {group.sessions.length} session{group.sessions.length !== 1 ? "s" : ""}
+            </span>
             {group.modified && (
-              <span title={group.modified}>
-                {formatRelativeTime(group.modified)}
-              </span>
+              <span title={group.modified}>{formatRelativeTime(group.modified)}</span>
             )}
           </div>
         </button>
 
         {/* Chevron — right side */}
         <button
-          onClick={(e) => { e.stopPropagation(); onToggleCwd(group.cwd); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleCwd(group.cwd);
+          }}
           title={isCollapsed ? "Expand" : "Collapse"}
           style={{
-            display: "flex", alignItems: "flex-start", justifyContent: "center",
-            width: 30, paddingTop: 14, flexShrink: 0,
-            background: "none", border: "none",
-            color: "var(--text-dim)", cursor: "pointer",
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "center",
+            width: 30,
+            paddingTop: 14,
+            flexShrink: 0,
+            background: "none",
+            border: "none",
+            color: "var(--text-dim)",
+            cursor: "pointer",
             opacity: hovered || isActive ? 0.7 : 0.35,
             transition: "opacity 0.15s",
           }}
@@ -662,28 +822,33 @@ function CwdGroupSection({
       {!isCollapsed && (
         <div style={{ padding: "4px 0 8px 12px" }}>
           {empty ? (
-            <div style={{
-              padding: "12px 12px 10px 4px",
-              color: "var(--text-dim)", fontSize: 12,
-              opacity: 0.6,
-            }}>
+            <div
+              style={{
+                padding: "12px 12px 10px 4px",
+                color: "var(--text-dim)",
+                fontSize: 12,
+                opacity: 0.6,
+              }}
+            >
               No sessions in this project
             </div>
-          ) : group.tree.map((node) => (
-            <SessionTreeItem
-              key={node.session.id}
-              node={node}
-              selectedSessionId={selectedSessionId}
-              onSelectSession={onSelectSession}
-              onRenamed={onRenamed}
-              onSessionDeleted={onSessionDeleted}
-              branchTree={branchTree}
-              branchActiveLeafId={branchActiveLeafId}
-              onBranchLeafChange={onBranchLeafChange}
-              branchSwitchDisabled={branchSwitchDisabled}
-              depth={0}
-            />
-          ))}
+          ) : (
+            group.tree.map((node) => (
+              <SessionTreeItem
+                key={node.session.id}
+                node={node}
+                selectedSessionId={selectedSessionId}
+                onSelectSession={onSelectSession}
+                onRenamed={onRenamed}
+                onSessionDeleted={onSessionDeleted}
+                branchTree={branchTree}
+                branchActiveLeafId={branchActiveLeafId}
+                onBranchLeafChange={onBranchLeafChange}
+                branchSwitchDisabled={branchSwitchDisabled}
+                depth={0}
+              />
+            ))
+          )}
         </div>
       )}
     </section>
@@ -692,8 +857,16 @@ function CwdGroupSection({
 
 // ─── Session Tree Item (recursive) ───
 function SessionTreeItem({
-  node, selectedSessionId, onSelectSession, onRenamed, onSessionDeleted,
-  branchTree, branchActiveLeafId, onBranchLeafChange, branchSwitchDisabled, depth,
+  node,
+  selectedSessionId,
+  onSelectSession,
+  onRenamed,
+  onSessionDeleted,
+  branchTree,
+  branchActiveLeafId,
+  onBranchLeafChange,
+  branchSwitchDisabled,
+  depth,
 }: {
   node: SessionSessionTreeNode;
   selectedSessionId: string | null;
@@ -709,12 +882,13 @@ function SessionTreeItem({
   const isSelectedPath = containsSession([node], selectedSessionId);
   const [collapsed, setCollapsed] = useState(true);
   const hasChildren = node.children.length > 0;
-  const branchCount = node.session.id === selectedSessionId ? countAdditionalBranches(branchTree) : 0;
+  const branchCount =
+    node.session.id === selectedSessionId ? countAdditionalBranches(branchTree) : 0;
   const showLeafBranches = branchCount > 0;
   const branchRoot = branchTree.length > 0 ? compressBranchRoot(branchTree[0]) : null;
   const branchActivePathIds = useMemo(
     () => buildBranchActivePath(branchTree, branchActiveLeafId),
-    [branchTree, branchActiveLeafId]
+    [branchTree, branchActiveLeafId],
   );
 
   useEffect(() => {
@@ -773,7 +947,11 @@ function SessionTreeItem({
 }
 
 function BranchLeafItem({
-  node, activePathIds, depth, onSelect, disabled,
+  node,
+  activePathIds,
+  depth,
+  onSelect,
+  disabled,
 }: {
   node: BranchTreeNode;
   activePathIds: Set<string>;
@@ -795,8 +973,11 @@ function BranchLeafItem({
         disabled={disabled}
         title={disabled ? "Branch switching is disabled while streaming" : label}
         style={{
-          display: "flex", alignItems: "center", gap: 6,
-          width: "100%", height: 24,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          width: "100%",
+          height: 24,
           padding: "0 8px 0 0",
           marginLeft: depth * 14,
           background: isActive ? "color-mix(in oklab, var(--accent), transparent 92%)" : "none",
@@ -809,15 +990,30 @@ function BranchLeafItem({
           textAlign: "left",
         }}
       >
-        <span style={{
-          width: 7, height: 7, borderRadius: "50%",
-          marginLeft: 7, flexShrink: 0,
-          background: isActive ? "var(--accent)" : isOnPath ? "var(--text-muted)" : "var(--border)",
-        }} />
-        <span style={{
-          minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          fontSize: 11.5, lineHeight: "18px",
-        }}>
+        <span
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: "50%",
+            marginLeft: 7,
+            flexShrink: 0,
+            background: isActive
+              ? "var(--accent)"
+              : isOnPath
+                ? "var(--text-muted)"
+                : "var(--border)",
+          }}
+        />
+        <span
+          style={{
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            fontSize: 11.5,
+            lineHeight: "18px",
+          }}
+        >
           {label}
         </span>
       </button>
@@ -837,9 +1033,16 @@ function BranchLeafItem({
 
 // ─── Single Session Item ───
 function SessionItem({
-  session, isSelected, onClick, onRenamed, onDeleted,
-  depth = 0, hasChildren = false,
-  branchCount = 0, collapsed = false, onToggleCollapse,
+  session,
+  isSelected,
+  onClick,
+  onRenamed,
+  onDeleted,
+  depth = 0,
+  hasChildren = false,
+  branchCount = 0,
+  collapsed = false,
+  onToggleCollapse,
 }: {
   session: SessionInfo;
   isSelected: boolean;
@@ -862,12 +1065,15 @@ function SessionItem({
   const title = session.name || session.firstMessage.slice(0, 50) || session.id.slice(0, 12);
   const isFork = Boolean(session.parentSessionId) || depth > 0;
 
-  const startRename = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setRenameValue(session.name ?? "");
-    setRenaming(true);
-    setTimeout(() => inputRef.current?.select(), 0);
-  }, [session.name]);
+  const startRename = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setRenameValue(session.name ?? "");
+      setRenaming(true);
+      setTimeout(() => inputRef.current?.select(), 0);
+    },
+    [session.name],
+  );
 
   const commitRename = useCallback(async () => {
     const name = renameValue.trim();
@@ -890,17 +1096,20 @@ function SessionItem({
     setConfirmDelete(true);
   }, []);
 
-  const handleDeleteConfirm = useCallback(async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setConfirmDelete(false);
-    setDeleting(true);
-    try {
-      await fetch(`/api/sessions/${encodeURIComponent(session.id)}`, { method: "DELETE" });
-      onDeleted?.(session.id);
-    } catch {
-      setDeleting(false);
-    }
-  }, [session.id, onDeleted]);
+  const handleDeleteConfirm = useCallback(
+    async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setConfirmDelete(false);
+      setDeleting(true);
+      try {
+        await fetch(`/api/sessions/${encodeURIComponent(session.id)}`, { method: "DELETE" });
+        onDeleted?.(session.id);
+      } catch {
+        setDeleting(false);
+      }
+    },
+    [session.id, onDeleted],
+  );
 
   const handleDeleteCancel = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -910,17 +1119,14 @@ function SessionItem({
   const rowH = 46;
 
   // Depth thread color — fades with depth, forms vertical line when same-depth items stack
-  const depthColor = depth === 0
-    ? "color-mix(in oklab, var(--accent), transparent 86%)"
-    : depth === 1
-      ? "color-mix(in oklab, var(--accent), transparent 92%)"
-      : "color-mix(in oklab, var(--accent), transparent 95%)";
+  const depthColor =
+    depth === 0
+      ? "color-mix(in oklab, var(--accent), transparent 86%)"
+      : depth === 1
+        ? "color-mix(in oklab, var(--accent), transparent 92%)"
+        : "color-mix(in oklab, var(--accent), transparent 95%)";
 
-  const borderColor = confirmDelete
-    ? "var(--danger)"
-    : isSelected
-      ? "var(--accent)"
-      : depthColor;
+  const borderColor = confirmDelete ? "var(--danger)" : isSelected ? "var(--accent)" : depthColor;
 
   return (
     <div
@@ -929,15 +1135,19 @@ function SessionItem({
       onMouseLeave={() => setHovered(false)}
       style={{
         height: rowH,
-        display: "flex", alignItems: "center",
+        display: "flex",
+        alignItems: "center",
         marginLeft: depth * 14,
-        paddingLeft: 6, paddingRight: 6,
+        paddingLeft: 6,
+        paddingRight: 6,
         cursor: confirmDelete || renaming ? "default" : "pointer",
         background: confirmDelete
           ? "color-mix(in oklab, var(--danger), transparent 93%)"
           : isSelected
             ? "color-mix(in oklab, var(--accent), transparent 93%)"
-            : hovered ? "var(--bg-hover)" : "transparent",
+            : hovered
+              ? "var(--bg-hover)"
+              : "transparent",
         borderLeft: `2px solid ${borderColor}`,
         borderRadius: "0 5px 5px 0",
         transition: "background 0.1s, border-color 0.15s",
@@ -949,14 +1159,30 @@ function SessionItem({
     >
       {confirmDelete ? (
         <>
-          <span style={{
-            flex: 1, minWidth: 0, fontSize: 12.5, color: "var(--text)",
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
-            Delete <b>&ldquo;{title.slice(0, 24)}{title.length > 24 ? "…" : ""}&rdquo;</b>?
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: 12.5,
+              color: "var(--text)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Delete{" "}
+            <b>
+              &ldquo;{title.slice(0, 24)}
+              {title.length > 24 ? "…" : ""}&rdquo;
+            </b>
+            ?
           </span>
-          <button onClick={handleDeleteConfirm} style={btnDanger}>Delete</button>
-          <button onClick={handleDeleteCancel} style={btnGhost}>Cancel</button>
+          <button onClick={handleDeleteConfirm} style={btnDanger}>
+            Delete
+          </button>
+          <button onClick={handleDeleteCancel} style={btnGhost}>
+            Cancel
+          </button>
         </>
       ) : renaming ? (
         <input
@@ -970,9 +1196,14 @@ function SessionItem({
           }}
           autoFocus
           style={{
-            flex: 1, fontSize: 13, padding: "4px 7px",
-            border: "1px solid var(--accent)", borderRadius: 4,
-            outline: "none", background: "var(--bg)", color: "var(--text)",
+            flex: 1,
+            fontSize: 13,
+            padding: "4px 7px",
+            border: "1px solid var(--accent)",
+            borderRadius: 4,
+            outline: "none",
+            background: "var(--bg)",
+            color: "var(--text)",
             height: 28,
           }}
         />
@@ -983,35 +1214,51 @@ function SessionItem({
 
           {/* Text content */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontSize: 13.5, fontWeight: isSelected ? 500 : 400,
-              lineHeight: "18px",
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              color: "var(--text)",
-            }} title={title}>
+            <div
+              style={{
+                fontSize: 13.5,
+                fontWeight: isSelected ? 500 : 400,
+                lineHeight: "18px",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                color: "var(--text)",
+              }}
+              title={title}
+            >
               {title}
             </div>
-            <div style={{
-              marginTop: 1,
-              display: "flex", alignItems: "center", gap: 6,
-              color: "var(--text-dim)", fontSize: 11.5,
-            }}>
+            <div
+              style={{
+                marginTop: 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                color: "var(--text-dim)",
+                fontSize: 11.5,
+              }}
+            >
               {/* Session type badge */}
-              <span style={{
-                display: "inline-flex", alignItems: "center",
-                height: 16, padding: "0 5px", borderRadius: 3,
-                background: isFork ? "var(--bg-hover)" : "none",
-                border: isFork ? "1px solid var(--border)" : "none",
-                color: "var(--text-dim)", fontSize: 10.5,
-                fontFamily: "var(--font-mono)", lineHeight: "16px",
-                flexShrink: 0,
-                opacity: isFork ? 0.85 : 0.65,
-              }}>
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  height: 16,
+                  padding: "0 5px",
+                  borderRadius: 3,
+                  background: isFork ? "var(--bg-hover)" : "none",
+                  border: isFork ? "1px solid var(--border)" : "none",
+                  color: "var(--text-dim)",
+                  fontSize: 10.5,
+                  fontFamily: "var(--font-mono)",
+                  lineHeight: "16px",
+                  flexShrink: 0,
+                  opacity: isFork ? 0.85 : 0.65,
+                }}
+              >
                 {isFork ? "fork" : "root"}
               </span>
-              <span title={session.modified}>
-                {formatRelativeTime(session.modified)}
-              </span>
+              <span title={session.modified}>{formatRelativeTime(session.modified)}</span>
               <span>
                 {session.messageCount} msg{session.messageCount !== 1 ? "s" : ""}
               </span>
@@ -1026,13 +1273,23 @@ function SessionItem({
           {/* Fork collapse toggle */}
           {hasChildren && (
             <button
-              onClick={(e) => { e.stopPropagation(); onToggleCollapse?.(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleCollapse?.();
+              }}
               title={collapsed ? "Expand forks" : "Collapse forks"}
               style={{
-                display: "flex", alignItems: "center", justifyContent: "center",
-                width: 18, height: 18, padding: 0, flexShrink: 0,
-                background: "none", border: "none",
-                color: "var(--text-dim)", cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 18,
+                height: 18,
+                padding: 0,
+                flexShrink: 0,
+                background: "none",
+                border: "none",
+                color: "var(--text-dim)",
+                cursor: "pointer",
                 opacity: hovered ? 0.6 : 0.3,
                 transition: "opacity 0.15s",
               }}
@@ -1042,11 +1299,15 @@ function SessionItem({
           )}
 
           {/* Hover action buttons */}
-          <div style={{
-            display: "flex", gap: 2, flexShrink: 0,
-            opacity: hovered ? 1 : 0,
-            transition: "opacity 0.12s",
-          }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 2,
+              flexShrink: 0,
+              opacity: hovered ? 1 : 0,
+              transition: "opacity 0.12s",
+            }}
+          >
             <button
               onClick={startRename}
               title="Rename"
@@ -1067,7 +1328,8 @@ function SessionItem({
               title="Delete"
               style={btnIcon}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = "color-mix(in oklab, var(--danger), transparent 90%)";
+                e.currentTarget.style.background =
+                  "color-mix(in oklab, var(--danger), transparent 90%)";
                 e.currentTarget.style.color = "var(--danger)";
               }}
               onMouseLeave={(e) => {
@@ -1086,28 +1348,49 @@ function SessionItem({
 
 // ─── Shared button styles ───
 const btnIcon: React.CSSProperties = {
-  display: "flex", alignItems: "center", justifyContent: "center",
-  width: 28, height: 28, padding: 0,
-  background: "var(--bg-hover)", border: "1px solid var(--border)",
-  borderRadius: 6, color: "var(--text-muted)",
-  cursor: "pointer", flexShrink: 0,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 28,
+  height: 28,
+  padding: 0,
+  background: "var(--bg-hover)",
+  border: "1px solid var(--border)",
+  borderRadius: 6,
+  color: "var(--text-muted)",
+  cursor: "pointer",
+  flexShrink: 0,
   transition: "background 0.12s, color 0.12s, border-color 0.12s",
 };
 
 const btnDanger: React.CSSProperties = {
-  display: "flex", alignItems: "center", justifyContent: "center",
-  height: 26, padding: "0 10px",
-  background: "var(--danger)", border: "none",
-  borderRadius: 5, color: "var(--accent-on)",
-  cursor: "pointer", fontSize: 12, fontWeight: 600,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  height: 26,
+  padding: "0 10px",
+  background: "var(--danger)",
+  border: "none",
+  borderRadius: 5,
+  color: "var(--accent-on)",
+  cursor: "pointer",
+  fontSize: 12,
+  fontWeight: 600,
   whiteSpace: "nowrap",
 };
 
 const btnGhost: React.CSSProperties = {
-  display: "flex", alignItems: "center", justifyContent: "center",
-  height: 26, padding: "0 10px",
-  background: "var(--bg)", border: "1px solid var(--border)",
-  borderRadius: 5, color: "var(--text-muted)",
-  cursor: "pointer", fontSize: 12, fontWeight: 500,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  height: 26,
+  padding: "0 10px",
+  background: "var(--bg)",
+  border: "1px solid var(--border)",
+  borderRadius: 5,
+  color: "var(--text-muted)",
+  cursor: "pointer",
+  fontSize: 12,
+  fontWeight: 500,
   whiteSpace: "nowrap",
 };

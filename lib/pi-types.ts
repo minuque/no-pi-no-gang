@@ -1,4 +1,8 @@
-import type { SessionManager, SettingsManager, AgentSessionEvent } from "@earendil-works/pi-coding-agent";
+import type {
+  AgentSessionEvent,
+  SessionManager,
+  SettingsManager,
+} from "@earendil-works/pi-coding-agent";
 
 export interface ContextUsage {
   percent: number | null;
@@ -36,7 +40,10 @@ export interface AgentSessionLike {
   readonly agent: { state?: { systemPrompt?: string; thinkingLevel?: string } };
 
   subscribe(listener: (event: AgentSessionEvent) => void): () => void;
-  prompt(text: string, options?: { images?: Array<{ type: "image"; data: string; mimeType: string }> }): Promise<void>;
+  prompt(
+    text: string,
+    options?: { images?: Array<{ type: "image"; data: string; mimeType: string }> },
+  ): Promise<void>;
   abort(): Promise<void>;
   setModel(model: ModelLike): Promise<void>;
   navigateTree(targetId: string, options?: { summarize?: boolean }): Promise<NavigateTreeResult>;
@@ -44,8 +51,14 @@ export interface AgentSessionLike {
   compact(customInstructions?: string): Promise<unknown>;
   setAutoCompactionEnabled(enabled: boolean): void;
   setAutoRetryEnabled(enabled: boolean): void;
-  steer(text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>): Promise<void>;
-  followUp(text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>): Promise<void>;
+  steer(
+    text: string,
+    images?: Array<{ type: "image"; data: string; mimeType: string }>,
+  ): Promise<void>;
+  followUp(
+    text: string,
+    images?: Array<{ type: "image"; data: string; mimeType: string }>,
+  ): Promise<void>;
   getAllTools(): ToolInfo[];
   getActiveToolNames(): string[];
   setActiveToolsByName(names: string[]): void;

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import type { ModelEntry, ProviderEntry, ModelTestState } from "./ModelsConfigTypes";
+import { useCallback, useEffect, useState } from "react";
+
+import { Check, Field, NumInput, SectionTitle, Select, TextInput } from "./FormFields";
+import type { ModelEntry, ModelTestState, ProviderEntry } from "./ModelsConfigTypes";
 import { API_OPTIONS } from "./ModelsConfigTypes";
-import { Field, TextInput, NumInput, Select, Check, SectionTitle } from "./FormFields";
 import { ThinkingLevelMapEditor } from "./ThinkingLevelMapEditor";
 
 const DEEPSEEK_COMPAT = {
@@ -40,8 +41,10 @@ export function ModelDetail({
   onDelete: () => void;
 }) {
   const [testState, setTestState] = useState<ModelTestState>({ phase: "idle" });
-  const set = <K extends keyof ModelEntry>(k: K, v: ModelEntry[K]) => onChange({ ...model, [k]: v });
-  const costVal = (k: keyof NonNullable<ModelEntry["cost"]>) => model.cost?.[k] !== undefined ? String(model.cost[k]) : "";
+  const set = <K extends keyof ModelEntry>(k: K, v: ModelEntry[K]) =>
+    onChange({ ...model, [k]: v });
+  const costVal = (k: keyof NonNullable<ModelEntry["cost"]>) =>
+    model.cost?.[k] !== undefined ? String(model.cost[k]) : "";
   const setCost = (k: keyof NonNullable<ModelEntry["cost"]>, v: string) => {
     const n = parseFloat(v);
     onChange({ ...model, cost: { ...(model.cost ?? {}), [k]: isNaN(n) ? undefined : n } });
@@ -72,7 +75,7 @@ export function ModelDetail({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ providerName, provider, model }),
       });
-      const d = await res.json() as {
+      const d = (await res.json()) as {
         ok?: boolean;
         error?: string;
         latencyMs?: number;
@@ -113,7 +116,12 @@ export function ModelDetail({
                 padding: "0 8px",
                 border: `1px solid ${testState.phase === "error" ? "#fecaca" : testState.phase === "success" ? "#bbf7d0" : "var(--border)"}`,
                 borderRadius: 4,
-                background: testState.phase === "error" ? "#fee2e2" : testState.phase === "success" ? "#dcfce7" : "var(--bg-panel)",
+                background:
+                  testState.phase === "error"
+                    ? "#fee2e2"
+                    : testState.phase === "success"
+                      ? "#dcfce7"
+                      : "var(--bg-panel)",
                 color: "#111827",
                 fontSize: 11,
                 display: "inline-flex",
@@ -137,8 +145,13 @@ export function ModelDetail({
               background: testState.phase === "success" ? "#16a34a" : "none",
               border: `1px solid ${testState.phase === "success" ? "#16a34a" : "var(--border)"}`,
               borderRadius: 4,
-              color: testState.phase === "success" ? "var(--accent-on)" : (!model.id.trim() || testState.phase === "testing") ? "var(--text-dim)" : "var(--text-muted)",
-              cursor: (!model.id.trim() || testState.phase === "testing") ? "not-allowed" : "pointer",
+              color:
+                testState.phase === "success"
+                  ? "var(--accent-on)"
+                  : !model.id.trim() || testState.phase === "testing"
+                    ? "var(--text-dim)"
+                    : "var(--text-muted)",
+              cursor: !model.id.trim() || testState.phase === "testing" ? "not-allowed" : "pointer",
               fontSize: 11,
               display: "inline-flex",
               alignItems: "center",
@@ -148,32 +161,76 @@ export function ModelDetail({
             }}
           >
             {testState.phase === "success" && (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             )}
-            {testState.phase === "testing" ? "Testing…" : testState.phase === "success" ? "OK" : "Test"}
+            {testState.phase === "testing"
+              ? "Testing…"
+              : testState.phase === "success"
+                ? "OK"
+                : "Test"}
           </button>
-          <button onClick={onDelete}
-            style={{ height: 24, padding: "0 8px", background: "none", border: "1px solid color-mix(in oklab, var(--danger), transparent 70%)", borderRadius: 4, color: "var(--danger)", cursor: "pointer", fontSize: 11, boxSizing: "border-box" }}>
+          <button
+            onClick={onDelete}
+            style={{
+              height: 24,
+              padding: "0 8px",
+              background: "none",
+              border: "1px solid color-mix(in oklab, var(--danger), transparent 70%)",
+              borderRadius: 4,
+              color: "var(--danger)",
+              cursor: "pointer",
+              fontSize: 11,
+              boxSizing: "border-box",
+            }}
+          >
             Remove
           </button>
         </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <Field label="ID *"><TextInput value={model.id} onChange={(v) => set("id", v)} placeholder="model-id" mono /></Field>
-        <Field label="Name"><TextInput value={model.name ?? ""} onChange={(v) => set("name", v || undefined)} placeholder="Display name" /></Field>
+        <Field label="ID *">
+          <TextInput value={model.id} onChange={(v) => set("id", v)} placeholder="model-id" mono />
+        </Field>
+        <Field label="Name">
+          <TextInput
+            value={model.name ?? ""}
+            onChange={(v) => set("name", v || undefined)}
+            placeholder="Display name"
+          />
+        </Field>
       </div>
 
       <Field label="API override">
-        <Select value={model.api ?? ""} onChange={(v) => set("api", v || undefined)} options={API_OPTIONS} />
+        <Select
+          value={model.api ?? ""}
+          onChange={(v) => set("api", v || undefined)}
+          options={API_OPTIONS}
+        />
       </Field>
 
       <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-        <Check label="Reasoning / thinking" checked={model.reasoning ?? false} onChange={(v) => set("reasoning", v || undefined)} />
-        <Check label="Image input" checked={model.input?.includes("image") ?? false}
-          onChange={(v) => set("input", v ? ["text", "image"] : undefined)} />
+        <Check
+          label="Reasoning / thinking"
+          checked={model.reasoning ?? false}
+          onChange={(v) => set("reasoning", v || undefined)}
+        />
+        <Check
+          label="Image input"
+          checked={model.input?.includes("image") ?? false}
+          onChange={(v) => set("input", v ? ["text", "image"] : undefined)}
+        />
       </div>
 
       {model.reasoning && (
@@ -184,12 +241,27 @@ export function ModelDetail({
             onChange={(v) => onChange(setDeepseekCompat(model, v))}
           />
           <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 8,
+              }}
+            >
               <SectionTitle>Thinking level map</SectionTitle>
               {model.thinkingLevelMap && (
                 <button
                   onClick={() => set("thinkingLevelMap", undefined)}
-                  style={{ fontSize: 10, padding: "2px 7px", background: "none", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text-dim)", cursor: "pointer" }}
+                  style={{
+                    fontSize: 10,
+                    padding: "2px 7px",
+                    background: "none",
+                    border: "1px solid var(--border)",
+                    borderRadius: 4,
+                    color: "var(--text-dim)",
+                    cursor: "pointer",
+                  }}
                 >
                   clear all
                 </button>
@@ -205,18 +277,26 @@ export function ModelDetail({
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <Field label="Context window (tokens)">
-          <NumInput value={model.contextWindow !== undefined ? String(model.contextWindow) : ""}
-            onChange={(v) => set("contextWindow", v ? parseInt(v) : undefined)} placeholder="128000" />
+          <NumInput
+            value={model.contextWindow !== undefined ? String(model.contextWindow) : ""}
+            onChange={(v) => set("contextWindow", v ? parseInt(v) : undefined)}
+            placeholder="128000"
+          />
         </Field>
         <Field label="Max output tokens">
-          <NumInput value={model.maxTokens !== undefined ? String(model.maxTokens) : ""}
-            onChange={(v) => set("maxTokens", v ? parseInt(v) : undefined)} placeholder="16384" />
+          <NumInput
+            value={model.maxTokens !== undefined ? String(model.maxTokens) : ""}
+            onChange={(v) => set("maxTokens", v ? parseInt(v) : undefined)}
+            placeholder="16384"
+          />
         </Field>
       </div>
 
       <div>
         <SectionTitle>Cost (per million tokens)</SectionTitle>
-        <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
+        <div
+          style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}
+        >
           {(["input", "output", "cacheRead", "cacheWrite"] as const).map((k) => (
             <Field key={k} label={k}>
               <NumInput value={costVal(k)} onChange={(v) => setCost(k, v)} placeholder="0" />

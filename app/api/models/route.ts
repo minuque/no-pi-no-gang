@@ -1,5 +1,10 @@
-import { AuthStorage, ModelRegistry, SettingsManager, getAgentDir } from "@earendil-works/pi-coding-agent";
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai";
+import {
+  AuthStorage,
+  ModelRegistry,
+  SettingsManager,
+  getAgentDir,
+} from "@earendil-works/pi-coding-agent";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +38,15 @@ export async function GET() {
     if (provider) {
       defaultModel = { provider, modelId: modelId ?? available[0]?.id ?? "" };
     }
-  } catch { /* return empty */ }
+  } catch {
+    /* return empty */
+  }
 
-  return Response.json({ models: Object.fromEntries(nameMap), modelList, defaultModel, thinkingLevels, thinkingLevelMaps });
+  return Response.json({
+    models: Object.fromEntries(nameMap),
+    modelList,
+    defaultModel,
+    thinkingLevels,
+    thinkingLevelMaps,
+  });
 }

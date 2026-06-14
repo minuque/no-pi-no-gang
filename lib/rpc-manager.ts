@@ -1,6 +1,7 @@
-import { createAgentSession, SessionManager } from "@earendil-works/pi-coding-agent";
-import { cacheSessionPath } from "./session-reader";
+import { SessionManager, createAgentSession } from "@earendil-works/pi-coding-agent";
+
 import type { AgentSessionLike, ToolInfo } from "./pi-types";
+import { cacheSessionPath } from "./session-reader";
 
 // ============================================================================
 // Types
@@ -71,8 +72,15 @@ export class AgentSessionWrapper {
     switch (type) {
       case "prompt": {
         // Fire and forget — events come via subscribe
-        const promptImages = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
-        this.inner.prompt(command.message as string, promptImages?.length ? { images: promptImages } : undefined).catch(() => {});
+        const promptImages = command.images as
+          | Array<{ type: "image"; data: string; mimeType: string }>
+          | undefined;
+        this.inner
+          .prompt(
+            command.message as string,
+            promptImages?.length ? { images: promptImages } : undefined,
+          )
+          .catch(() => {});
         return null;
       }
 
@@ -94,7 +102,11 @@ export class AgentSessionWrapper {
           messageCount: 0,
           pendingMessageCount: 0,
           contextUsage: contextUsage
-            ? { percent: contextUsage.percent, contextWindow: contextUsage.contextWindow, tokens: contextUsage.tokens }
+            ? {
+                percent: contextUsage.percent,
+                contextWindow: contextUsage.contextWindow,
+                tokens: contextUsage.tokens,
+              }
             : null,
           systemPrompt: this.inner.agent.state?.systemPrompt ?? "",
           thinkingLevel: this.inner.agent.state?.thinkingLevel ?? "off",
@@ -154,7 +166,12 @@ export class AgentSessionWrapper {
         // setThinkingLevel clamps xhigh→high for models where supportsXhigh()===false.
         // If the model has DeepSeek thinking compat (reasoningEffortMap maps xhigh→max),
         // force the state back so the compat layer can use it correctly.
-        if (level === "xhigh" && (this.inner.model as { compat?: { thinkingFormat?: string } } | null)?.compat?.thinkingFormat === "deepseek" && this.inner.agent?.state) {
+        if (
+          level === "xhigh" &&
+          (this.inner.model as { compat?: { thinkingFormat?: string } } | null)?.compat
+            ?.thinkingFormat === "deepseek" &&
+          this.inner.agent?.state
+        ) {
           this.inner.agent.state.thinkingLevel = "xhigh";
         }
         return null;
@@ -163,16 +180,30 @@ export class AgentSessionWrapper {
       case "compact": {
         // pi's compact() does not guard against empty messagesToSummarize — use findCutPoint
         // to pre-check and throw a clean error instead of generating a useless empty summary.
-        const { findCutPoint, DEFAULT_COMPACTION_SETTINGS } = await import("@earendil-works/pi-coding-agent");
+        const { findCutPoint, DEFAULT_COMPACTION_SETTINGS } =
+          await import("@earendil-works/pi-coding-agent");
         const pathEntries = this.inner.sessionManager.getBranch() as Array<{ type: string }>;
-        const settings = { ...DEFAULT_COMPACTION_SETTINGS, ...this.inner.settingsManager.getCompactionSettings() };
+        const settings = {
+          ...DEFAULT_COMPACTION_SETTINGS,
+          ...this.inner.settingsManager.getCompactionSettings(),
+        };
         let prevCompactionIndex = -1;
         for (let i = pathEntries.length - 1; i >= 0; i--) {
-          if (pathEntries[i].type === "compaction") { prevCompactionIndex = i; break; }
+          if (pathEntries[i].type === "compaction") {
+            prevCompactionIndex = i;
+            break;
+          }
         }
         const boundaryStart = prevCompactionIndex + 1;
-        const cutPoint = findCutPoint(pathEntries as never, boundaryStart, pathEntries.length, settings.keepRecentTokens);
-        const historyEnd = cutPoint.isSplitTurn ? cutPoint.turnStartIndex : cutPoint.firstKeptEntryIndex;
+        const cutPoint = findCutPoint(
+          pathEntries as never,
+          boundaryStart,
+          pathEntries.length,
+          settings.keepRecentTokens,
+        );
+        const historyEnd = cutPoint.isSplitTurn
+          ? cutPoint.turnStartIndex
+          : cutPoint.firstKeptEntryIndex;
         if (historyEnd <= boundaryStart) {
           throw new Error("Conversation too short to compact");
         }
@@ -186,14 +217,24 @@ export class AgentSessionWrapper {
       }
 
       case "steer": {
-        const steerImages = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
-        await this.inner.steer(command.message as string, steerImages?.length ? steerImages : undefined);
+        const steerImages = command.images as
+          | Array<{ type: "image"; data: string; mimeType: string }>
+          | undefined;
+        await this.inner.steer(
+          command.message as string,
+          steerImages?.length ? steerImages : undefined,
+        );
         return null;
       }
 
       case "follow_up": {
-        const followImages = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
-        await this.inner.followUp(command.message as string, followImages?.length ? followImages : undefined);
+        const followImages = command.images as
+          | Array<{ type: "image"; data: string; mimeType: string }>
+          | undefined;
+        await this.inner.followUp(
+          command.message as string,
+          followImages?.length ? followImages : undefined,
+        );
         return null;
       }
 
@@ -225,21 +266,25 @@ export class AgentSessionWrapper {
       case "command": {
         const commandName = command.command as string;
         const userMessage = command.message as string;
-        const promptImages = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
+        const promptImages = command.images as
+          | Array<{ type: "image"; data: string; mimeType: string }>
+          | undefined;
 
         // Find the skill matching the command name
-        const { DefaultResourceLoader, getAgentDir } = await import("@earendil-works/pi-coding-agent");
-        const cwd = (this.inner as { cwd?: string }).cwd
-          ?? (this.inner.agent?.state as { cwd?: string } | undefined)?.cwd
-          ?? process.cwd();
+        const { DefaultResourceLoader, getAgentDir } =
+          await import("@earendil-works/pi-coding-agent");
+        const cwd =
+          (this.inner as { cwd?: string }).cwd ??
+          (this.inner.agent?.state as { cwd?: string } | undefined)?.cwd ??
+          process.cwd();
 
         const loader = new DefaultResourceLoader({ cwd, agentDir: getAgentDir() });
         await loader.reload();
         const { skills } = loader.getSkills();
 
         // Match by name (case-insensitive)
-        const skill = skills.find((s: { name: string }) =>
-          s.name.toLowerCase() === commandName.toLowerCase()
+        const skill = skills.find(
+          (s: { name: string }) => s.name.toLowerCase() === commandName.toLowerCase(),
         );
 
         if (skill) {
@@ -269,7 +314,9 @@ export class AgentSessionWrapper {
         }
 
         // Send user message WITHOUT skill content injection
-        this.inner.prompt(userMessage, promptImages?.length ? { images: promptImages } : undefined).catch(() => {});
+        this.inner
+          .prompt(userMessage, promptImages?.length ? { images: promptImages } : undefined)
+          .catch(() => {});
         return null;
       }
 
@@ -293,7 +340,9 @@ export class AgentSessionWrapper {
 
 declare global {
   var __piSessions: Map<string, AgentSessionWrapper> | undefined;
-  var __piStartLocks: Map<string, Promise<{ session: AgentSessionWrapper; realSessionId: string }>> | undefined;
+  var __piStartLocks:
+    | Map<string, Promise<{ session: AgentSessionWrapper; realSessionId: string }>>
+    | undefined;
 }
 
 function getRegistry(): Map<string, AgentSessionWrapper> {
@@ -325,7 +374,7 @@ export async function startRpcSession(
   sessionId: string,
   sessionFile: string,
   cwd: string,
-  toolNames?: string[]
+  toolNames?: string[],
 ): Promise<{ session: AgentSessionWrapper; realSessionId: string }> {
   const registry = getRegistry();
   const locks = getLocks();

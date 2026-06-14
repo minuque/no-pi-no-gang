@@ -1,12 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import fs from "fs";
 import path from "path";
+
 import { listAllSessions } from "@/lib/session-reader";
 
 const IGNORED_NAMES = new Set([
-  "node_modules", ".git", ".next", "dist", "build", "__pycache__",
-  ".turbo", ".cache", "coverage", ".pytest_cache", ".mypy_cache",
-  "target", "vendor", ".DS_Store", ".git",
+  "node_modules",
+  ".git",
+  ".next",
+  "dist",
+  "build",
+  "__pycache__",
+  ".turbo",
+  ".cache",
+  "coverage",
+  ".pytest_cache",
+  ".mypy_cache",
+  "target",
+  "vendor",
+  ".DS_Store",
+  ".git",
 ]);
 
 const IGNORED_SUFFIXES = [".pyc"];
@@ -63,18 +77,52 @@ function getDocumentMime(filePath: string): string | null {
 }
 
 const EXT_TO_LANGUAGE: Record<string, string> = {
-  ts: "typescript", tsx: "typescript", js: "javascript", jsx: "javascript",
-  mjs: "javascript", cjs: "javascript", py: "python", rb: "ruby",
-  go: "go", rs: "rust", java: "java", kt: "kotlin", swift: "swift",
-  c: "c", cpp: "cpp", h: "c", hpp: "cpp", cs: "csharp",
-  html: "html", htm: "html", css: "css", scss: "css", less: "css",
-  json: "json", jsonl: "json", yaml: "yaml", yml: "yaml",
-  toml: "toml", xml: "xml", md: "markdown", mdx: "markdown",
-  sh: "bash", bash: "bash", zsh: "bash", fish: "bash",
-  sql: "sql", graphql: "graphql", gql: "graphql",
-  dockerfile: "dockerfile", tf: "hcl", hcl: "hcl",
-  env: "bash", gitignore: "bash", txt: "text",
-  pdf: "pdf", docx: "word",
+  ts: "typescript",
+  tsx: "typescript",
+  js: "javascript",
+  jsx: "javascript",
+  mjs: "javascript",
+  cjs: "javascript",
+  py: "python",
+  rb: "ruby",
+  go: "go",
+  rs: "rust",
+  java: "java",
+  kt: "kotlin",
+  swift: "swift",
+  c: "c",
+  cpp: "cpp",
+  h: "c",
+  hpp: "cpp",
+  cs: "csharp",
+  html: "html",
+  htm: "html",
+  css: "css",
+  scss: "css",
+  less: "css",
+  json: "json",
+  jsonl: "json",
+  yaml: "yaml",
+  yml: "yaml",
+  toml: "toml",
+  xml: "xml",
+  md: "markdown",
+  mdx: "markdown",
+  sh: "bash",
+  bash: "bash",
+  zsh: "bash",
+  fish: "bash",
+  sql: "sql",
+  graphql: "graphql",
+  gql: "graphql",
+  dockerfile: "dockerfile",
+  tf: "hcl",
+  hcl: "hcl",
+  env: "bash",
+  gitignore: "bash",
+  txt: "text",
+  pdf: "pdf",
+  docx: "word",
 };
 
 function getLanguage(filePath: string): string {
@@ -103,7 +151,9 @@ function normalizeSlashes(filePath: string): string {
 }
 
 function isWindowsAbsolutePath(filePath: string): boolean {
-  return WINDOWS_ABSOLUTE_RE.test(filePath) || filePath.startsWith("\\\\") || filePath.startsWith("//");
+  return (
+    WINDOWS_ABSOLUTE_RE.test(filePath) || filePath.startsWith("\\\\") || filePath.startsWith("//")
+  );
 }
 
 function filePathFromSegments(segments: string[]): string {
@@ -157,7 +207,10 @@ function isPathAllowed(target: string, allowedRoots: Set<string>): boolean {
   return false;
 }
 
-function createFileBodyStream(filePath: string, range?: { start: number; end: number }): ReadableStream<Uint8Array> {
+function createFileBodyStream(
+  filePath: string,
+  range?: { start: number; end: number },
+): ReadableStream<Uint8Array> {
   const fileStream = fs.createReadStream(filePath, range);
   let closed = false;
 
@@ -199,8 +252,9 @@ function createFileBodyStream(filePath: string, range?: { start: number; end: nu
 }
 
 function encodeHeaderValue(value: string): string {
-  return encodeURIComponent(value).replace(/[!'()*]/g, (ch) =>
-    `%${ch.charCodeAt(0).toString(16).toUpperCase()}`
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (ch) => `%${ch.charCodeAt(0).toString(16).toUpperCase()}`,
   );
 }
 
@@ -210,7 +264,12 @@ function getContentDisposition(filePath: string): string {
   return `inline; filename="${fallback}"; filename*=UTF-8''${encodeHeaderValue(fileName)}`;
 }
 
-function streamFile(filePath: string, stat: fs.Stats, contentType: string, rangeHeader: string | null): Response {
+function streamFile(
+  filePath: string,
+  stat: fs.Stats,
+  contentType: string,
+  rangeHeader: string | null,
+): Response {
   const headers = {
     "Content-Type": contentType,
     "Cache-Control": "no-cache",
@@ -246,7 +305,13 @@ function streamFile(filePath: string, stat: fs.Stats, contentType: string, range
     end = stat.size - 1;
   }
 
-  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end < start || start >= stat.size) {
+  if (
+    !Number.isFinite(start) ||
+    !Number.isFinite(end) ||
+    start < 0 ||
+    end < start ||
+    start >= stat.size
+  ) {
     return new Response(null, {
       status: 416,
       headers: {
@@ -335,7 +400,7 @@ ${bodyHtml}
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> }
+  { params }: { params: Promise<{ path: string[] }> },
 ) {
   try {
     const { path: segments } = await params;
@@ -401,7 +466,10 @@ export async function GET(
         return NextResponse.json({ error: "Not a file" }, { status: 400 });
       }
       if (getExt(filePath) !== "docx") {
-        return NextResponse.json({ error: "Preview not available for this file type" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Preview not available for this file type" },
+          { status: 400 },
+        );
       }
       if (stat.size > DOCX_PREVIEW_MAX_BYTES) {
         return NextResponse.json({ error: "DOCX too large for preview (>10MB)" }, { status: 413 });
@@ -413,14 +481,15 @@ export async function GET(
         {
           externalFileAccess: false,
           convertImage: mammoth.images.dataUri,
-        }
+        },
       );
       const html = wrapDocxPreviewHtml(result.value, path.basename(filePath));
       return new Response(html, {
         headers: {
           "Content-Type": "text/html; charset=utf-8",
           "Cache-Control": "no-cache",
-          "Content-Security-Policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'",
+          "Content-Security-Policy":
+            "default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'",
           "Referrer-Policy": "no-referrer",
           "X-Content-Type-Options": "nosniff",
         },
@@ -454,7 +523,11 @@ export async function GET(
               }
             });
             watcher.on("error", () => {
-              try { controller.close(); } catch { /* ignore */ }
+              try {
+                controller.close();
+              } catch {
+                /* ignore */
+              }
             });
           } catch {
             send("error", { message: "Failed to watch file" });
@@ -462,7 +535,11 @@ export async function GET(
           }
         },
         cancel() {
-          try { watcher?.close(); } catch { /* ignore */ }
+          try {
+            watcher?.close();
+          } catch {
+            /* ignore */
+          }
         },
       });
       return new Response(stream, {

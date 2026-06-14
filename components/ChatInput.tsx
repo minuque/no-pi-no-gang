@@ -1,9 +1,17 @@
 "use client";
 
-import React, { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef, KeyboardEvent } from "react";
+import React, {
+  KeyboardEvent,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 
 export interface AttachedImage {
-  data: string;   // base64, no prefix
+  data: string; // base64, no prefix
   mimeType: string;
   previewUrl: string; // object URL for display
 }
@@ -23,7 +31,9 @@ interface Props {
   modelList?: { id: string; name: string; provider: string }[];
   onModelChange?: (provider: string, modelId: string) => void;
   thinkingLevel?: "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
-  onThinkingLevelChange?: (level: "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh") => void;
+  onThinkingLevelChange?: (
+    level: "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh",
+  ) => void;
   availableThinkingLevels?: string[] | null;
   thinkingLevelMap?: Record<string, string | null> | null;
   retryInfo?: { attempt: number; maxAttempts: number; errorMessage?: string } | null;
@@ -49,7 +59,7 @@ export interface ChatInputHandle {
 const COMPOSITION_END_ENTER_GRACE_MS = 100;
 
 const THINKING_LEVELS = ["auto", "off", "minimal", "low", "medium", "high", "xhigh"] as const;
-const THINKING_LEVEL_DESC: Record<typeof THINKING_LEVELS[number], string> = {
+const THINKING_LEVEL_DESC: Record<(typeof THINKING_LEVELS)[number], string> = {
   auto: "沿用 pi 默认设置",
   off: "关闭推理",
   minimal: "最少推理",
@@ -59,21 +69,34 @@ const THINKING_LEVEL_DESC: Record<typeof THINKING_LEVELS[number], string> = {
   xhigh: "最高强度推理",
 };
 
-export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
-  onSend, onAbort, isStreaming, model, modelNames, modelList, onModelChange,
-  thinkingLevel, onThinkingLevelChange, availableThinkingLevels, thinkingLevelMap,
-  retryInfo,
-  contextUsage, commands = [],
-  currentProject,
-  recentCwds = [],
-  homeDir = "",
-  onCwdSelect,
-  onCwdDefault,
-  toolPreset = "default",
-  streamingTokens,
-  streamingTps,
-  agentStatus,
-}: Props, ref) {
+export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
+  {
+    onSend,
+    onAbort,
+    isStreaming,
+    model,
+    modelNames,
+    modelList,
+    onModelChange,
+    thinkingLevel,
+    onThinkingLevelChange,
+    availableThinkingLevels,
+    thinkingLevelMap,
+    retryInfo,
+    contextUsage,
+    commands = [],
+    currentProject,
+    recentCwds = [],
+    homeDir = "",
+    onCwdSelect,
+    onCwdDefault,
+    toolPreset = "default",
+    streamingTokens,
+    streamingTps,
+    agentStatus,
+  }: Props,
+  ref,
+) {
   const [value, setValue] = useState("");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [thinkingDropdownOpen, setThinkingDropdownOpen] = useState(false);
@@ -81,7 +104,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const [showCommands, setShowCommands] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
-  const [commandFiltered, setCommandFiltered] = useState<{ name: string; description: string }[]>([]);
+  const [commandFiltered, setCommandFiltered] = useState<{ name: string; description: string }[]>(
+    [],
+  );
   const [focused, setFocused] = useState(false);
   const [contextTooltipOpen, setContextTooltipOpen] = useState(false);
 
@@ -163,8 +188,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             };
             reader.onerror = reject;
             reader.readAsDataURL(file);
-          })
-      )
+          }),
+      ),
     );
     setAttachedImages((prev) => [...prev, ...newImages]);
   }, []);
@@ -204,10 +229,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     }
   }, [value, attachedImages, isStreaming, onSend, clearImages]);
 
-
   // ── CWD picker helpers ──
   const shortenCwd = (cwd: string): string => {
-    const path = (homeDir && cwd.startsWith(homeDir)) ? "~" + cwd.slice(homeDir.length) : cwd;
+    const path = homeDir && cwd.startsWith(homeDir) ? "~" + cwd.slice(homeDir.length) : cwd;
     const sep = path.includes("/") ? "/" : "\\";
     const parts = path.split(sep).filter(Boolean);
     if (parts.length <= 2) return path;
@@ -225,7 +249,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cwd: path }),
       });
-      const data = await res.json().catch(() => ({})) as { cwd?: string; error?: string };
+      const data = (await res.json().catch(() => ({}))) as { cwd?: string; error?: string };
       if (!res.ok || data.error) {
         setCwdCustomError(data.error ?? `HTTP ${res.status}`);
         return;
@@ -242,40 +266,43 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     }
   }, [cwdCustomValue, cwdCustomValidating, onCwdSelect]);
 
-  const selectRecentCwd = useCallback(async (cwd: string) => {
-    setCwdCustomValidating(true);
-    setCwdCustomError(null);
-    try {
-      const res = await fetch("/api/cwd/validate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cwd }),
-      });
-      const data = await res.json().catch(() => ({})) as { cwd?: string; error?: string };
-      if (!res.ok || data.error) {
+  const selectRecentCwd = useCallback(
+    async (cwd: string) => {
+      setCwdCustomValidating(true);
+      setCwdCustomError(null);
+      try {
+        const res = await fetch("/api/cwd/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cwd }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { cwd?: string; error?: string };
+        if (!res.ok || data.error) {
+          setCwdCustomOpen(true);
+          setCwdCustomValue(cwd);
+          setCwdCustomError(data.error ?? `HTTP ${res.status}`);
+          return;
+        }
+        onCwdSelect?.(data.cwd ?? cwd);
+        setCwdDropdownOpen(false);
+        setCwdCustomOpen(false);
+        setCwdCustomValue("");
+        setCwdCustomError(null);
+      } catch (e) {
         setCwdCustomOpen(true);
         setCwdCustomValue(cwd);
-        setCwdCustomError(data.error ?? `HTTP ${res.status}`);
-        return;
+        setCwdCustomError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setCwdCustomValidating(false);
       }
-      onCwdSelect?.(data.cwd ?? cwd);
-      setCwdDropdownOpen(false);
-      setCwdCustomOpen(false);
-      setCwdCustomValue("");
-      setCwdCustomError(null);
-    } catch (e) {
-      setCwdCustomOpen(true);
-      setCwdCustomValue(cwd);
-      setCwdCustomError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setCwdCustomValidating(false);
-    }
-  }, [onCwdSelect]);
+    },
+    [onCwdSelect],
+  );
 
   const handleCwdDefault = useCallback(async () => {
     try {
       const res = await fetch("/api/default-cwd", { method: "POST" });
-      const data = await res.json() as { cwd?: string; error?: string };
+      const data = (await res.json()) as { cwd?: string; error?: string };
       if (data.cwd) {
         onCwdSelect?.(data.cwd);
         setCwdDropdownOpen(false);
@@ -283,7 +310,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         setCwdCustomValue("");
         setCwdCustomError(null);
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [onCwdSelect]);
   // ── end CWD picker ──
 
@@ -293,9 +322,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     const cursorPos = ta.selectionStart ?? 0;
     const val = ta.value;
     const beforeCursor = val.slice(0, cursorPos);
-    const slashIdx = beforeCursor.lastIndexOf('/');
+    const slashIdx = beforeCursor.lastIndexOf("/");
     if (slashIdx === -1) return;
-    const newVal = val.slice(0, slashIdx) + '/' + name + ' ' + val.slice(cursorPos);
+    const newVal = val.slice(0, slashIdx) + "/" + name + " " + val.slice(cursorPos);
     setValue(newVal);
     setShowCommands(false);
     requestAnimationFrame(() => {
@@ -310,29 +339,29 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
       // Command autocomplete keyboard handling
       if (showCommands) {
-        if (e.key === 'ArrowDown') {
+        if (e.key === "ArrowDown") {
           e.preventDefault();
-          setSelectedCommandIndex(prev => Math.min(prev + 1, commandFiltered.length - 1));
+          setSelectedCommandIndex((prev) => Math.min(prev + 1, commandFiltered.length - 1));
           return;
         }
-        if (e.key === 'ArrowUp') {
+        if (e.key === "ArrowUp") {
           e.preventDefault();
-          setSelectedCommandIndex(prev => Math.max(prev - 1, 0));
+          setSelectedCommandIndex((prev) => Math.max(prev - 1, 0));
           return;
         }
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          const selected = commandFiltered[selectedCommandIndex];
-          if (selected) selectCommand(selected.name);
-          return;
-        }
-        if (e.key === 'Tab') {
+        if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           const selected = commandFiltered[selectedCommandIndex];
           if (selected) selectCommand(selected.name);
           return;
         }
-        if (e.key === 'Escape') {
+        if (e.key === "Tab") {
+          e.preventDefault();
+          const selected = commandFiltered[selectedCommandIndex];
+          if (selected) selectCommand(selected.name);
+          return;
+        }
+        if (e.key === "Escape") {
           e.preventDefault();
           setShowCommands(false);
           return;
@@ -354,7 +383,10 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           const h = sentHistoryRef.current;
           if (!h.length) return;
           if (historyIndexRef.current === -1) historyDraftRef.current = "";
-          const idx = historyIndexRef.current === -1 ? h.length - 1 : Math.max(0, historyIndexRef.current - 1);
+          const idx =
+            historyIndexRef.current === -1
+              ? h.length - 1
+              : Math.max(0, historyIndexRef.current - 1);
           historyIndexRef.current = idx;
           setValue(h[idx]);
           requestAnimationFrame(() => {
@@ -392,11 +424,10 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       }
 
       const nativeEvent = e.nativeEvent;
-      const recentlyComposed = Date.now() - lastCompositionEndAtRef.current < COMPOSITION_END_ENTER_GRACE_MS;
+      const recentlyComposed =
+        Date.now() - lastCompositionEndAtRef.current < COMPOSITION_END_ENTER_GRACE_MS;
       const isComposing =
-        isComposingRef.current ||
-        nativeEvent.isComposing ||
-        nativeEvent.keyCode === 229;
+        isComposingRef.current || nativeEvent.isComposing || nativeEvent.keyCode === 229;
 
       if (e.key === "Enter" && !e.shiftKey && (isComposing || recentlyComposed)) {
         if (recentlyComposed) e.preventDefault();
@@ -408,7 +439,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         if (!isStreaming && document.activeElement === textareaRef.current) handleSend();
       }
     },
-    [isStreaming, handleSend, showCommands, commandFiltered, selectedCommandIndex, selectCommand]
+    [isStreaming, handleSend, showCommands, commandFiltered, selectedCommandIndex, selectCommand],
   );
 
   const handleInput = useCallback(() => {
@@ -418,14 +449,17 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
   }, []);
 
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    const items = Array.from(e.clipboardData?.items ?? []);
-    const imageItems = items.filter((item) => item.type.startsWith("image/"));
-    if (!imageItems.length) return;
-    e.preventDefault();
-    const files = imageItems.map((item) => item.getAsFile()).filter((f): f is File => f !== null);
-    processImageFiles(files);
-  }, [processImageFiles]);
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent) => {
+      const items = Array.from(e.clipboardData?.items ?? []);
+      const imageItems = items.filter((item) => item.type.startsWith("image/"));
+      if (!imageItems.length) return;
+      e.preventDefault();
+      const files = imageItems.map((item) => item.getAsFile()).filter((f): f is File => f !== null);
+      processImageFiles(files);
+    },
+    [processImageFiles],
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     const types = Array.from(e.dataTransfer.types);
@@ -473,32 +507,37 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     });
   }, []);
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
-    setValue(newValue);
-    // Any manual edit cancels history navigation
-    if (historyIndexRef.current >= 0) historyIndexRef.current = -1;
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newValue = e.target.value;
+      setValue(newValue);
+      // Any manual edit cancels history navigation
+      if (historyIndexRef.current >= 0) historyIndexRef.current = -1;
 
-    // Skip command detection during IME composition
-    if (isComposingRef.current) return;
+      // Skip command detection during IME composition
+      if (isComposingRef.current) return;
 
-    const cursorPos = e.target.selectionStart ?? 0;
-    const beforeCursor = newValue.slice(0, cursorPos);
-    const slashIdx = beforeCursor.lastIndexOf('/');
+      const cursorPos = e.target.selectionStart ?? 0;
+      const beforeCursor = newValue.slice(0, cursorPos);
+      const slashIdx = beforeCursor.lastIndexOf("/");
 
-    if (slashIdx !== -1 && (slashIdx === 0 || beforeCursor[slashIdx - 1] === ' ')) {
-      const query = beforeCursor.slice(slashIdx + 1);
-      if (!query.includes(' ')) {
-        const filtered = commands.filter(c => c.name.toLowerCase().startsWith(query.toLowerCase()));
-        setCommandFiltered(filtered);
-        setCommandQuery(query);
-        setShowCommands(filtered.length > 0);
-        setSelectedCommandIndex(0);
-        return;
+      if (slashIdx !== -1 && (slashIdx === 0 || beforeCursor[slashIdx - 1] === " ")) {
+        const query = beforeCursor.slice(slashIdx + 1);
+        if (!query.includes(" ")) {
+          const filtered = commands.filter((c) =>
+            c.name.toLowerCase().startsWith(query.toLowerCase()),
+          );
+          setCommandFiltered(filtered);
+          setCommandQuery(query);
+          setShowCommands(filtered.length > 0);
+          setSelectedCommandIndex(0);
+          return;
+        }
       }
-    }
-    setShowCommands(false);
-  }, [commands]);
+      setShowCommands(false);
+    },
+    [commands],
+  );
 
   // Build model options: prefer modelList (has provider info), fallback to modelNames
   const modelOptions: ModelOption[] = (() => {
@@ -521,15 +560,20 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   }
 
   const currentName = model
-    ? (modelOptions.find((o) => o.modelId === model.modelId && o.provider === model.provider)?.name ?? model.modelId)
-    : modelOptions.length > 0 ? modelOptions[0].name : null;
+    ? (modelOptions.find((o) => o.modelId === model.modelId && o.provider === model.provider)
+        ?.name ?? model.modelId)
+    : modelOptions.length > 0
+      ? modelOptions[0].name
+      : null;
 
   // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (
-        dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
-        modelDropdownPanelRef.current && !modelDropdownPanelRef.current.contains(e.target as Node)
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node) &&
+        modelDropdownPanelRef.current &&
+        !modelDropdownPanelRef.current.contains(e.target as Node)
       ) {
         setModelDropdownOpen(false);
       }
@@ -549,8 +593,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
-
-
 
   return (
     <div
@@ -577,17 +619,38 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       <div style={{ maxWidth: 1148, margin: "0 auto" }}>
         {/* Retry banner */}
         {retryInfo && (
-          <div style={{
-            marginBottom: 8, padding: "5px 10px",
-            background: "color-mix(in oklab, var(--warn), transparent 92%)", border: "1px solid color-mix(in oklab, var(--warn), transparent 75%)",
-            borderRadius: 6, fontSize: 12, color: "var(--warn)",
-            display: "flex", alignItems: "center", gap: 6,
-          }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <div
+            style={{
+              marginBottom: 8,
+              padding: "5px 10px",
+              background: "color-mix(in oklab, var(--warn), transparent 92%)",
+              border: "1px solid color-mix(in oklab, var(--warn), transparent 75%)",
+              borderRadius: 6,
+              fontSize: 12,
+              color: "var(--warn)",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ flexShrink: 0 }}
+            >
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
               <path d="M3 3v5h5" />
             </svg>
-            Retrying ({retryInfo.attempt}/{retryInfo.maxAttempts})…{retryInfo.errorMessage && <span style={{ opacity: 0.7, marginLeft: 4 }}>- {retryInfo.errorMessage}</span>}
+            Retrying ({retryInfo.attempt}/{retryInfo.maxAttempts})…
+            {retryInfo.errorMessage && (
+              <span style={{ opacity: 0.7, marginLeft: 4 }}>- {retryInfo.errorMessage}</span>
+            )}
           </div>
         )}
         {/* Image previews */}
@@ -599,20 +662,45 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 <img
                   src={img.previewUrl}
                   alt=""
-                  style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)", display: "block" }}
+                  style={{
+                    width: 56,
+                    height: 56,
+                    objectFit: "cover",
+                    borderRadius: 6,
+                    border: "1px solid var(--border)",
+                    display: "block",
+                  }}
                 />
                 <button
                   onClick={() => removeImage(i)}
                   style={{
-                    position: "absolute", top: -4, right: -4,
-                    width: 16, height: 16, borderRadius: "50%",
-                    background: "var(--bg-panel)", border: "1px solid var(--border)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer", padding: 0, color: "var(--text-muted)",
+                    position: "absolute",
+                    top: -4,
+                    right: -4,
+                    width: 16,
+                    height: 16,
+                    borderRadius: "50%",
+                    background: "var(--bg-panel)",
+                    border: "1px solid var(--border)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    padding: 0,
+                    color: "var(--text-muted)",
                   }}
                 >
-                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <line x1="1" y1="1" x2="7" y2="7" /><line x1="7" y1="1" x2="1" y2="7" />
+                  <svg
+                    width="8"
+                    height="8"
+                    viewBox="0 0 8 8"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  >
+                    <line x1="1" y1="1" x2="7" y2="7" />
+                    <line x1="7" y1="1" x2="1" y2="7" />
                   </svg>
                 </button>
               </div>
@@ -622,92 +710,128 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
         {/* Streaming status line — only rendered during active conversation */}
         {isStreaming && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 8,
-          marginBottom: 8, minHeight: 20, fontSize: 12, color: "var(--text-dim)",
-          fontFamily: "var(--font-mono)",
-          overflow: "hidden",
-        }}>
-          {agentStatus && (
-            <span style={{
-              display: "inline-flex",
+          <div
+            style={{
+              display: "flex",
               alignItems: "center",
-              gap: 6,
-              minWidth: 0,
-              color: "var(--text-muted)",
-              animation: "codex-status-enter 160ms ease-out both",
-            }}>
-              <span aria-hidden style={{
-                width: 5,
-                height: 5,
-                borderRadius: "50%",
-                flexShrink: 0,
-                background: "currentColor",
-                boxShadow: "0 0 0 0 color-mix(in oklab, currentColor, transparent 45%)",
-                animation: "codex-status-dot 1.25s ease-in-out infinite",
-              }} />
-              <span style={{
-                minWidth: 0,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                animation: "codex-status-breathe 1.8s ease-in-out infinite",
-              }}>
-                {agentStatus}
+              gap: 8,
+              marginBottom: 8,
+              minHeight: 20,
+              fontSize: 12,
+              color: "var(--text-dim)",
+              fontFamily: "var(--font-mono)",
+              overflow: "hidden",
+            }}
+          >
+            {agentStatus && (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  minWidth: 0,
+                  color: "var(--text-muted)",
+                  animation: "codex-status-enter 160ms ease-out both",
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    width: 5,
+                    height: 5,
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                    background: "currentColor",
+                    boxShadow: "0 0 0 0 color-mix(in oklab, currentColor, transparent 45%)",
+                    animation: "codex-status-dot 1.25s ease-in-out infinite",
+                  }}
+                />
+                <span
+                  style={{
+                    minWidth: 0,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    animation: "codex-status-breathe 1.8s ease-in-out infinite",
+                  }}
+                >
+                  {agentStatus}
+                </span>
               </span>
-            </span>
-          )}
-          {isStreaming && streamingTps != null && streamingTps > 0 && (() => {
-            const tier = streamingTps >= 50 ? "high" : streamingTps >= 20 ? "mid" : "low";
-            return (
-              <span style={{
-                padding: "1px 6px", borderRadius: 4,
-                background: `var(--ui-tps-${tier}-bg)`,
-                color: `var(--ui-tps-${tier}-fg)`,
-                fontSize: 12, fontWeight: 500, lineHeight: "18px",
-                flexShrink: 0,
-              }}>
-                {streamingTps.toFixed(1)} t/s
+            )}
+            {isStreaming &&
+              streamingTps != null &&
+              streamingTps > 0 &&
+              (() => {
+                const tier = streamingTps >= 50 ? "high" : streamingTps >= 20 ? "mid" : "low";
+                return (
+                  <span
+                    style={{
+                      padding: "1px 6px",
+                      borderRadius: 4,
+                      background: `var(--ui-tps-${tier}-bg)`,
+                      color: `var(--ui-tps-${tier}-fg)`,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      lineHeight: "18px",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {streamingTps.toFixed(1)} t/s
+                  </span>
+                );
+              })()}
+            {isStreaming && streamingTokens !== undefined && streamingTokens > 0 && (
+              <span style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
+                <svg
+                  width="11"
+                  height="11"
+                  viewBox="0 0 10 10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="5" y1="1.5" x2="5" y2="8.5" />
+                  <polyline points="2 6 5 8.5 8 6" />
+                </svg>
+                {streamingTokens}
               </span>
-            );
-          })()}
-          {isStreaming && streamingTokens !== undefined && streamingTokens > 0 && (
-            <span style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
-              <svg width="11" height="11" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="5" y1="1.5" x2="5" y2="8.5" /><polyline points="2 6 5 8.5 8 6" />
-              </svg>
-              {streamingTokens}
-            </span>
-          )}
-        </div>
+            )}
+          </div>
         )}
 
         {/* Main input */}
         <div
-          style={{
-            position: "relative",
-            display: "flex",
-            gap: 8,
-            alignItems: "center",
-            background: isDragOver
-              ? "color-mix(in oklab, var(--accent), transparent 92%)"
-              : "var(--bg)",
-            border: `1px solid ${isDragOver
-              ? "var(--accent)"
-              : isStreaming
-                ? "color-mix(in oklab, var(--danger), transparent 60%)"
+          style={
+            {
+              position: "relative",
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              background: isDragOver
+                ? "color-mix(in oklab, var(--accent), transparent 92%)"
+                : "var(--bg)",
+              border: `1px solid ${
+                isDragOver
+                  ? "var(--accent)"
+                  : isStreaming
+                    ? "color-mix(in oklab, var(--danger), transparent 60%)"
+                    : focused
+                      ? "var(--accent-focus)"
+                      : "color-mix(in srgb, var(--border) 70%, transparent)"
+              }`,
+              borderRadius: 14,
+              padding: "10px 10px 10px 14px",
+              boxShadow: isStreaming
+                ? "var(--ui-input-streaming-ring), 0 1px 2px rgba(0,0,0,0.25), 0 8px 24px -12px rgba(0,0,0,0.35)"
                 : focused
-                  ? "var(--accent-focus)"
-                  : "color-mix(in srgb, var(--border) 70%, transparent)"}`,
-            borderRadius: 14,
-            padding: "10px 10px 10px 14px",
-            boxShadow: isStreaming
-              ? "var(--ui-input-streaming-ring), 0 1px 2px rgba(0,0,0,0.25), 0 8px 24px -12px rgba(0,0,0,0.35)"
-              : focused
-                ? "var(--ui-input-focus-ring), 0 1px 2px rgba(0,0,0,0.25), 0 8px 24px -12px rgba(0,0,0,0.35)"
-                : "0 1px 2px rgba(0,0,0,0.18), 0 8px 24px -12px rgba(0,0,0,0.25)",
-            transition: "border-color 0.15s, background 0.15s, box-shadow 0.2s",
-          } as React.CSSProperties}
+                  ? "var(--ui-input-focus-ring), 0 1px 2px rgba(0,0,0,0.25), 0 8px 24px -12px rgba(0,0,0,0.35)"
+                  : "0 1px 2px rgba(0,0,0,0.18), 0 8px 24px -12px rgba(0,0,0,0.25)",
+              transition: "border-color 0.15s, background 0.15s, box-shadow 0.2s",
+            } as React.CSSProperties
+          }
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -729,10 +853,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               onPaste={handlePaste}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
-              placeholder={
-                isStreaming ? "Agent is running…"
-                  : "Describe a task or ask a question"
-              }
+              placeholder={isStreaming ? "Agent is running…" : "Describe a task or ask a question"}
               aria-label="Chat message input"
               rows={1}
               style={{
@@ -753,18 +874,22 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             />
             {/* ↵ icon — visual hint that Enter sends */}
             {!isStreaming && (
-              <span style={{
-                position: "absolute",
-                right: 6,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "var(--text-dim)",
-                fontSize: 14,
-                pointerEvents: "none",
-                fontFamily: "var(--font-mono)",
-                lineHeight: 1,
-                opacity: 0.5,
-              }}>↵</span>
+              <span
+                style={{
+                  position: "absolute",
+                  right: 6,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: "var(--text-dim)",
+                  fontSize: 14,
+                  pointerEvents: "none",
+                  fontFamily: "var(--font-mono)",
+                  lineHeight: 1,
+                  opacity: 0.5,
+                }}
+              >
+                ↵
+              </span>
             )}
           </div>
 
@@ -773,19 +898,30 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               onClick={onAbort}
               title="停止 Agent"
               style={{
-                flexShrink: 0, alignSelf: "flex-end",
-                display: "flex", alignItems: "center", gap: 6,
+                flexShrink: 0,
+                alignSelf: "flex-end",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
                 padding: "7px 14px",
                 background: "color-mix(in oklab, var(--danger), transparent 90%)",
                 border: "1px solid color-mix(in oklab, var(--danger), transparent 65%)",
                 borderRadius: 8,
                 color: "var(--danger)",
                 cursor: "pointer",
-                fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em",
+                fontSize: 13,
+                fontWeight: 600,
+                letterSpacing: "-0.01em",
                 transition: "background 0.12s",
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "color-mix(in oklab, var(--danger), transparent 82%)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "color-mix(in oklab, var(--danger), transparent 90%)"; }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background =
+                  "color-mix(in oklab, var(--danger), transparent 82%)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background =
+                  "color-mix(in oklab, var(--danger), transparent 90%)";
+              }}
             >
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                 <rect x="1.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor" />
@@ -795,30 +931,58 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           )}
 
           {showCommands && commandFiltered.length > 0 && (
-            <div ref={commandDropdownRef} style={{
-              position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0,
-              zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
-              borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
-              overflow: "hidden", width: "100%", maxHeight: 240, overflowY: "auto",
-            }}>
+            <div
+              ref={commandDropdownRef}
+              style={{
+                position: "absolute",
+                bottom: "calc(100% + 6px)",
+                left: 0,
+                right: 0,
+                zIndex: 100,
+                background: "var(--bg)",
+                border: "1px solid var(--border)",
+                borderRadius: 8,
+                boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
+                overflow: "hidden",
+                width: "100%",
+                maxHeight: 240,
+                overflowY: "auto",
+              }}
+            >
               {commandFiltered.map((cmd, i) => (
                 <button
                   key={cmd.name}
                   style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    width: "100%", padding: "7px 12px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    width: "100%",
+                    padding: "7px 12px",
                     background: i === selectedCommandIndex ? "var(--bg-hover)" : "none",
                     border: "none",
                     color: i === selectedCommandIndex ? "var(--text)" : "var(--text-muted)",
-                    cursor: "pointer", fontSize: 12, textAlign: "left",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    textAlign: "left",
                     fontWeight: i === selectedCommandIndex ? 600 : 400,
                     whiteSpace: "nowrap",
                   }}
                   onMouseEnter={() => setSelectedCommandIndex(i)}
                   onClick={() => selectCommand(cmd.name)}
                 >
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, flexShrink: 0 }}>/{cmd.name}</span>
-                  <span style={{ fontSize: 12, color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis" }}>{cmd.description}</span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, flexShrink: 0 }}>
+                    /{cmd.name}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-dim)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {cmd.description}
+                  </span>
                 </button>
               ))}
             </div>
@@ -827,19 +991,22 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
         {/* Bottom bar: left | spacer | right */}
         <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
-
           {/* LEFT: attach | project | branch */}
           <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 6 }}>
-
             {/* ➕ Attach button — simplified + icon */}
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isStreaming}
               title="Attach image"
               style={{
-                display: "inline-flex", alignItems: "center", justifyContent: "center",
-                width: 28, height: 28,
-                background: attachedImages.length ? "color-mix(in oklab, var(--accent), transparent 92%)" : "none",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 28,
+                height: 28,
+                background: attachedImages.length
+                  ? "color-mix(in oklab, var(--accent), transparent 92%)"
+                  : "none",
                 border: `1px solid ${attachedImages.length ? "var(--accent)" : "var(--border)"}`,
                 borderRadius: 9999,
                 color: attachedImages.length ? "var(--accent)" : "var(--text-muted)",
@@ -854,11 +1021,23 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               }}
               onMouseLeave={(e) => {
                 if (isStreaming) return;
-                e.currentTarget.style.background = attachedImages.length ? "color-mix(in oklab, var(--accent), transparent 92%)" : "none";
-                e.currentTarget.style.color = attachedImages.length ? "var(--accent)" : "var(--text-muted)";
+                e.currentTarget.style.background = attachedImages.length
+                  ? "color-mix(in oklab, var(--accent), transparent 92%)"
+                  : "none";
+                e.currentTarget.style.color = attachedImages.length
+                  ? "var(--accent)"
+                  : "var(--text-muted)";
               }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              >
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
@@ -867,17 +1046,25 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             {/* 📂 Project pill + CWD picker dropdown */}
             <div ref={cwdDropdownRef} style={{ position: "relative" }}>
               <button
-                onClick={() => { if (!isStreaming) setCwdDropdownOpen(v => !v); }}
+                onClick={() => {
+                  if (!isStreaming) setCwdDropdownOpen((v) => !v);
+                }}
                 disabled={isStreaming}
                 title="Switch project directory"
                 style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "4px 10px", height: 28,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "4px 10px",
+                  height: 28,
                   background: cwdDropdownOpen ? "var(--bg-hover)" : "none",
-                  border: "1px solid var(--border)", borderRadius: 9999,
+                  border: "1px solid var(--border)",
+                  borderRadius: 9999,
                   color: cwdDropdownOpen ? "var(--text)" : "var(--text-muted)",
                   cursor: isStreaming ? "not-allowed" : "pointer",
-                  fontSize: 12, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
+                  fontSize: 12,
+                  fontFamily: "var(--font-body)",
+                  whiteSpace: "nowrap",
                   opacity: isStreaming ? 0.5 : 1,
                   transition: "background 0.12s, color 0.12s",
                 }}
@@ -892,55 +1079,124 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   e.currentTarget.style.color = "var(--text-muted)";
                 }}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ flexShrink: 0 }}
+                >
                   <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                 </svg>
                 {currentProject || "no-pi-no-gang"}
               </button>
 
               {cwdDropdownOpen && (
-                <div style={{
-                  position: "absolute", bottom: "calc(100% + 6px)", left: 0,
-                  zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
-                  borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
-                  overflow: "hidden", minWidth: 260, maxWidth: 380,
-                }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: "calc(100% + 6px)",
+                    left: 0,
+                    zIndex: 100,
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
+                    overflow: "hidden",
+                    minWidth: 260,
+                    maxWidth: 380,
+                  }}
+                >
                   {(recentCwds ?? []).map((cwd) => (
                     <button
                       key={cwd}
-                      onClick={() => { void selectRecentCwd(cwd); }}
+                      onClick={() => {
+                        void selectRecentCwd(cwd);
+                      }}
                       style={{
-                        display: "flex", alignItems: "center", gap: 7,
-                        width: "100%", padding: "8px 10px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 7,
+                        width: "100%",
+                        padding: "8px 10px",
                         background: "none",
-                        border: "none", borderBottom: "1px solid var(--border)",
-                        color: "var(--text-muted)", cursor: "pointer", textAlign: "left",
-                        fontSize: 12, fontFamily: "var(--font-mono)",
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        border: "none",
+                        borderBottom: "1px solid var(--border)",
+                        color: "var(--text-muted)",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        fontSize: 12,
+                        fontFamily: "var(--font-mono)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
                       }}
                       title={cwd}
                     >
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--text-dim)" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 10 10"
+                        fill="none"
+                        stroke="var(--text-dim)"
+                        strokeWidth="1.1"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        style={{ flexShrink: 0 }}
+                      >
                         <path d="M1 3A1 1 0 0 1 2 2H4L5 3.5H8.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-7A.5.5 0 0 1 1 8V3Z" />
                       </svg>
-                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortenCwd(cwd)}</span>
+                      <span
+                        style={{
+                          flex: 1,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {shortenCwd(cwd)}
+                      </span>
                     </button>
                   ))}
 
                   {/* Default cwd shortcut */}
                   {!cwdCustomOpen && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleCwdDefault(); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCwdDefault();
+                      }}
                       style={{
-                        display: "flex", alignItems: "center", gap: 7,
-                        width: "100%", padding: "8px 10px",
-                        background: "none", border: "none",
-                        borderTop: (recentCwds ?? []).length > 0 ? "1px solid var(--border)" : "none",
-                        color: "var(--text-muted)", cursor: "pointer", textAlign: "left",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 7,
+                        width: "100%",
+                        padding: "8px 10px",
+                        background: "none",
+                        border: "none",
+                        borderTop:
+                          (recentCwds ?? []).length > 0 ? "1px solid var(--border)" : "none",
+                        color: "var(--text-muted)",
+                        cursor: "pointer",
+                        textAlign: "left",
                         fontSize: 12,
                       }}
                     >
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 10 10"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.1"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        style={{ flexShrink: 0 }}
+                      >
                         <path d="M1 3A1 1 0 0 1 2 2H4L5 3.5H8.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-7A.5.5 0 0 1 1 8V3Z" />
                       </svg>
                       <span>Use default directory</span>
@@ -957,37 +1213,83 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                         setTimeout(() => cwdInputRef.current?.focus(), 0);
                       }}
                       style={{
-                        display: "flex", alignItems: "center", gap: 7,
-                        width: "100%", padding: "8px 10px",
-                        background: "none", border: "none",
-                        color: "var(--text-muted)", cursor: "pointer", textAlign: "left",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 7,
+                        width: "100%",
+                        padding: "8px 10px",
+                        background: "none",
+                        border: "none",
+                        color: "var(--text-muted)",
+                        cursor: "pointer",
+                        textAlign: "left",
                         fontSize: 12,
                       }}
                     >
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" style={{ flexShrink: 0 }}>
-                        <line x1="5" y1="1" x2="5" y2="9" /><line x1="1" y1="5" x2="9" y2="5" />
+                      <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 10 10"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.1"
+                        strokeLinecap="round"
+                        style={{ flexShrink: 0 }}
+                      >
+                        <line x1="5" y1="1" x2="5" y2="9" />
+                        <line x1="1" y1="5" x2="9" y2="5" />
                       </svg>
                       <span>Custom path…</span>
                     </button>
                   ) : (
-                    <div style={{ padding: "6px 8px", borderTop: (recentCwds ?? []).length > 0 ? "none" : undefined }}>
+                    <div
+                      style={{
+                        padding: "6px 8px",
+                        borderTop: (recentCwds ?? []).length > 0 ? "none" : undefined,
+                      }}
+                    >
                       <input
                         ref={cwdInputRef}
                         value={cwdCustomValue}
-                        onChange={(e) => { setCwdCustomValue(e.target.value); setCwdCustomError(null); }}
+                        onChange={(e) => {
+                          setCwdCustomValue(e.target.value);
+                          setCwdCustomError(null);
+                        }}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") { e.preventDefault(); void commitCwdPath(); }
-                          if (e.key === "Escape") { setCwdCustomOpen(false); setCwdCustomValue(""); setCwdCustomError(null); }
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void commitCwdPath();
+                          }
+                          if (e.key === "Escape") {
+                            setCwdCustomOpen(false);
+                            setCwdCustomValue("");
+                            setCwdCustomError(null);
+                          }
                         }}
                         placeholder="/path/to/project"
                         style={{
-                          width: "100%", fontSize: 12, fontFamily: "var(--font-mono)",
-                          padding: "5px 8px", border: "1px solid var(--accent)", borderRadius: 5,
-                          outline: "none", background: "var(--bg)", color: "var(--text)", boxSizing: "border-box",
+                          width: "100%",
+                          fontSize: 12,
+                          fontFamily: "var(--font-mono)",
+                          padding: "5px 8px",
+                          border: "1px solid var(--accent)",
+                          borderRadius: 5,
+                          outline: "none",
+                          background: "var(--bg)",
+                          color: "var(--text)",
+                          boxSizing: "border-box",
                         }}
                       />
                       {cwdCustomError && (
-                        <div style={{ marginTop: 5, color: "var(--danger)", fontSize: 12, lineHeight: 1.35, overflowWrap: "anywhere" }}>
+                        <div
+                          style={{
+                            marginTop: 5,
+                            color: "var(--danger)",
+                            fontSize: 12,
+                            lineHeight: 1.35,
+                            overflowWrap: "anywhere",
+                          }}
+                        >
                           {cwdCustomError}
                         </div>
                       )}
@@ -996,19 +1298,38 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                           onClick={() => void commitCwdPath()}
                           disabled={cwdCustomValidating || !cwdCustomValue.trim()}
                           style={{
-                            flex: 1, padding: "4px 0", background: "var(--accent-hover)", border: "none", borderRadius: 5,
-                            color: "var(--accent-on)", fontSize: 12, fontWeight: 600,
-                            cursor: cwdCustomValidating || !cwdCustomValue.trim() ? "not-allowed" : "pointer",
+                            flex: 1,
+                            padding: "4px 0",
+                            background: "var(--accent-hover)",
+                            border: "none",
+                            borderRadius: 5,
+                            color: "var(--accent-on)",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor:
+                              cwdCustomValidating || !cwdCustomValue.trim()
+                                ? "not-allowed"
+                                : "pointer",
                             opacity: cwdCustomValidating || !cwdCustomValue.trim() ? 0.65 : 1,
                           }}
                         >
                           {cwdCustomValidating ? "Checking…" : "Open"}
                         </button>
                         <button
-                          onClick={() => { setCwdCustomOpen(false); setCwdCustomValue(""); setCwdCustomError(null); }}
+                          onClick={() => {
+                            setCwdCustomOpen(false);
+                            setCwdCustomValue("");
+                            setCwdCustomError(null);
+                          }}
                           style={{
-                            flex: 1, padding: "4px 0", background: "var(--bg-hover)", border: "1px solid var(--border)",
-                            borderRadius: 5, color: "var(--text-muted)", fontSize: 12, cursor: "pointer",
+                            flex: 1,
+                            padding: "4px 0",
+                            background: "var(--bg-hover)",
+                            border: "1px solid var(--border)",
+                            borderRadius: 5,
+                            color: "var(--text-muted)",
+                            fontSize: 12,
+                            cursor: "pointer",
                           }}
                         >
                           Cancel
@@ -1024,8 +1345,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               <span
                 title="Tools are disabled for the next request"
                 style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "4px 10px", height: 28,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "4px 10px",
+                  height: 28,
                   background: "color-mix(in oklab, var(--warn), transparent 92%)",
                   border: "1px solid color-mix(in oklab, var(--warn), transparent 72%)",
                   borderRadius: 9999,
@@ -1035,14 +1359,23 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   whiteSpace: "nowrap",
                 }}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ flexShrink: 0 }}
+                >
                   <circle cx="12" cy="12" r="10" />
                   <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
                 </svg>
                 No tools
               </span>
             )}
-
           </div>
 
           {/* spacer */}
@@ -1052,102 +1385,176 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 6 }}>
             {/* Model selector — pill style, always visible */}
             {modelOptions.length > 0 && currentName && onModelChange && (
-                <div ref={dropdownRef} style={{ position: "relative" }}>
-                  <button
-                    onClick={() => setModelDropdownOpen((v) => !v)}
-                    disabled={isStreaming}
+              <div ref={dropdownRef} style={{ position: "relative" }}>
+                <button
+                  onClick={() => setModelDropdownOpen((v) => !v)}
+                  disabled={isStreaming}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "4px 10px",
+                    height: 28,
+                    maxWidth: 260,
+                    overflow: "hidden",
+                    background: modelDropdownOpen ? "var(--bg-hover)" : "none",
+                    border: "1px solid var(--border)",
+                    borderRadius: 9999,
+                    color: "var(--text-muted)",
+                    cursor: isStreaming ? "not-allowed" : "pointer",
+                    fontSize: 12,
+                    opacity: isStreaming ? 0.5 : 1,
+                    transition: "background 0.12s, color 0.12s",
+                    fontFamily: "var(--font-body)",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (isStreaming) return;
+                    e.currentTarget.style.background = "var(--bg-hover)";
+                    e.currentTarget.style.color = "var(--text)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = modelDropdownOpen
+                      ? "var(--bg-hover)"
+                      : "none";
+                    e.currentTarget.style.color = "var(--text-muted)";
+                  }}
+                >
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <rect x="4" y="4" width="16" height="16" rx="2" />
+                    <rect x="9" y="9" width="6" height="6" />
+                    <line x1="9" y1="1" x2="9" y2="4" />
+                    <line x1="15" y1="1" x2="15" y2="4" />
+                    <line x1="9" y1="20" x2="9" y2="23" />
+                    <line x1="15" y1="20" x2="15" y2="23" />
+                    <line x1="20" y1="9" x2="23" y2="9" />
+                    <line x1="20" y1="14" x2="23" y2="14" />
+                    <line x1="1" y1="9" x2="4" y2="9" />
+                    <line x1="1" y1="14" x2="4" y2="14" />
+                  </svg>
+                  <span
                     style={{
-                      display: "inline-flex", alignItems: "center", gap: 4,
-                      padding: "4px 10px",
-                      height: 28,
-                      maxWidth: 260, overflow: "hidden",
-                      background: modelDropdownOpen ? "var(--bg-hover)" : "none",
-                      border: "1px solid var(--border)",
-                      borderRadius: 9999,
-                      color: "var(--text-muted)",
-                      cursor: isStreaming ? "not-allowed" : "pointer",
-                      fontSize: 12,
-                      opacity: isStreaming ? 0.5 : 1,
-                      transition: "background 0.12s, color 0.12s",
-                      fontFamily: "var(--font-body)",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (isStreaming) return;
-                      e.currentTarget.style.background = "var(--bg-hover)";
-                      e.currentTarget.style.color = "var(--text)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = modelDropdownOpen ? "var(--bg-hover)" : "none";
-                      e.currentTarget.style.color = "var(--text-muted)";
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      minWidth: 0,
                     }}
                   >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                      <rect x="4" y="4" width="16" height="16" rx="2" />
-                      <rect x="9" y="9" width="6" height="6" />
-                      <line x1="9" y1="1" x2="9" y2="4" /><line x1="15" y1="1" x2="15" y2="4" />
-                      <line x1="9" y1="20" x2="9" y2="23" /><line x1="15" y1="20" x2="15" y2="23" />
-                      <line x1="20" y1="9" x2="23" y2="9" /><line x1="20" y1="14" x2="23" y2="14" />
-                      <line x1="1" y1="9" x2="4" y2="9" /><line x1="1" y1="14" x2="4" y2="14" />
-                    </svg>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{currentName}</span>
-                    {contextUsage?.contextWindow != null && (
-                      <span style={{ color: "var(--text-dim)", whiteSpace: "nowrap" }}>
-                        ({contextUsage.contextWindow >= 1_000_000
-                          ? `${(contextUsage.contextWindow / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`
-                          : `${Math.round(contextUsage.contextWindow / 1000)}k`})
-                      </span>
-                    )}
-                  </button>
-                  {modelDropdownOpen && (
-                    <div ref={modelDropdownPanelRef} style={{
-                      position: "absolute", bottom: "calc(100% + 6px)", left: 0,
-                      zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
-                      borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
-                      overflow: "hidden", width: "max-content", minWidth: 180, maxHeight: 360, overflowY: "auto",
-                    }}>
-                      {modelsByProvider.map((group, gi) => (
-                        <div key={group.provider}>
-                          {(modelsByProvider.length > 1) && (
-                            <div style={{
-                              padding: "6px 12px 4px",
-                              fontSize: 12, fontWeight: 600, color: "var(--text-dim)",
-                              textTransform: "uppercase", letterSpacing: "0.07em",
-                              borderTop: gi > 0 ? "1px solid var(--border)" : "none",
-                            }}>
-                              {group.provider}
-                            </div>
-                          )}
-                          {group.options.map((opt) => {
-                            const isActive = opt.modelId === model?.modelId && opt.provider === model?.provider;
-                            return (
-                              <button
-                                key={`${opt.provider}:${opt.modelId}`}
-                                onClick={() => { setModelDropdownOpen(false); if (!isActive) onModelChange(opt.provider, opt.modelId); }}
-                                style={{
-                                  display: "flex", alignItems: "center", gap: 8,
-                                  width: "100%", padding: "7px 12px",
-                                  background: isActive ? "var(--bg-selected)" : "none",
-                                  border: "none",
-                                  color: isActive ? "var(--text)" : "var(--text-muted)",
-                                  cursor: "pointer", fontSize: 12, textAlign: "left",
-                                  fontWeight: isActive ? 600 : 400,
-                                  whiteSpace: "nowrap",
-                                }}
-                                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "var(--bg-hover)"; }}
-                                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "none"; }}
-                              >
-                                {isActive
-                                  ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="1.5 5 4 7.5 8.5 2.5" /></svg>
-                                  : <span style={{ width: 10, flexShrink: 0 }} />}
-                                {opt.name}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ))}
-                    </div>
+                    {currentName}
+                  </span>
+                  {contextUsage?.contextWindow != null && (
+                    <span style={{ color: "var(--text-dim)", whiteSpace: "nowrap" }}>
+                      (
+                      {contextUsage.contextWindow >= 1_000_000
+                        ? `${(contextUsage.contextWindow / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`
+                        : `${Math.round(contextUsage.contextWindow / 1000)}k`}
+                      )
+                    </span>
                   )}
-                </div>
+                </button>
+                {modelDropdownOpen && (
+                  <div
+                    ref={modelDropdownPanelRef}
+                    style={{
+                      position: "absolute",
+                      bottom: "calc(100% + 6px)",
+                      left: 0,
+                      zIndex: 100,
+                      background: "var(--bg)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
+                      overflow: "hidden",
+                      width: "max-content",
+                      minWidth: 180,
+                      maxHeight: 360,
+                      overflowY: "auto",
+                    }}
+                  >
+                    {modelsByProvider.map((group, gi) => (
+                      <div key={group.provider}>
+                        {modelsByProvider.length > 1 && (
+                          <div
+                            style={{
+                              padding: "6px 12px 4px",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: "var(--text-dim)",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.07em",
+                              borderTop: gi > 0 ? "1px solid var(--border)" : "none",
+                            }}
+                          >
+                            {group.provider}
+                          </div>
+                        )}
+                        {group.options.map((opt) => {
+                          const isActive =
+                            opt.modelId === model?.modelId && opt.provider === model?.provider;
+                          return (
+                            <button
+                              key={`${opt.provider}:${opt.modelId}`}
+                              onClick={() => {
+                                setModelDropdownOpen(false);
+                                if (!isActive) onModelChange(opt.provider, opt.modelId);
+                              }}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                width: "100%",
+                                padding: "7px 12px",
+                                background: isActive ? "var(--bg-selected)" : "none",
+                                border: "none",
+                                color: isActive ? "var(--text)" : "var(--text-muted)",
+                                cursor: "pointer",
+                                fontSize: 12,
+                                textAlign: "left",
+                                fontWeight: isActive ? 600 : 400,
+                                whiteSpace: "nowrap",
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isActive) e.currentTarget.style.background = "var(--bg-hover)";
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isActive) e.currentTarget.style.background = "none";
+                              }}
+                            >
+                              {isActive ? (
+                                <svg
+                                  width="10"
+                                  height="10"
+                                  viewBox="0 0 10 10"
+                                  fill="none"
+                                  stroke="var(--accent)"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  style={{ flexShrink: 0 }}
+                                >
+                                  <polyline points="1.5 5 4 7.5 8.5 2.5" />
+                                </svg>
+                              ) : (
+                                <span style={{ width: 10, flexShrink: 0 }} />
+                              )}
+                              {opt.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
             {!isStreaming && onThinkingLevelChange && (
               <div ref={thinkingDropdownRef} style={{ position: "relative" }}>
@@ -1156,7 +1563,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   disabled={isStreaming}
                   title="切换推理强度"
                   style={{
-                    display: "inline-flex", alignItems: "center", gap: 4,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
                     padding: "4px 10px",
                     height: 28,
                     background: thinkingDropdownOpen ? "var(--bg-hover)" : "none",
@@ -1175,29 +1584,51 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                     e.currentTarget.style.color = "var(--text)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = thinkingDropdownOpen ? "var(--bg-hover)" : "none";
+                    e.currentTarget.style.background = thinkingDropdownOpen
+                      ? "var(--bg-hover)"
+                      : "none";
                     e.currentTarget.style.color = "var(--text-muted)";
                   }}
                 >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ flexShrink: 0 }}
+                  >
                     <path d="M9.5 2A5.5 5.5 0 0 0 4 7.5c0 1.7.78 3.21 2 4.21V14a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-2.29c1.22-1 2-2.51 2-4.21A5.5 5.5 0 0 0 9.5 2z" />
                     <line x1="7" y1="18" x2="12" y2="18" />
                     <line x1="8" y1="21" x2="11" y2="21" />
                   </svg>
-                  <span>{(() => {
-                    const lvl = thinkingLevel ?? "auto";
-                    if (lvl === "auto" || !thinkingLevelMap) return lvl;
-                    const mapped = thinkingLevelMap[lvl];
-                    return mapped != null ? mapped : lvl;
-                  })()}</span>
+                  <span>
+                    {(() => {
+                      const lvl = thinkingLevel ?? "auto";
+                      if (lvl === "auto" || !thinkingLevelMap) return lvl;
+                      const mapped = thinkingLevelMap[lvl];
+                      return mapped != null ? mapped : lvl;
+                    })()}
+                  </span>
                 </button>
                 {thinkingDropdownOpen && (
-                  <div style={{
-                    position: "absolute", bottom: "calc(100% + 6px)", right: 0,
-                    zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
-                    borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
-                    overflow: "hidden", minWidth: 180,
-                  }}>
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: "calc(100% + 6px)",
+                      right: 0,
+                      zIndex: 100,
+                      background: "var(--bg)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
+                      overflow: "hidden",
+                      minWidth: 180,
+                    }}
+                  >
                     {THINKING_LEVELS.filter((lvl) => {
                       if (!availableThinkingLevels) return true;
                       if (lvl === "auto") return true;
@@ -1205,34 +1636,74 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                     }).map((lvl) => {
                       const isActive = (thinkingLevel ?? "auto") === lvl;
                       const desc = THINKING_LEVEL_DESC[lvl];
-                      const mappedVal = (lvl !== "auto" && thinkingLevelMap) ? thinkingLevelMap[lvl] : undefined;
-                      const displayLabel = (mappedVal != null && mappedVal !== lvl) ? mappedVal : lvl;
+                      const mappedVal =
+                        lvl !== "auto" && thinkingLevelMap ? thinkingLevelMap[lvl] : undefined;
+                      const displayLabel = mappedVal != null && mappedVal !== lvl ? mappedVal : lvl;
                       const showOriginal = mappedVal != null && mappedVal !== lvl;
                       return (
                         <button
                           key={lvl}
-                          onClick={() => { setThinkingDropdownOpen(false); if (!isActive) onThinkingLevelChange(lvl); }}
+                          onClick={() => {
+                            setThinkingDropdownOpen(false);
+                            if (!isActive) onThinkingLevelChange(lvl);
+                          }}
                           style={{
-                            display: "flex", alignItems: "center", gap: 8,
-                            width: "100%", padding: "7px 12px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            width: "100%",
+                            padding: "7px 12px",
                             background: isActive ? "var(--bg-selected)" : "none",
                             border: "none",
                             color: isActive ? "var(--text)" : "var(--text-muted)",
-                            cursor: "pointer", fontSize: 12, textAlign: "left",
+                            cursor: "pointer",
+                            fontSize: 12,
+                            textAlign: "left",
                             fontWeight: isActive ? 600 : 400,
                             whiteSpace: "nowrap",
                           }}
-                          onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = "var(--bg-hover)"; }}
-                          onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "none"; }}
+                          onMouseEnter={(e) => {
+                            if (!isActive) e.currentTarget.style.background = "var(--bg-hover)";
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isActive) e.currentTarget.style.background = "none";
+                          }}
                         >
-                          {isActive
-                            ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="1.5 5 4 7.5 8.5 2.5" /></svg>
-                            : <span style={{ width: 10, flexShrink: 0 }} />}
+                          {isActive ? (
+                            <svg
+                              width="10"
+                              height="10"
+                              viewBox="0 0 10 10"
+                              fill="none"
+                              stroke="var(--accent)"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              style={{ flexShrink: 0 }}
+                            >
+                              <polyline points="1.5 5 4 7.5 8.5 2.5" />
+                            </svg>
+                          ) : (
+                            <span style={{ width: 10, flexShrink: 0 }} />
+                          )}
                           <span style={{ flex: 1 }}>
                             {displayLabel}
-                            {showOriginal && <span style={{ fontSize: 12, color: "var(--text-dim)", fontFamily: "var(--font-mono)", marginLeft: 5 }}>({lvl})</span>}
+                            {showOriginal && (
+                              <span
+                                style={{
+                                  fontSize: 12,
+                                  color: "var(--text-dim)",
+                                  fontFamily: "var(--font-mono)",
+                                  marginLeft: 5,
+                                }}
+                              >
+                                ({lvl})
+                              </span>
+                            )}
                           </span>
-                          <span style={{ fontSize: 12, color: "var(--text-dim)", marginLeft: 8 }}>{desc}</span>
+                          <span style={{ fontSize: 12, color: "var(--text-dim)", marginLeft: 8 }}>
+                            {desc}
+                          </span>
                         </button>
                       );
                     })}
@@ -1248,59 +1719,134 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 onMouseEnter={() => setContextTooltipOpen(true)}
                 onMouseLeave={() => setContextTooltipOpen(false)}
               >
-                <span style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "4px 10px", height: 28,
-                  background: "none", border: "1px solid var(--border)", borderRadius: 9999,
-                  color: "var(--text-muted)", cursor: "default",
-                  fontSize: 12, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
-                }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "4px 10px",
+                    height: 28,
+                    background: "none",
+                    border: "1px solid var(--border)",
+                    borderRadius: 9999,
+                    color: "var(--text-muted)",
+                    cursor: "default",
+                    fontSize: 12,
+                    fontFamily: "var(--font-body)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ flexShrink: 0 }}
+                  >
                     <circle cx="12" cy="12" r="10" />
                     <polyline points="12 6 12 12 16 14" />
                   </svg>
                   {contextUsage.percent != null ? Math.round(contextUsage.percent) + "%" : "—"}
                 </span>
-                <div style={{
-                  position: "absolute", bottom: "calc(100% + 8px)", right: 0,
-                  background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8,
-                  padding: "10px 14px", fontSize: 12, color: "var(--text)",
-                  whiteSpace: "nowrap", pointerEvents: "none",
-                  opacity: contextTooltipOpen ? 1 : 0,
-                  transition: "opacity 0.15s", zIndex: 100,
-                  boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-                  display: "flex", flexDirection: "column", gap: 8, minWidth: 200,
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <span style={{ color: "var(--text-muted)", fontSize: 12, fontWeight: 500 }}>Context window</span>
-                    <span style={{ color: "var(--text)", fontSize: 12, fontWeight: 600, fontFamily: "var(--font-mono)" }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: "calc(100% + 8px)",
+                    right: 0,
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    padding: "10px 14px",
+                    fontSize: 12,
+                    color: "var(--text)",
+                    whiteSpace: "nowrap",
+                    pointerEvents: "none",
+                    opacity: contextTooltipOpen ? 1 : 0,
+                    transition: "opacity 0.15s",
+                    zIndex: 100,
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                    minWidth: 200,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "baseline",
+                    }}
+                  >
+                    <span style={{ color: "var(--text-muted)", fontSize: 12, fontWeight: 500 }}>
+                      Context window
+                    </span>
+                    <span
+                      style={{
+                        color: "var(--text)",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        fontFamily: "var(--font-mono)",
+                      }}
+                    >
                       {contextUsage.percent != null ? `${Math.round(contextUsage.percent)}%` : "—"}
                     </span>
                   </div>
                   {contextUsage.percent != null && (
-                    <div style={{ height: 4, borderRadius: 2, background: "var(--border)", overflow: "hidden" }}>
-                      <div style={{
-                        height: "100%", borderRadius: 2,
-                        width: `${contextUsage.percent}%`,
-                        background: contextUsage.percent > 90 ? "var(--danger)" : contextUsage.percent > 75 ? "var(--warn)" : "var(--accent)",
-                        transition: "width 0.4s ease",
-                      }} />
+                    <div
+                      style={{
+                        height: 4,
+                        borderRadius: 2,
+                        background: "var(--border)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          borderRadius: 2,
+                          width: `${contextUsage.percent}%`,
+                          background:
+                            contextUsage.percent > 90
+                              ? "var(--danger)"
+                              : contextUsage.percent > 75
+                                ? "var(--warn)"
+                                : "var(--accent)",
+                          transition: "width 0.4s ease",
+                        }}
+                      />
                     </div>
                   )}
-                  <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-dim)", fontSize: 12, fontFamily: "var(--font-mono)" }}>
-                    <span>{contextUsage.tokens != null ? `${(contextUsage.tokens / 1000).toFixed(1).replace(/\.0$/, "")}k tokens` : "—"}</span>
-                    <span>{contextUsage.contextWindow != null
-                      ? (contextUsage.contextWindow >= 1_000_000
-                        ? `${(contextUsage.contextWindow / 1_000_000).toFixed(1).replace(/\.0$/, "")}M window`
-                        : `${(contextUsage.contextWindow / 1000).toFixed(0)}k window`)
-                      : "—"}</span>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      color: "var(--text-dim)",
+                      fontSize: 12,
+                      fontFamily: "var(--font-mono)",
+                    }}
+                  >
+                    <span>
+                      {contextUsage.tokens != null
+                        ? `${(contextUsage.tokens / 1000).toFixed(1).replace(/\.0$/, "")}k tokens`
+                        : "—"}
+                    </span>
+                    <span>
+                      {contextUsage.contextWindow != null
+                        ? contextUsage.contextWindow >= 1_000_000
+                          ? `${(contextUsage.contextWindow / 1_000_000).toFixed(1).replace(/\.0$/, "")}M window`
+                          : `${(contextUsage.contextWindow / 1000).toFixed(0)}k window`
+                        : "—"}
+                    </span>
                   </div>
                 </div>
               </div>
             )}
-
           </div>
-
         </div>
       </div>
     </div>

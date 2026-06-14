@@ -21,9 +21,12 @@
     "dev:light": "set NODE_OPTIONS=--max-old-space-size=1536&& set NEXT_PUBLIC_PI_WEB_LIGHT_RENDER=1&& next dev -p 7777 --hostname 127.0.0.1",
     "build": "next build",
     "start": "next start -p 7777",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint": "eslint .",
     "sync:agents": "node -e \"require('fs').copyFileSync('AGENTS.md','CLAUDE.md')\"",
-    "release": "npm version patch --no-git-tag-version && npm run build && npm publish --access public"
+    "release": "npm version patch --no-git-tag-version && npm run build && npm publish --access public",
+    "prepare": "husky"
   },
   "dependencies": {
     "@earendil-works/pi-ai": "^0.78.0",
@@ -44,14 +47,28 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",
+    "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@types/node": "^25",
     "@types/nprogress": "^0.2.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
     "postcss": "^8",
+    "prettier": "^3.8.4",
     "tailwindcss": "^4.2.2",
     "typescript": "5.9.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,mjs,cjs}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,css,html,yaml,yml}": [
+      "prettier --write"
+    ]
   }
 }

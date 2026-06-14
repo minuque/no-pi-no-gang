@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
+
 import dynamic from "next/dynamic";
+
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
 import { useTheme } from "@/hooks/useTheme";
 
 const SyntaxHighlighterBlock = dynamic(
   () => import("./SyntaxHighlighterBlock").then((m) => m.SyntaxHighlighterBlock),
-  { ssr: false }
+  { ssr: false },
 );
 
 function copyText(text: string): Promise<void> {
@@ -27,13 +30,7 @@ function copyText(text: string): Promise<void> {
   return Promise.resolve();
 }
 
-export function RichMarkdownBlock({
-  text,
-  isStreaming,
-}: {
-  text: string;
-  isStreaming?: boolean;
-}) {
+export function RichMarkdownBlock({ text, isStreaming }: { text: string; isStreaming?: boolean }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -110,7 +107,13 @@ function MermaidBlock({ code, isStreaming }: { code: string; isStreaming?: boole
     <button
       onClick={() => setShowPreview((v) => !v)}
       disabled={isStreaming}
-      title={isStreaming ? "Preview available after streaming" : (showPreview ? "Show Mermaid source" : "Preview Mermaid diagram")}
+      title={
+        isStreaming
+          ? "Preview available after streaming"
+          : showPreview
+            ? "Show Mermaid source"
+            : "Preview Mermaid diagram"
+      }
       style={{
         background: showPreview ? "var(--bg-selected)" : "none",
         border: "1px solid var(--border)",
@@ -135,10 +138,7 @@ function MermaidBlock({ code, isStreaming }: { code: string; isStreaming?: boole
     ) : !svg || renderedKey !== currentKey ? (
       <div className="mermaid-block mermaid-block-loading" aria-label="Rendering Mermaid diagram" />
     ) : (
-      <div
-        className="mermaid-block"
-        dangerouslySetInnerHTML={{ __html: svg }}
-      />
+      <div className="mermaid-block" dangerouslySetInnerHTML={{ __html: svg }} />
     );
 
   return (
@@ -172,7 +172,15 @@ function MermaidBlock({ code, isStreaming }: { code: string; isStreaming?: boole
   );
 }
 
-function CodeBlock({ code, lang, headerAction }: { code: string; lang: string; headerAction?: ReactNode }) {
+function CodeBlock({
+  code,
+  lang,
+  headerAction,
+}: {
+  code: string;
+  lang: string;
+  headerAction?: ReactNode;
+}) {
   const { isDark } = useTheme();
   const [copied, setCopied] = useState(false);
 

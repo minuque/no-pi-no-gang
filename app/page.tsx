@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import { AppShell } from "@/components/AppShell";
 
 /**
@@ -36,16 +37,16 @@ function SsrFallback() {
         height={48}
         style={{ opacity: 0.9 }}
       />
-      <span style={{ color: "#555", fontSize: 13, letterSpacing: "0.03em" }}>
-        Pi Agent
-      </span>
+      <span style={{ color: "#555", fontSize: 13, letterSpacing: "0.03em" }}>Pi Agent</span>
     </div>
   );
 }
 
 export default function Home() {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   if (!mounted) return <SsrFallback />;
   return <AppShell />;

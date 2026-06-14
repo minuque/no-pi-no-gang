@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+
 import { existsSync } from "fs";
+
 import { startRpcSession } from "@/lib/rpc-manager";
 
 // POST /api/agent/new  body: { cwd: string; type: string; message: string; ... }
@@ -7,7 +9,7 @@ import { startRpcSession } from "@/lib/rpc-manager";
 // Returns { sessionId, data } where sessionId is pi's real session id.
 export async function POST(req: Request) {
   try {
-    const body = await req.json() as { cwd?: string; [key: string]: unknown };
+    const body = (await req.json()) as { cwd?: string; [key: string]: unknown };
     const { cwd, ...command } = body;
 
     if (!cwd || typeof cwd !== "string") {
@@ -18,7 +20,13 @@ export async function POST(req: Request) {
     }
 
     // Use a one-time key so startRpcSession's lock doesn't conflict with real session ids
-    const { provider, modelId, toolNames, thinkingLevel, ...promptCommand } = command as { provider?: string; modelId?: string; toolNames?: string[]; thinkingLevel?: string; [key: string]: unknown };
+    const { provider, modelId, toolNames, thinkingLevel, ...promptCommand } = command as {
+      provider?: string;
+      modelId?: string;
+      toolNames?: string[];
+      thinkingLevel?: string;
+      [key: string]: unknown;
+    };
 
     const tempKey = `__new__${Date.now()}`;
     const { session, realSessionId } = await startRpcSession(tempKey, "", cwd, toolNames);

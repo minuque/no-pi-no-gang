@@ -1,14 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AgentMessage, SessionInfo, SessionTreeNode, ToolCallContent, ToolResultMessage } from "@/lib/types";
-import { MessageView } from "./MessageView";
-import { ChatInput, type ChatInputHandle } from "./ChatInput";
-import { SessionLoading } from "./SessionLoading";
-import { useAgentSession, type AgentPhase } from "@/hooks/useAgentSession";
+
+import { type AgentPhase, useAgentSession } from "@/hooks/useAgentSession";
 import { useChatScroll } from "@/hooks/useChatScroll";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import { useTheme } from "@/hooks/useTheme";
+import type {
+  AgentMessage,
+  SessionInfo,
+  SessionTreeNode,
+  ToolCallContent,
+  ToolResultMessage,
+} from "@/lib/types";
+
+import { ChatInput, type ChatInputHandle } from "./ChatInput";
+import { MessageView } from "./MessageView";
+import { SessionLoading } from "./SessionLoading";
 import { UserMessageNav } from "./UserMessageNav";
 
 interface Props {
@@ -19,11 +27,22 @@ interface Props {
   onSessionForked?: (newSessionId: string) => void;
   modelsRefreshKey?: number;
   chatInputRef?: React.RefObject<ChatInputHandle | null>;
-  onBranchDataChange?: (tree: SessionTreeNode[], activeLeafId: string | null, onLeafChange: (leafId: string | null) => void) => void;
+  onBranchDataChange?: (
+    tree: SessionTreeNode[],
+    activeLeafId: string | null,
+    onLeafChange: (leafId: string | null) => void,
+  ) => void;
   onStreamingChange?: (isStreaming: boolean) => void;
   onSystemPromptChange?: (prompt: string | null) => void;
-  onSessionStatsChange?: (stats: { tokens: { input: number; output: number; cacheRead: number; cacheWrite: number }; cost?: number } | null) => void;
-  onContextUsageChange?: (usage: { percent: number | null; contextWindow: number; tokens: number | null } | null) => void;
+  onSessionStatsChange?: (
+    stats: {
+      tokens: { input: number; output: number; cacheRead: number; cacheWrite: number };
+      cost?: number;
+    } | null,
+  ) => void;
+  onContextUsageChange?: (
+    usage: { percent: number | null; contextWindow: number; tokens: number | null } | null,
+  ) => void;
   onLoadingChange?: (loading: boolean) => void;
   recentCwds?: string[];
   homeDir?: string;
@@ -75,7 +94,7 @@ function getMessageText(message: AgentMessage): string {
   const content = message.content;
   if (typeof content === "string") return content;
   return content
-    .map((block) => block.type === "text" && "text" in block ? block.text : "")
+    .map((block) => (block.type === "text" && "text" in block ? block.text : ""))
     .filter(Boolean)
     .join("\n");
 }
@@ -124,20 +143,64 @@ function Typewriter({ phrases }: { phrases: string[] }) {
   );
 }
 
-export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onStreamingChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, onLoadingChange, recentCwds, homeDir = "", onCwdSelect, onCwdDefault }: Props) {
+export function ChatWindow({
+  session,
+  newSessionCwd,
+  onAgentEnd,
+  onSessionCreated,
+  onSessionForked,
+  modelsRefreshKey,
+  chatInputRef,
+  onBranchDataChange,
+  onStreamingChange,
+  onSystemPromptChange,
+  onSessionStatsChange,
+  onContextUsageChange,
+  onLoadingChange,
+  recentCwds,
+  homeDir = "",
+  onCwdSelect,
+  onCwdDefault,
+}: Props) {
   const {
-    data, loading, error, messages, entryIds, streamState, commands,
-    agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
-    retryInfo, contextUsage, forkingEntryId,
-    displayModel: displayModelValue, sessionStats,
+    data,
+    loading,
+    error,
+    messages,
+    entryIds,
+    streamState,
+    commands,
+    agentRunning,
+    modelNames,
+    modelList,
+    modelThinkingLevels,
+    modelThinkingLevelMaps,
+    toolPreset,
+    thinkingLevel,
+    retryInfo,
+    contextUsage,
+    forkingEntryId,
+    displayModel: displayModelValue,
+    sessionStats,
     agentPhase,
     activeLeafId,
     isNew,
-    handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
-    handleThinkingLevelChange, handleAgentEventRef,
+    handleSend,
+    handleAbort,
+    handleFork,
+    handleNavigate,
+    handleModelChange,
+    handleThinkingLevelChange,
+    handleAgentEventRef,
   } = useAgentSession({
-    session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked,
-    modelsRefreshKey, onBranchDataChange, onSystemPromptChange,
+    session,
+    newSessionCwd,
+    onAgentEnd,
+    onSessionCreated,
+    onSessionForked,
+    modelsRefreshKey,
+    onBranchDataChange,
+    onSystemPromptChange,
   });
 
   const { isDark } = useTheme();
@@ -152,7 +215,12 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   useEffect(() => {
     onSessionStatsChange?.(sessionStatsRef.current);
   }, [statsKey, onSessionStatsChange]);
-  useEffect(() => () => { onSessionStatsChange?.(null); }, [onSessionStatsChange]);
+  useEffect(
+    () => () => {
+      onSessionStatsChange?.(null);
+    },
+    [onSessionStatsChange],
+  );
 
   // Push context usage up to AppShell as well.
   const ctxKey = contextUsage
@@ -163,46 +231,69 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   useEffect(() => {
     onContextUsageChange?.(contextUsageRef.current);
   }, [ctxKey, onContextUsageChange]);
-  useEffect(() => () => { onContextUsageChange?.(null); }, [onContextUsageChange]);
+  useEffect(
+    () => () => {
+      onContextUsageChange?.(null);
+    },
+    [onContextUsageChange],
+  );
 
   useEffect(() => {
     onLoadingChange?.(loading);
   }, [loading, onLoadingChange]);
-  useEffect(() => () => { onLoadingChange?.(false); }, [onLoadingChange]);
+  useEffect(
+    () => () => {
+      onLoadingChange?.(false);
+    },
+    [onLoadingChange],
+  );
 
   useEffect(() => {
     onStreamingChange?.(agentRunning);
   }, [agentRunning, onStreamingChange]);
-  useEffect(() => () => { onStreamingChange?.(false); }, [onStreamingChange]);
+  useEffect(
+    () => () => {
+      onStreamingChange?.(false);
+    },
+    [onStreamingChange],
+  );
 
-  const onDrop = useCallback((files: File[]) => {
-    chatInputRef?.current?.addImages(files);
-  }, [chatInputRef]);
+  const onDrop = useCallback(
+    (files: File[]) => {
+      chatInputRef?.current?.addImages(files);
+    },
+    [chatInputRef],
+  );
 
-  const { isDragOver, handleDragEnter, handleDragOver, handleDragLeave, handleDrop } = useDragDrop(onDrop);
+  const { isDragOver, handleDragEnter, handleDragOver, handleDragLeave, handleDrop } =
+    useDragDrop(onDrop);
 
   // Retry: re-send last user message
   const handleRetry = useCallback(() => {
-    const lastUser = [...messages].reverse().find(m => m.role === "user");
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
     if (!lastUser) return;
     let content = "";
     if (typeof lastUser.content === "string") {
       content = lastUser.content;
     } else {
       content = (lastUser.content as Array<{ type: string; text?: string }>)
-        .filter(b => b.type === "text")
-        .map(b => b.text ?? "")
+        .filter((b) => b.type === "text")
+        .map((b) => b.text ?? "")
         .join("\n");
     }
     if (content) handleSend(content);
   }, [messages, handleSend]);
 
   // Edit and resend: send edited content as a new message
-  const handleEditResend = useCallback((content: string) => {
-    handleSend(content);
-  }, [handleSend]);
+  const handleEditResend = useCallback(
+    (content: string) => {
+      handleSend(content);
+    },
+    [handleSend],
+  );
 
-  const showWelcome = !session && messages.length === 0 && !streamState.isStreaming && !agentRunning;
+  const showWelcome =
+    !session && messages.length === 0 && !streamState.isStreaming && !agentRunning;
 
   const availableThinkingLevels = displayModelValue
     ? (modelThinkingLevels[`${displayModelValue.provider}:${displayModelValue.modelId}`] ?? null)
@@ -254,8 +345,10 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       } else if (Array.isArray(content)) {
         for (const b of content) {
           if (b.type === "text") chars += (b as { text?: string }).text?.length ?? 0;
-          else if (b.type === "thinking") chars += (b as { thinking?: string }).thinking?.length ?? 0;
-          else if (b.type === "toolCall") chars += JSON.stringify((b as { input?: unknown }).input ?? {}).length;
+          else if (b.type === "thinking")
+            chars += (b as { thinking?: string }).thinking?.length ?? 0;
+          else if (b.type === "toolCall")
+            chars += JSON.stringify((b as { input?: unknown }).input ?? {}).length;
         }
       }
       const est = Math.round(chars / 4);
@@ -302,7 +395,8 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
       if (msg.role === "assistant") {
         const content = msg.content;
-        const isToolCallOnly = Array.isArray(content) &&
+        const isToolCallOnly =
+          Array.isArray(content) &&
           content.length > 0 &&
           content.every((b): b is ToolCallContent => b.type === "toolCall");
 
@@ -351,10 +445,20 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       });
   }, [renderedMessages.items]);
 
-  const activeUserAnchorIndex = Math.max(0, userAnchors.findIndex((anchor) => anchor.id === activeUserAnchorId));
-  const firstVisibleAnchorIndex = Math.max(0, Math.min(activeUserAnchorIndex - 4, Math.max(0, userAnchors.length - USER_ANCHOR_MAX_VISIBLE)));
-  const visibleUserAnchors = userAnchors.slice(firstVisibleAnchorIndex, firstVisibleAnchorIndex + USER_ANCHOR_MAX_VISIBLE);
-  const userAnchorPanelHeight = visibleUserAnchors.length * USER_ANCHOR_ROW_HEIGHT + USER_ANCHOR_PANEL_PADDING_Y * 2;
+  const activeUserAnchorIndex = Math.max(
+    0,
+    userAnchors.findIndex((anchor) => anchor.id === activeUserAnchorId),
+  );
+  const firstVisibleAnchorIndex = Math.max(
+    0,
+    Math.min(activeUserAnchorIndex - 4, Math.max(0, userAnchors.length - USER_ANCHOR_MAX_VISIBLE)),
+  );
+  const visibleUserAnchors = userAnchors.slice(
+    firstVisibleAnchorIndex,
+    firstVisibleAnchorIndex + USER_ANCHOR_MAX_VISIBLE,
+  );
+  const userAnchorPanelHeight =
+    visibleUserAnchors.length * USER_ANCHOR_ROW_HEIGHT + USER_ANCHOR_PANEL_PADDING_Y * 2;
 
   const scrollToUserAnchor = useCallback((id: string) => {
     const node = userMessageRefs.current.get(id);
@@ -383,7 +487,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
         }
       }
 
-      setActiveUserAnchorId((current) => current === activeId ? current : activeId);
+      setActiveUserAnchorId((current) => (current === activeId ? current : activeId));
     };
 
     updateActiveAnchor();
@@ -398,7 +502,9 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   // Last assistant index (for Retry button)
   // Initial scroll to bottom when session loads with existing messages.
   const didInitialScroll = useRef(false);
-  useEffect(() => { didInitialScroll.current = false; }, [session?.id]);
+  useEffect(() => {
+    didInitialScroll.current = false;
+  }, [session?.id]);
   useEffect(() => {
     if (!didInitialScroll.current && messages.length > 0 && !agentRunning) {
       didInitialScroll.current = true;
@@ -447,11 +553,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   }
 
   if (error) {
-    return (
-      <div className="flex h-full items-center justify-center text-red-400">
-        {error}
-      </div>
-    );
+    return <div className="flex h-full items-center justify-center text-red-400">{error}</div>;
   }
 
   return (
@@ -463,7 +565,10 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       onDrop={handleDrop}
     >
       {isDragOver && (
-        <div className="pointer-events-none absolute inset-0 z-50 flex animate-[drop-zone-in_0.15s_ease_both] items-center justify-center backdrop-blur-[1px]" style={{ background: "var(--accent-subtle)" }}>
+        <div
+          className="pointer-events-none absolute inset-0 z-50 flex animate-[drop-zone-in_0.15s_ease_both] items-center justify-center backdrop-blur-[1px]"
+          style={{ background: "var(--accent-subtle)" }}
+        >
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             {[0, 0.8, 1.6].map((delay) => (
               <div
@@ -478,21 +583,53 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
             ))}
           </div>
           <svg
-            width="280" height="280" viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg"
-            style={{ filter: "drop-shadow(0 6px 18px color-mix(in oklab, var(--accent), transparent 82%))" }}
+            width="280"
+            height="280"
+            viewBox="0 0 140 140"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            style={{
+              filter: "drop-shadow(0 6px 18px color-mix(in oklab, var(--accent), transparent 82%))",
+            }}
           >
-            <rect x="28" y="44" width="84" height="60" rx="8" fill="var(--accent-soft)" stroke="var(--accent-ring)" strokeWidth="1.8"/>
-            <path d="M36 100 L54 72 L68 88 L80 74 L104 100Z" fill="color-mix(in oklab, var(--accent), transparent 84%)" stroke="color-mix(in oklab, var(--accent), transparent 60%)" strokeWidth="1.4" strokeLinejoin="round"/>
-            <circle cx="96" cy="58" r="8" fill="color-mix(in oklab, var(--accent), transparent 78%)" stroke="color-mix(in oklab, var(--accent), transparent 45%)" strokeWidth="1.6"/>
-            <g stroke="color-mix(in oklab, var(--accent), transparent 55%)" strokeWidth="1.4" strokeLinecap="round">
-              <line x1="96" y1="46" x2="96" y2="43"/>
-              <line x1="96" y1="70" x2="96" y2="73"/>
-              <line x1="84" y1="58" x2="81" y2="58"/>
-              <line x1="108" y1="58" x2="111" y2="58"/>
-              <line x1="87.5" y1="49.5" x2="85.4" y2="47.4"/>
-              <line x1="104.5" y1="66.5" x2="106.6" y2="68.6"/>
-              <line x1="104.5" y1="49.5" x2="106.6" y2="47.4"/>
-              <line x1="87.5" y1="66.5" x2="85.4" y2="68.6"/>
+            <rect
+              x="28"
+              y="44"
+              width="84"
+              height="60"
+              rx="8"
+              fill="var(--accent-soft)"
+              stroke="var(--accent-ring)"
+              strokeWidth="1.8"
+            />
+            <path
+              d="M36 100 L54 72 L68 88 L80 74 L104 100Z"
+              fill="color-mix(in oklab, var(--accent), transparent 84%)"
+              stroke="color-mix(in oklab, var(--accent), transparent 60%)"
+              strokeWidth="1.4"
+              strokeLinejoin="round"
+            />
+            <circle
+              cx="96"
+              cy="58"
+              r="8"
+              fill="color-mix(in oklab, var(--accent), transparent 78%)"
+              stroke="color-mix(in oklab, var(--accent), transparent 45%)"
+              strokeWidth="1.6"
+            />
+            <g
+              stroke="color-mix(in oklab, var(--accent), transparent 55%)"
+              strokeWidth="1.4"
+              strokeLinecap="round"
+            >
+              <line x1="96" y1="46" x2="96" y2="43" />
+              <line x1="96" y1="70" x2="96" y2="73" />
+              <line x1="84" y1="58" x2="81" y2="58" />
+              <line x1="108" y1="58" x2="111" y2="58" />
+              <line x1="87.5" y1="49.5" x2="85.4" y2="47.4" />
+              <line x1="104.5" y1="66.5" x2="106.6" y2="68.6" />
+              <line x1="104.5" y1="49.5" x2="106.6" y2="47.4" />
+              <line x1="87.5" y1="66.5" x2="85.4" y2="68.6" />
             </g>
           </svg>
         </div>
@@ -516,22 +653,54 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 fontFamily: "var(--font-mono)",
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1, lineHeight: 1.4 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  minWidth: 0,
+                  flex: 1,
+                  lineHeight: 1.4,
+                }}
+              >
                 <img
                   src={isDark ? "/pi-logo-on-dark.svg" : "/pi-logo-on-light.svg"}
                   alt="No Pi No Gang"
-                  width={28} height={28}
+                  width={28}
+                  height={28}
                 />
-                <span style={{ fontSize: 14, minWidth: 0, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                <span
+                  style={{
+                    fontSize: 14,
+                    minWidth: 0,
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
+                  }}
+                >
                   <Typewriter phrases={TYPEWRITER_PHRASES} />
                 </span>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-end",
+                  gap: 2,
+                  flexShrink: 0,
+                }}
+              >
                 <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  web <span style={{ color: "var(--text)" }}>v{process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0"}</span>
+                  web{" "}
+                  <span style={{ color: "var(--text)" }}>
+                    v{process.env.NEXT_PUBLIC_APP_VERSION ?? "0.0.0"}
+                  </span>
                 </span>
                 <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  pi <span style={{ color: "var(--text)" }}>v{process.env.NEXT_PUBLIC_PI_VERSION ?? "0.0.0"}</span>
+                  pi{" "}
+                  <span style={{ color: "var(--text)" }}>
+                    v{process.env.NEXT_PUBLIC_PI_VERSION ?? "0.0.0"}
+                  </span>
                 </span>
               </div>
             </div>
@@ -539,170 +708,210 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
           </div>
         </div>
       ) : (
-      <>
-      <div className="flex-1 overflow-hidden relative" style={{ animation: "fade-in-up 0.35s ease both" }}>
-        {/* ── Native scroll viewport ── */}
-        <div
-          ref={setScrollContainerRef}
-          className="h-full overflow-y-auto [scrollbar-width:none]"
-        >
-          <div ref={scrollContentRef} style={{ paddingTop: 16 }}>
-            {/* Completed messages */}
-            {renderedMessages.items.map(({ msg, entryId, originalIndex }, idx) => {
-                const prevItem = idx > 0 ? renderedMessages.items[idx - 1] : undefined;
-                const nextItem = idx < renderedMessages.items.length - 1 ? renderedMessages.items[idx + 1] : undefined;
+        <>
+          <div
+            className="flex-1 overflow-hidden relative"
+            style={{ animation: "fade-in-up 0.35s ease both" }}
+          >
+            {/* ── Native scroll viewport ── */}
+            <div
+              ref={setScrollContainerRef}
+              className="h-full overflow-y-auto [scrollbar-width:none]"
+            >
+              <div ref={scrollContentRef} style={{ paddingTop: 16 }}>
+                {/* Completed messages */}
+                {renderedMessages.items.map(({ msg, entryId, originalIndex }, idx) => {
+                  const prevItem = idx > 0 ? renderedMessages.items[idx - 1] : undefined;
+                  const nextItem =
+                    idx < renderedMessages.items.length - 1
+                      ? renderedMessages.items[idx + 1]
+                      : undefined;
 
-                const prevAssistantEntryId =
-                  msg.role === "user" && prevItem?.msg.role === "assistant"
-                    ? prevItem.entryId
-                    : undefined;
+                  const prevAssistantEntryId =
+                    msg.role === "user" && prevItem?.msg.role === "assistant"
+                      ? prevItem.entryId
+                      : undefined;
 
-                let showTimestamp = false;
-                if (msg.role === "assistant") {
-                  showTimestamp = true;
-                  // Suppress if the next rendered message before a user is also an assistant
-                  if (nextItem?.msg.role === "assistant") showTimestamp = false;
-                  if (showTimestamp && streamState.isStreaming && idx === renderedMessages.items.length - 1) {
-                    showTimestamp = false;
+                  let showTimestamp = false;
+                  if (msg.role === "assistant") {
+                    showTimestamp = true;
+                    // Suppress if the next rendered message before a user is also an assistant
+                    if (nextItem?.msg.role === "assistant") showTimestamp = false;
+                    if (
+                      showTimestamp &&
+                      streamState.isStreaming &&
+                      idx === renderedMessages.items.length - 1
+                    ) {
+                      showTimestamp = false;
+                    }
                   }
-                }
-                const isLastAssistant = msg.role === "assistant" && idx === renderedMessages.lastAssistantIdx && !streamState.isStreaming;
-                const anchorTitle = [
-                  entryId ? `entry ${entryId}` : null,
-                  activeLeafId ? `leaf ${activeLeafId}` : null,
-                  activeBranch ? `branch ${activeBranch}` : "branch main",
-                ].filter(Boolean).join("\n");
+                  const isLastAssistant =
+                    msg.role === "assistant" &&
+                    idx === renderedMessages.lastAssistantIdx &&
+                    !streamState.isStreaming;
+                  const anchorTitle = [
+                    entryId ? `entry ${entryId}` : null,
+                    activeLeafId ? `leaf ${activeLeafId}` : null,
+                    activeBranch ? `branch ${activeBranch}` : "branch main",
+                  ]
+                    .filter(Boolean)
+                    .join("\n");
 
-                const messageAnchorId = entryId ?? `message-${originalIndex}`;
+                  const messageAnchorId = entryId ?? `message-${originalIndex}`;
 
-                return (
-                  <div
-                    key={entryId ?? originalIndex}
-                    ref={msg.role === "user" ? (node) => {
-                      if (node) userMessageRefs.current.set(messageAnchorId, node);
-                      else userMessageRefs.current.delete(messageAnchorId);
-                    } : undefined}
-                    className="relative mx-auto max-w-[1148px] px-4"
-                  >
-                    {entryId && msg.role === "assistant" && (
-                      <span
-                        title={anchorTitle}
-                        style={{
-                          position: "absolute",
-                          left: 0,
-                          top: 2,
-                          transform: "translateX(-50%)",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: 20,
-                          height: 20,
-                          borderRadius: 9999,
-                          background: "var(--surface)",
-                          border: "1px solid var(--border)",
-                          pointerEvents: "auto",
-                        }}
-                      >
-                        <img src="/favicon.ico" alt="" style={{ width: 13, height: 13, display: "block" }} />
-                      </span>
-                    )}
+                  return (
+                    <div
+                      key={entryId ?? originalIndex}
+                      ref={
+                        msg.role === "user"
+                          ? (node) => {
+                              if (node) userMessageRefs.current.set(messageAnchorId, node);
+                              else userMessageRefs.current.delete(messageAnchorId);
+                            }
+                          : undefined
+                      }
+                      className="relative mx-auto max-w-[1148px] px-4"
+                    >
+                      {entryId && msg.role === "assistant" && (
+                        <span
+                          title={anchorTitle}
+                          style={{
+                            position: "absolute",
+                            left: 0,
+                            top: 2,
+                            transform: "translateX(-50%)",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 20,
+                            height: 20,
+                            borderRadius: 9999,
+                            background: "var(--surface)",
+                            border: "1px solid var(--border)",
+                            pointerEvents: "auto",
+                          }}
+                        >
+                          <img
+                            src="/favicon.ico"
+                            alt=""
+                            style={{ width: 13, height: 13, display: "block" }}
+                          />
+                        </span>
+                      )}
+                      <MessageView
+                        message={msg}
+                        toolResults={toolResultsMap}
+                        modelNames={modelNames}
+                        entryId={entryId}
+                        onFork={
+                          agentRunning || isNew || (idx === 0 && msg.role === "user")
+                            ? undefined
+                            : handleFork
+                        }
+                        forking={forkingEntryId === entryId}
+                        onNavigate={agentRunning ? undefined : handleNavigate}
+                        prevAssistantEntryId={agentRunning ? undefined : prevAssistantEntryId}
+                        onEditContent={(content) => chatInputRef?.current?.insertIfEmpty(content)}
+                        showTimestamp={showTimestamp}
+                        prevTimestamp={prevItem?.msg.timestamp as number | undefined}
+                        onRetry={isLastAssistant && !agentRunning ? handleRetry : undefined}
+                        onEditResend={
+                          msg.role === "user" && !agentRunning ? handleEditResend : undefined
+                        }
+                      />
+                    </div>
+                  );
+                })}
+
+                {/* Streaming content */}
+                {streamState.isStreaming && streamState.streamingMessage && (
+                  <div className="mx-auto max-w-[1148px] px-4">
                     <MessageView
-                      message={msg}
-                      toolResults={toolResultsMap}
+                      message={streamState.streamingMessage as AgentMessage}
+                      isStreaming
                       modelNames={modelNames}
-                      entryId={entryId}
-                      onFork={agentRunning || isNew || (idx === 0 && msg.role === "user") ? undefined : handleFork}
-                      forking={forkingEntryId === entryId}
-                      onNavigate={agentRunning ? undefined : handleNavigate}
-                      prevAssistantEntryId={agentRunning ? undefined : prevAssistantEntryId}
-                      onEditContent={(content) => chatInputRef?.current?.insertIfEmpty(content)}
-                      showTimestamp={showTimestamp}
-                      prevTimestamp={prevItem?.msg.timestamp as number | undefined}
-                      onRetry={isLastAssistant && !agentRunning ? handleRetry : undefined}
-                      onEditResend={msg.role === "user" && !agentRunning ? handleEditResend : undefined}
                     />
                   </div>
-                );
-              })}
+                )}
 
-            {/* Streaming content */}
-            {streamState.isStreaming && streamState.streamingMessage && (
-              <div className="mx-auto max-w-[1148px] px-4">
-                <MessageView
-                  message={streamState.streamingMessage as AgentMessage}
-                  isStreaming
-                  modelNames={modelNames}
-                />
+                {/* Bottom spacer — keeps last message from hugging the edge */}
+                <div style={{ height: 24 }} />
               </div>
+            </div>
+
+            {userAnchors.length > 1 && (
+              <UserMessageNav
+                visibleAnchors={visibleUserAnchors}
+                activeAnchorId={activeUserAnchorId}
+                panelHeight={userAnchorPanelHeight}
+                panelOpen={showUserAnchorPanel}
+                onPanelOpenChange={setShowUserAnchorPanel}
+                onScrollTo={scrollToUserAnchor}
+              />
             )}
 
-            {/* Bottom spacer — keeps last message from hugging the edge */}
-            <div style={{ height: 24 }} />
+            {/* Scroll-to-bottom button */}
+            {!isAtBottom && (
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 12,
+                  left: 0,
+                  right: 0,
+                  display: "flex",
+                  justifyContent: "center",
+                  zIndex: 10,
+                  pointerEvents: "none",
+                }}
+              >
+                <button
+                  onClick={() => scrollToBottom("smooth")}
+                  title="Scroll to bottom"
+                  style={{
+                    pointerEvents: "auto",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    background: "var(--bg-panel)",
+                    border: "1px solid var(--border)",
+                    cursor: "pointer",
+                    color: "var(--text-muted)",
+                    boxShadow: "0 2px 12px rgba(0,0,0,0.30)",
+                    transition: "background 0.15s, color 0.15s, transform 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--bg-hover)";
+                    e.currentTarget.style.color = "var(--text)";
+                    e.currentTarget.style.transform = "scale(1.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "var(--bg-panel)";
+                    e.currentTarget.style.color = "var(--text-muted)";
+                    e.currentTarget.style.transform = "scale(1)";
+                  }}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
-        </div>
 
-        {userAnchors.length > 1 && (
-          <UserMessageNav
-            visibleAnchors={visibleUserAnchors}
-            activeAnchorId={activeUserAnchorId}
-            panelHeight={userAnchorPanelHeight}
-            panelOpen={showUserAnchorPanel}
-            onPanelOpenChange={setShowUserAnchorPanel}
-            onScrollTo={scrollToUserAnchor}
-          />
-        )}
-
-        {/* Scroll-to-bottom button */}
-        {!isAtBottom && (
-          <div style={{
-            position: "absolute",
-            bottom: 12,
-            left: 0,
-            right: 0,
-            display: "flex",
-            justifyContent: "center",
-            zIndex: 10,
-            pointerEvents: "none",
-          }}>
-            <button
-              onClick={() => scrollToBottom("smooth")}
-              title="Scroll to bottom"
-              style={{
-                pointerEvents: "auto",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 36,
-                height: 36,
-                borderRadius: "50%",
-                background: "var(--bg-panel)",
-                border: "1px solid var(--border)",
-                cursor: "pointer",
-                color: "var(--text-muted)",
-                boxShadow: "0 2px 12px rgba(0,0,0,0.30)",
-                transition: "background 0.15s, color 0.15s, transform 0.15s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--bg-hover)";
-                e.currentTarget.style.color = "var(--text)";
-                e.currentTarget.style.transform = "scale(1.05)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "var(--bg-panel)";
-                e.currentTarget.style.color = "var(--text-muted)";
-                e.currentTarget.style.transform = "scale(1)";
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {chatInputElement}
-      </>
+          {chatInputElement}
+        </>
       )}
     </div>
   );

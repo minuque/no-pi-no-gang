@@ -22,9 +22,7 @@ export default function GlobalError() {
           <h1 style={{ fontSize: 24, fontWeight: 600, color: "#d4d4d4", margin: 0 }}>
             Something went wrong
           </h1>
-          <p style={{ fontSize: 14, margin: 0 }}>
-            Please refresh the page to try again.
-          </p>
+          <p style={{ fontSize: 14, margin: 0 }}>Please refresh the page to try again.</p>
         </div>
       </body>
     </html>

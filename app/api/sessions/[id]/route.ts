@@ -1,19 +1,18 @@
 import { NextResponse } from "next/server";
-import { readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "fs";
-import { join } from "path";
-import { SessionManager } from "@earendil-works/pi-coding-agent";
-import {
-  resolveSessionPath,
-  invalidateSessionPathCache,
-  buildSessionContext,
-  listAllSessions,
-} from "@/lib/session-reader";
-import { getRpcSession } from "@/lib/rpc-manager";
 
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+import { SessionManager } from "@earendil-works/pi-coding-agent";
+import { readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from "fs";
+import { join } from "path";
+
+import { getRpcSession } from "@/lib/rpc-manager";
+import {
+  buildSessionContext,
+  invalidateSessionPathCache,
+  listAllSessions,
+  resolveSessionPath,
+} from "@/lib/session-reader";
+
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
     const filePath = await resolveSessionPath(id);
@@ -29,26 +28,40 @@ export async function GET(
 
     const header = sm.getHeader();
     let modified = header?.timestamp ?? new Date().toISOString();
-    try { modified = statSync(filePath).mtime.toISOString(); } catch { /* use header timestamp */ }
+    try {
+      modified = statSync(filePath).mtime.toISOString();
+    } catch {
+      /* use header timestamp */
+    }
     const allSessions = await listAllSessions();
     const parentSessionId = allSessions.find((s) => s.id === id)?.parentSessionId;
-    const info = header ? {
-      path: filePath,
-      id: header.id,
-      cwd: header.cwd ?? "",
-      name: sm.getSessionName(),
-      created: header.timestamp,
-      modified,
-      messageCount: context.messages.length,
-      firstMessage: context.messages.find((m) => m.role === "user")
-        ? (() => {
-            const msg = context.messages.find((m) => m.role === "user")!;
-            const c = (msg as { content: unknown }).content;
-            return typeof c === "string" ? c : (Array.isArray(c) ? (c.find((b: { type: string }) => b.type === "text") as { text: string } | undefined)?.text ?? "" : "") || "(no messages)";
-          })()
-        : "(no messages)",
-      parentSessionId,
-    } : null;
+    const info = header
+      ? {
+          path: filePath,
+          id: header.id,
+          cwd: header.cwd ?? "",
+          name: sm.getSessionName(),
+          created: header.timestamp,
+          modified,
+          messageCount: context.messages.length,
+          firstMessage: context.messages.find((m) => m.role === "user")
+            ? (() => {
+                const msg = context.messages.find((m) => m.role === "user")!;
+                const c = (msg as { content: unknown }).content;
+                return typeof c === "string"
+                  ? c
+                  : (Array.isArray(c)
+                      ? ((
+                          c.find((b: { type: string }) => b.type === "text") as
+                            | { text: string }
+                            | undefined
+                        )?.text ?? "")
+                      : "") || "(no messages)";
+              })()
+            : "(no messages)",
+          parentSessionId,
+        }
+      : null;
 
     const url = new URL(req.url);
     let agentState: { running: boolean; state?: unknown } | undefined;
@@ -77,13 +90,10 @@ export async function GET(
 }
 
 // PATCH /api/sessions/[id]  body: { name: string }
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const { name } = await req.json() as { name?: string };
+    const { name } = (await req.json()) as { name?: string };
     if (typeof name !== "string") {
       return NextResponse.json({ error: "name is required" }, { status: 400 });
     }
@@ -100,10 +110,7 @@ export async function PATCH(
 }
 
 // DELETE /api/sessions/[id]
-export async function DELETE(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
     const filePath = await resolveSessionPath(id);
@@ -117,13 +124,17 @@ export async function DELETE(
     try {
       const header = JSON.parse(firstLine) as { type?: string; parentSession?: string };
       if (header.type === "session") parentSessionPath = header.parentSession;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     // Re-attach all direct children to this session's parent (cascade re-parent)
     // Scan sibling files in the same directory
     const dir = filePath.replace(/\\/g, "/").split("/").slice(0, -1).join("/");
     try {
-      const files = readdirSync(dir).filter((f) => f.endsWith(".jsonl") && join(dir, f) !== filePath);
+      const files = readdirSync(dir).filter(
+        (f) => f.endsWith(".jsonl") && join(dir, f) !== filePath,
+      );
       for (const file of files) {
         const childPath = join(dir, file);
         try {
@@ -136,9 +147,13 @@ export async function DELETE(
             lines[0] = JSON.stringify(header);
             writeFileSync(childPath, lines.join("\n"));
           }
-        } catch { /* skip malformed */ }
+        } catch {
+          /* skip malformed */
+        }
       }
-    } catch { /* skip if dir unreadable */ }
+    } catch {
+      /* skip if dir unreadable */
+    }
 
     getRpcSession(id)?.destroy();
     unlinkSync(filePath);

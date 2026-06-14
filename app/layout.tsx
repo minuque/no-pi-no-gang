@@ -1,12 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource/jetbrains-mono/400.css";
+
 import "@fontsource/jetbrains-mono/400-italic.css";
+import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/600.css";
 import "@fontsource/jetbrains-mono/700.css";
+
 import "./globals.css";
 
 const APP_NAME = "Pi Agent";
-const APP_DESCRIPTION = "Pi Coding Agent — interactive chat, code analysis, and automated development tasks.";
+const APP_DESCRIPTION =
+  "Pi Coding Agent — interactive chat, code analysis, and automated development tasks.";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -64,11 +67,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
@@ -79,8 +78,13 @@ export default function RootLayout({
         />
       </head>
       <body style={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
-        <a href="#main" className="skip-link">Skip to main content</a>
-        <main id="main" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <a href="#main" className="skip-link">
+          Skip to main content
+        </a>
+        <main
+          id="main"
+          style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}
+        >
           {children}
         </main>
       </body>

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
+
+import {
+  DefaultResourceLoader,
+  getAgentDir,
+  parseFrontmatter,
+} from "@earendil-works/pi-coding-agent";
 import { existsSync, readFileSync, writeFileSync } from "fs";
-import { DefaultResourceLoader, getAgentDir, parseFrontmatter } from "@earendil-works/pi-coding-agent";
 
 export const dynamic = "force-dynamic";
 
@@ -25,10 +30,11 @@ export async function GET(req: Request) {
 // PATCH /api/skills — toggle disable-model-invocation on a SKILL.md file
 export async function PATCH(req: Request) {
   try {
-    const body = await req.json() as { filePath: string; disableModelInvocation: boolean };
+    const body = (await req.json()) as { filePath: string; disableModelInvocation: boolean };
     const { filePath, disableModelInvocation } = body;
     if (!filePath) return NextResponse.json({ error: "filePath required" }, { status: 400 });
-    if (!existsSync(filePath)) return NextResponse.json({ error: "file not found" }, { status: 404 });
+    if (!existsSync(filePath))
+      return NextResponse.json({ error: "file not found" }, { status: 404 });
 
     const content = readFileSync(filePath, "utf8");
     const key = "disable-model-invocation";

@@ -194,7 +194,9 @@ export function UserMessageNav({
                     if (marker) marker.style.background = "var(--border)";
                   }}
                 >
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span
+                    style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  >
                     {anchor.label}
                   </span>
                   <span

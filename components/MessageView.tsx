@@ -1,22 +1,24 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+
 import dynamic from "next/dynamic";
+
 import type {
   AgentMessage,
-  UserMessage,
-  AssistantMessage,
-  ToolResultMessage,
   AssistantContentBlock,
-  TextContent,
+  AssistantMessage,
   ImageContent,
-  ToolCallContent,
+  TextContent,
   ThinkingContent,
+  ToolCallContent,
+  ToolResultMessage,
+  UserMessage,
 } from "@/lib/types";
 
 const RichMarkdownBlock = dynamic(
   () => import("./RichMarkdownBlock").then((m) => m.RichMarkdownBlock),
-  { ssr: false }
+  { ssr: false },
 );
 
 interface Props {
@@ -40,12 +42,17 @@ function formatTime(ts?: number): string | null {
   if (!ts) return null;
   const d = new Date(ts);
   const now = new Date();
-  const isToday = d.getFullYear() === now.getFullYear() &&
+  const isToday =
+    d.getFullYear() === now.getFullYear() &&
     d.getMonth() === now.getMonth() &&
     d.getDate() === now.getDate();
   const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   if (isToday) return time;
-  const date = d.toLocaleDateString([], { month: "short", day: "numeric", year: d.getFullYear() !== now.getFullYear() ? "numeric" : undefined });
+  const date = d.toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    year: d.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+  });
   return `${date} ${time}`;
 }
 
@@ -72,7 +79,10 @@ type ToolCallState = "running" | "error" | "done" | "pending";
 
 function getToolResultText(result?: ToolResultMessage): string | null {
   return result
-    ? result.content.filter((b): b is { type: "text"; text: string } => b.type === "text").map((b) => b.text).join("\n")
+    ? result.content
+        .filter((b): b is { type: "text"; text: string } => b.type === "text")
+        .map((b) => b.text)
+        .join("\n")
     : null;
 }
 
@@ -115,12 +125,48 @@ function ToolStateDot({ state }: { state: ToolCallState }) {
   );
 }
 
-export function MessageView({ message, isStreaming, toolResults, modelNames, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, showTimestamp, prevTimestamp, onRetry, onEditResend }: Props) {
+export function MessageView({
+  message,
+  isStreaming,
+  toolResults,
+  modelNames,
+  entryId,
+  onFork,
+  forking,
+  onNavigate,
+  prevAssistantEntryId,
+  onEditContent,
+  showTimestamp,
+  prevTimestamp,
+  onRetry,
+  onEditResend,
+}: Props) {
   if (message.role === "user") {
-    return <UserMessageView message={message as UserMessage} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onEditResend={onEditResend} />;
+    return (
+      <UserMessageView
+        message={message as UserMessage}
+        entryId={entryId}
+        onFork={onFork}
+        forking={forking}
+        onNavigate={onNavigate}
+        prevAssistantEntryId={prevAssistantEntryId}
+        onEditContent={onEditContent}
+        onEditResend={onEditResend}
+      />
+    );
   }
   if (message.role === "assistant") {
-    return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} onRetry={onRetry} />;
+    return (
+      <AssistantMessageView
+        message={message as AssistantMessage}
+        isStreaming={isStreaming}
+        toolResults={toolResults}
+        modelNames={modelNames}
+        showTimestamp={showTimestamp}
+        prevTimestamp={prevTimestamp}
+        onRetry={onRetry}
+      />
+    );
   }
   if (message.role === "toolResult") {
     // Rendered inline under its toolCall — skip standalone rendering if paired
@@ -129,7 +175,16 @@ export function MessageView({ message, isStreaming, toolResults, modelNames, ent
   return null;
 }
 
-function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditResend }: {
+function UserMessageView({
+  message,
+  entryId,
+  onFork,
+  forking,
+  onNavigate,
+  prevAssistantEntryId,
+  onEditContent,
+  onEditResend,
+}: {
   message: UserMessage;
   entryId?: string;
   onFork?: (entryId: string) => void;
@@ -199,11 +254,23 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
 
   return (
     <div
-      style={{ marginBottom: "var(--ui-msg-gap)", display: "flex", flexDirection: "column", alignItems: "flex-end" }}
+      style={{
+        marginBottom: "var(--ui-msg-gap)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-end",
+      }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 6, maxWidth: "var(--ui-msg-max-width)" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          gap: 6,
+          maxWidth: "var(--ui-msg-max-width)",
+        }}
+      >
         {editing ? (
           <div style={{ flex: 1, minWidth: 0 }}>
             <textarea
@@ -215,8 +282,14 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
                 e.currentTarget.style.height = `${Math.min(e.currentTarget.scrollHeight, 200)}px`;
               }}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); }
-                if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  saveEdit();
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  cancelEdit();
+                }
               }}
               style={{
                 width: "100%",
@@ -238,9 +311,13 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
               <button
                 onClick={cancelEdit}
                 style={{
-                  padding: "3px 10px", height: 24,
-                  background: "none", border: "1px solid var(--border)",
-                  borderRadius: 5, color: "var(--text-dim)", cursor: "pointer",
+                  padding: "3px 10px",
+                  height: 24,
+                  background: "none",
+                  border: "1px solid var(--border)",
+                  borderRadius: 5,
+                  color: "var(--text-dim)",
+                  cursor: "pointer",
                   fontSize: 12,
                 }}
               >
@@ -250,12 +327,15 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
                 onClick={saveEdit}
                 disabled={!editValue.trim()}
                 style={{
-                  padding: "3px 10px", height: 24,
+                  padding: "3px 10px",
+                  height: 24,
                   background: editValue.trim() ? "var(--accent-hover)" : "var(--bg-panel)",
                   border: "none",
-                  borderRadius: 5, color: editValue.trim() ? "var(--accent-on)" : "var(--text-dim)",
+                  borderRadius: 5,
+                  color: editValue.trim() ? "var(--accent-on)" : "var(--text-dim)",
                   cursor: editValue.trim() ? "pointer" : "not-allowed",
-                  fontSize: 12, fontWeight: 600,
+                  fontSize: 12,
+                  fontWeight: 600,
                 }}
               >
                 Send
@@ -263,94 +343,129 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
             </div>
           </div>
         ) : (
-        <div
-          style={{
-            minWidth: 0,
-            background: hovered ? "var(--ui-msg-user-hover-bg, var(--user-bg))" : "var(--user-bg)",
-            border: "var(--ui-msg-user-border)",
-            borderRadius: "var(--ui-msg-radius)",
-            padding: "var(--ui-msg-padding)",
-            boxShadow: "var(--ui-msg-user-shadow)",
-            fontSize: 14,
-            lineHeight: 1.6,
-            color: "var(--text)",
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            transition: "background 0.15s ease",
-          }}
-        >
-          {imageBlocks.length > 0 && (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: content ? 8 : 0 }}>
-              {imageBlocks.map((img, i) => {
-                // lib/types.ts ImageContent uses {source:{type,data,media_type,url}}
-                // pi-ai on-disk format uses flat {data, mimeType} — handle both
-                const flat = img as unknown as { data?: string; mimeType?: string };
-                const src = img.source
-                  ? img.source.type === "base64"
-                    ? `data:${img.source.media_type};base64,${img.source.data}`
-                    : img.source.url ?? ""
-                  : flat.data
-                    ? `data:${flat.mimeType};base64,${flat.data}`
-                    : "";
-                return (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={i}
-                    src={src}
-                    alt=""
-                    style={{ maxWidth: 240, maxHeight: 240, borderRadius: 6, objectFit: "contain", display: "block", border: "1px solid var(--border)" }}
-                  />
-                );
-              })}
-            </div>
-          )}
-          {message.skillCommand && typeof message.content === "string"
-            ? (() => {
-                const prefix = `/${message.skillCommand}`;
-                const rest = content.startsWith(prefix) ? content.slice(prefix.length) : content;
-                return (
-                  <>
-                    <span style={{ color: "var(--accent)", fontWeight: 500 }}>{prefix}</span>
-                    <span>{rest}</span>
-                  </>
-                );
-              })()
-            : content
-          }
-        </div>
+          <div
+            style={{
+              minWidth: 0,
+              background: hovered
+                ? "var(--ui-msg-user-hover-bg, var(--user-bg))"
+                : "var(--user-bg)",
+              border: "var(--ui-msg-user-border)",
+              borderRadius: "var(--ui-msg-radius)",
+              padding: "var(--ui-msg-padding)",
+              boxShadow: "var(--ui-msg-user-shadow)",
+              fontSize: 14,
+              lineHeight: 1.6,
+              color: "var(--text)",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              transition: "background 0.15s ease",
+            }}
+          >
+            {imageBlocks.length > 0 && (
+              <div
+                style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: content ? 8 : 0 }}
+              >
+                {imageBlocks.map((img, i) => {
+                  // lib/types.ts ImageContent uses {source:{type,data,media_type,url}}
+                  // pi-ai on-disk format uses flat {data, mimeType} — handle both
+                  const flat = img as unknown as { data?: string; mimeType?: string };
+                  const src = img.source
+                    ? img.source.type === "base64"
+                      ? `data:${img.source.media_type};base64,${img.source.data}`
+                      : (img.source.url ?? "")
+                    : flat.data
+                      ? `data:${flat.mimeType};base64,${flat.data}`
+                      : "";
+                  return (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={i}
+                      src={src}
+                      alt=""
+                      style={{
+                        maxWidth: 240,
+                        maxHeight: 240,
+                        borderRadius: 6,
+                        objectFit: "contain",
+                        display: "block",
+                        border: "1px solid var(--border)",
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            )}
+            {message.skillCommand && typeof message.content === "string"
+              ? (() => {
+                  const prefix = `/${message.skillCommand}`;
+                  const rest = content.startsWith(prefix) ? content.slice(prefix.length) : content;
+                  return (
+                    <>
+                      <span style={{ color: "var(--accent)", fontWeight: 500 }}>{prefix}</span>
+                      <span>{rest}</span>
+                    </>
+                  );
+                })()
+              : content}
+          </div>
         )}
-
       </div>
 
       {/* Bottom row: action buttons + timestamp */}
       {(time || canFork || canNavigate || true) && (
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "flex-end",
-          gap: 6, marginTop: 3,
-        }}>
-          <div style={{
-            display: "flex", gap: 3,
-            transition: "opacity 0.12s",
-          }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            gap: 6,
+            marginTop: 3,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              gap: 3,
+              transition: "opacity 0.12s",
+            }}
+          >
             {onEditResend && (
               <button
                 onClick={startEdit}
                 title="Edit and resend"
                 style={{
-                  display: "flex", alignItems: "center", gap: 4,
-                  padding: "3px 8px", height: 22,
-                  background: "none", border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "3px 8px",
+                  height: 22,
+                  background: "none",
+                  border: "none",
                   borderRadius: 5,
                   color: "var(--text-dim)",
                   cursor: "pointer",
-                  fontSize: 12, fontWeight: 400,
+                  fontSize: 12,
+                  fontWeight: 400,
                   whiteSpace: "nowrap",
                   transition: "color 0.12s",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--accent)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--text-dim)";
+                }}
               >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="11"
+                  height="11"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
@@ -358,58 +473,109 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
               </button>
             )}
           </div>
-            <button
-              onClick={copyContent}
-              title="Copy message"
-              style={{
-                display: "flex", alignItems: "center", gap: 4,
-                padding: "3px 8px", height: 22,
-                background: "none", border: "none",
-                borderRadius: 5,
-                color: copied ? "var(--accent)" : "var(--text-dim)",
-                cursor: "pointer",
-                fontSize: 12, fontWeight: 400,
-                whiteSpace: "nowrap",
-                transition: "color 0.12s",
-              }}
-              onMouseEnter={(e) => { if (!copied) e.currentTarget.style.color = "var(--accent)"; }}
-              onMouseLeave={(e) => { if (!copied) e.currentTarget.style.color = "var(--text-dim)"; }}
-            >
-              {copied ? (
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              ) : (
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                </svg>
-              )}
-              {copied ? "Copied" : "Copy"}
-            </button>
+          <button
+            onClick={copyContent}
+            title="Copy message"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              padding: "3px 8px",
+              height: 22,
+              background: "none",
+              border: "none",
+              borderRadius: 5,
+              color: copied ? "var(--accent)" : "var(--text-dim)",
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 400,
+              whiteSpace: "nowrap",
+              transition: "color 0.12s",
+            }}
+            onMouseEnter={(e) => {
+              if (!copied) e.currentTarget.style.color = "var(--accent)";
+            }}
+            onMouseLeave={(e) => {
+              if (!copied) e.currentTarget.style.color = "var(--text-dim)";
+            }}
+          >
+            {copied ? (
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            ) : (
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            )}
+            {copied ? "Copied" : "Copy"}
+          </button>
           {(canFork || canNavigate) && (
-            <div style={{
-              display: "flex", gap: 3,
-            }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 3,
+              }}
+            >
               {canNavigate && (
                 <button
-                  onClick={() => { onNavigate!(prevAssistantEntryId!); onEditContent?.(content); }}
+                  onClick={() => {
+                    onNavigate!(prevAssistantEntryId!);
+                    onEditContent?.(content);
+                  }}
                   title="Branch — edit from here within this session"
                   style={{
-                    display: "flex", alignItems: "center", gap: 4,
-                    padding: "3px 8px", height: 22,
-                    background: "none", border: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "3px 8px",
+                    height: 22,
+                    background: "none",
+                    border: "none",
                     borderRadius: 5,
                     color: "var(--text-dim)",
                     cursor: "pointer",
-                    fontSize: 12, fontWeight: 400,
+                    fontSize: 12,
+                    fontWeight: 400,
                     whiteSpace: "nowrap",
                     transition: "color 0.12s",
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "var(--accent)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "var(--text-dim)";
+                  }}
                 >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <polyline points="15 10 20 15 15 20" />
                     <path d="M4 4v7a4 4 0 0 0 4 4h12" />
                   </svg>
@@ -418,24 +584,48 @@ function UserMessageView({ message, entryId, onFork, forking, onNavigate, prevAs
               )}
               {canFork && (
                 <button
-                  onClick={() => { onFork!(entryId!); }}
+                  onClick={() => {
+                    onFork!(entryId!);
+                  }}
                   disabled={forking}
-                  title={forking ? "Creating new session…" : "Fork — creates an independent copy from here"}
+                  title={
+                    forking
+                      ? "Creating new session…"
+                      : "Fork — creates an independent copy from here"
+                  }
                   style={{
-                    display: "flex", alignItems: "center", gap: 4,
-                    padding: "3px 8px", height: 22,
-                    background: "none", border: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "3px 8px",
+                    height: 22,
+                    background: "none",
+                    border: "none",
                     borderRadius: 5,
                     color: forking ? "var(--accent)" : "var(--text-dim)",
                     cursor: forking ? "not-allowed" : "pointer",
-                    fontSize: 12, fontWeight: 400,
+                    fontSize: 12,
+                    fontWeight: 400,
                     whiteSpace: "nowrap",
                     transition: "color 0.12s",
                   }}
-                  onMouseEnter={(e) => { if (!forking) e.currentTarget.style.color = "var(--accent)"; }}
-                  onMouseLeave={(e) => { if (!forking) e.currentTarget.style.color = "var(--text-dim)"; }}
+                  onMouseEnter={(e) => {
+                    if (!forking) e.currentTarget.style.color = "var(--accent)";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!forking) e.currentTarget.style.color = "var(--text-dim)";
+                  }}
                 >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <line x1="6" y1="3" x2="6" y2="15" />
                     <circle cx="18" cy="6" r="3" />
                     <circle cx="6" cy="18" r="3" />
@@ -498,7 +688,9 @@ function AssistantMessageView({
     if (!toolResults || !message.timestamp) return map;
     for (const [callId, result] of toolResults) {
       if (result.timestamp) {
-        const block = blocks.find(b => b.type === "toolCall" && (b as ToolCallContent).toolCallId === callId) as ToolCallContent | undefined;
+        const block = blocks.find(
+          (b) => b.type === "toolCall" && (b as ToolCallContent).toolCallId === callId,
+        ) as ToolCallContent | undefined;
         const startTs = block?._sourceTs ?? message.timestamp;
         const secs = Math.round((result.timestamp - startTs) / 1000);
         if (secs > 0) map.set(callId, secs);
@@ -555,7 +747,6 @@ function AssistantMessageView({
         }
         return changed ? next : prev;
       });
-
     };
     const id = setInterval(tick, 300);
     return () => clearInterval(id);
@@ -568,31 +759,61 @@ function AssistantMessageView({
       onMouseLeave={() => setHovered(false)}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <BlockView blocks={blocks} toolResults={toolResults} isStreaming={isStreaming} streamingDurations={streamingDurations} thinkingDurationFromFile={thinkingDurationFromFile} toolCallDurations={toolCallDurations} />
+        <BlockView
+          blocks={blocks}
+          toolResults={toolResults}
+          isStreaming={isStreaming}
+          streamingDurations={streamingDurations}
+          thinkingDurationFromFile={thinkingDurationFromFile}
+          toolCallDurations={toolCallDurations}
+        />
       </div>
 
-      <div style={{
-        display: "flex", alignItems: "center", gap: 8, marginTop: 4,
-      }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginTop: 4,
+        }}
+      >
         {onRetry && !isStreaming && (
           <button
             onClick={onRetry}
             title="Retry with the same prompt"
             style={{
-              display: "flex", alignItems: "center", gap: 4,
-              padding: "3px 8px", height: 22,
-              background: "none", border: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              padding: "3px 8px",
+              height: 22,
+              background: "none",
+              border: "none",
               borderRadius: 5,
               color: "var(--text-dim)",
               cursor: "pointer",
-              fontSize: 12, fontWeight: 400,
+              fontSize: 12,
+              fontWeight: 400,
               whiteSpace: "nowrap",
               transition: "opacity 0.12s, color 0.12s",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--accent)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--text-dim)";
+            }}
           >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <polyline points="23 4 23 10 17 10" />
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
             </svg>
@@ -604,25 +825,52 @@ function AssistantMessageView({
             onClick={copyContent}
             title="Copy message"
             style={{
-              display: "flex", alignItems: "center", gap: 4,
-              padding: "3px 8px", height: 22,
-              background: "none", border: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              padding: "3px 8px",
+              height: 22,
+              background: "none",
+              border: "none",
               borderRadius: 5,
               color: copied ? "var(--accent)" : "var(--text-dim)",
               cursor: "pointer",
-              fontSize: 12, fontWeight: 400,
+              fontSize: 12,
+              fontWeight: 400,
               whiteSpace: "nowrap",
               transition: "opacity 0.12s, color 0.12s",
             }}
-            onMouseEnter={(e) => { if (!copied) e.currentTarget.style.color = "var(--accent)"; }}
-            onMouseLeave={(e) => { if (!copied) e.currentTarget.style.color = "var(--text-dim)"; }}
+            onMouseEnter={(e) => {
+              if (!copied) e.currentTarget.style.color = "var(--accent)";
+            }}
+            onMouseLeave={(e) => {
+              if (!copied) e.currentTarget.style.color = "var(--text-dim)";
+            }}
           >
             {copied ? (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             ) : (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
               </svg>
@@ -638,7 +886,14 @@ function AssistantMessageView({
   );
 }
 
-function BlockView({ blocks, toolResults, isStreaming, streamingDurations, thinkingDurationFromFile, toolCallDurations }: {
+function BlockView({
+  blocks,
+  toolResults,
+  isStreaming,
+  streamingDurations,
+  thinkingDurationFromFile,
+  toolCallDurations,
+}: {
   blocks: AssistantContentBlock[];
   toolResults?: Map<string, ToolResultMessage>;
   isStreaming?: boolean;
@@ -654,11 +909,11 @@ function BlockView({ blocks, toolResults, isStreaming, streamingDurations, think
     elements.push(
       <ToolCallsGroup
         key={`tools-${toolCallRun[0].idx}`}
-        blocks={toolCallRun.map(tc => tc.block)}
+        blocks={toolCallRun.map((tc) => tc.block)}
         toolResults={toolResults}
         isStreaming={isStreaming}
         toolCallDurations={toolCallDurations}
-      />
+      />,
     );
     toolCallRun = [];
   };
@@ -673,7 +928,14 @@ function BlockView({ blocks, toolResults, isStreaming, streamingDurations, think
         elements.push(<TextBlock key={i} block={block as TextContent} isStreaming={isStreaming} />);
       } else if (block.type === "thinking") {
         const dur = streamingDurations.get(i) ?? thinkingDurationFromFile;
-        elements.push(<ThinkingBlock key={i} block={block as ThinkingContent} duration={dur} isStreaming={isStreaming} />);
+        elements.push(
+          <ThinkingBlock
+            key={i}
+            block={block as ThinkingContent}
+            duration={dur}
+            isStreaming={isStreaming}
+          />,
+        );
       }
     }
   }
@@ -748,9 +1010,7 @@ function TextBlock({ block, isStreaming }: { block: TextContent; isStreaming?: b
   }, [isStreaming, block.text]);
 
   const displayText =
-    isStreaming && revealedLen < block.text.length
-      ? block.text.slice(0, revealedLen)
-      : block.text;
+    isStreaming && revealedLen < block.text.length ? block.text.slice(0, revealedLen) : block.text;
 
   if (process.env.NEXT_PUBLIC_PI_WEB_LIGHT_RENDER === "1") {
     return (
@@ -767,18 +1027,26 @@ function TextBlock({ block, isStreaming }: { block: TextContent; isStreaming?: b
   );
 }
 
-function ThinkingBlock({ block, duration, isStreaming }: { block: ThinkingContent; duration?: number; isStreaming?: boolean }) {
+function ThinkingBlock({
+  block,
+  duration,
+  isStreaming,
+}: {
+  block: ThinkingContent;
+  duration?: number;
+  isStreaming?: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    if (!document.getElementById('think-pulse-style')) {
-      const style = document.createElement('style');
-      style.id = 'think-pulse-style';
+    if (!document.getElementById("think-pulse-style")) {
+      const style = document.createElement("style");
+      style.id = "think-pulse-style";
       style.innerHTML = [
         `@keyframes think-pulse { 0%,100%{opacity:.45} 50%{opacity:1} }`,
         `@keyframes think-collapse-in { from{opacity:0;max-height:0;margin-top:0} to{opacity:1;max-height:600px;margin-top:8px} }`,
         `@keyframes fadeInUp { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }`,
-      ].join('');
+      ].join("");
       document.head.appendChild(style);
     }
   }, []);
@@ -803,21 +1071,64 @@ function ThinkingBlock({ block, duration, isStreaming }: { block: ThinkingConten
           transition: "color 0.15s, background 0.15s",
           ...(isStreaming ? { animation: "think-pulse 1.8s ease-in-out infinite" } : {}),
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--text-muted)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "var(--bg-subtle)"; }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = "var(--text-muted)";
+          e.currentTarget.style.background = "var(--bg-hover)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = "var(--text-dim)";
+          e.currentTarget.style.background = "var(--bg-subtle)";
+        }}
       >
         <span>{expanded ? "Thinking" : "Thinking"}</span>
         {isStreaming && (
           <span style={{ display: "flex", gap: 2, alignItems: "flex-end", height: 12 }}>
-            <span style={{ width: 3, height: 3, borderRadius: "50%", background: "currentColor", animation: "think-pulse 1.2s ease-in-out infinite", animationDelay: "0s" }} />
-            <span style={{ width: 3, height: 3, borderRadius: "50%", background: "currentColor", animation: "think-pulse 1.2s ease-in-out infinite", animationDelay: "0.2s" }} />
-            <span style={{ width: 3, height: 3, borderRadius: "50%", background: "currentColor", animation: "think-pulse 1.2s ease-in-out infinite", animationDelay: "0.4s" }} />
+            <span
+              style={{
+                width: 3,
+                height: 3,
+                borderRadius: "50%",
+                background: "currentColor",
+                animation: "think-pulse 1.2s ease-in-out infinite",
+                animationDelay: "0s",
+              }}
+            />
+            <span
+              style={{
+                width: 3,
+                height: 3,
+                borderRadius: "50%",
+                background: "currentColor",
+                animation: "think-pulse 1.2s ease-in-out infinite",
+                animationDelay: "0.2s",
+              }}
+            />
+            <span
+              style={{
+                width: 3,
+                height: 3,
+                borderRadius: "50%",
+                background: "currentColor",
+                animation: "think-pulse 1.2s ease-in-out infinite",
+                animationDelay: "0.4s",
+              }}
+            />
           </span>
         )}
         {duration !== undefined && (
           <span style={{ fontSize: 12, fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
         )}
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}
+        >
           <polyline points="2 3.5 5 6.5 8 3.5" />
         </svg>
       </button>
@@ -846,8 +1157,14 @@ function ThinkingBlock({ block, duration, isStreaming }: { block: ThinkingConten
   );
 }
 
-
-function ToolCallBlock({ block, result, isRunning, duration, isFirst, isLast }: {
+function ToolCallBlock({
+  block,
+  result,
+  isRunning,
+  duration,
+  isFirst,
+  isLast,
+}: {
   block: ToolCallContent;
   result?: ToolResultMessage;
   isRunning?: boolean;
@@ -912,24 +1229,69 @@ function ToolCallBlock({ block, result, isRunning, duration, isFirst, isLast }: 
           minWidth: 0,
           borderRadius: 5,
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-subtle)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "var(--bg-subtle)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = "none";
+        }}
       >
         <span style={{ color: getToolStateColor(state), fontWeight: 600, flexShrink: 0 }}>
           {block.toolName}
         </span>
-        <span style={{ color: "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: resultPreview ? "0 1 auto" : 1, minWidth: 0 }}>
+        <span
+          style={{
+            color: "var(--text-dim)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            flex: resultPreview ? "0 1 auto" : 1,
+            minWidth: 0,
+          }}
+        >
           {getToolPreview(block)}
         </span>
         {resultPreview && (
-          <span style={{ color: isError ? "var(--danger)" : "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+          <span
+            style={{
+              color: isError ? "var(--danger)" : "var(--text-dim)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
             {resultPreview}
           </span>
         )}
         {duration !== undefined && (
-          <span style={{ fontSize: 12, color: "var(--text-dim)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
+          <span
+            style={{
+              fontSize: 12,
+              color: "var(--text-dim)",
+              flexShrink: 0,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {duration}s
+          </span>
         )}
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="var(--text-dim)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}>
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 10 10"
+          fill="none"
+          stroke="var(--text-dim)"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            flexShrink: 0,
+            transform: expanded ? "rotate(180deg)" : "none",
+            transition: "transform 0.15s",
+          }}
+        >
           <polyline points="2 3.5 5 6.5 8 3.5" />
         </svg>
       </button>
@@ -945,39 +1307,38 @@ function ToolCallBlock({ block, result, isRunning, duration, isFirst, isLast }: 
             animation: "fade-in-up 160ms ease",
           }}
         >
-        <pre
-          style={{
-            margin: 0,
-            padding: "8px 10px",
-            color: "var(--text-muted)",
-            fontSize: 12,
-            lineHeight: 1.5,
-            overflow: "auto",
-            background: "var(--bg-subtle)",
-            borderTop: "1px solid var(--border)",
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-all",
-          }}
-        >
-          {inputStr}
-        </pre>
+          <pre
+            style={{
+              margin: 0,
+              padding: "8px 10px",
+              color: "var(--text-muted)",
+              fontSize: 12,
+              lineHeight: 1.5,
+              overflow: "auto",
+              background: "var(--bg-subtle)",
+              borderTop: "1px solid var(--border)",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-all",
+            }}
+          >
+            {inputStr}
+          </pre>
 
-        {result && (
-          <PairedResult
-            text={resultText ?? ""}
-            isEmpty={resultIsEmpty}
-            isError={isError}
-          />
-        )}
+          {result && (
+            <PairedResult text={resultText ?? ""} isEmpty={resultIsEmpty} isError={isError} />
+          )}
         </div>
       )}
     </div>
   );
 }
 
-
-
-function ToolCallsGroup({ blocks, toolResults, isStreaming, toolCallDurations }: {
+function ToolCallsGroup({
+  blocks,
+  toolResults,
+  isStreaming,
+  toolCallDurations,
+}: {
   blocks: ToolCallContent[];
   toolResults?: Map<string, ToolResultMessage>;
   isStreaming?: boolean;
@@ -990,26 +1351,35 @@ function ToolCallsGroup({ blocks, toolResults, isStreaming, toolCallDurations }:
   // Real-time timer during streaming
   useEffect(() => {
     if (mountRef.current === 0) mountRef.current = Date.now();
-    if (!isStreaming) { setElapsed(Math.round((Date.now() - mountRef.current) / 1000)); return; }
+    if (!isStreaming) {
+      setElapsed(Math.round((Date.now() - mountRef.current) / 1000));
+      return;
+    }
     const tick = () => setElapsed(Math.round((Date.now() - mountRef.current) / 1000));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [isStreaming]);
 
-  const allDone = blocks.every(b => toolResults?.has(b.toolCallId));
+  const allDone = blocks.every((b) => toolResults?.has(b.toolCallId));
   const showTimer = elapsed > 0;
-  const states = blocks.map((block) => getToolState(toolResults?.get(block.toolCallId), isStreaming && !toolResults?.has(block.toolCallId)));
+  const states = blocks.map((block) =>
+    getToolState(
+      toolResults?.get(block.toolCallId),
+      isStreaming && !toolResults?.has(block.toolCallId),
+    ),
+  );
   const failedCount = states.filter((state) => state === "error").length;
   const runningCount = states.filter((state) => state === "running").length;
   const doneCount = states.filter((state) => state === "done").length;
-  const stateSummary = failedCount > 0
-    ? `${failedCount} failed`
-    : runningCount > 0
-      ? `${runningCount} running`
-      : allDone
-        ? `${doneCount} done`
-        : "pending";
+  const stateSummary =
+    failedCount > 0
+      ? `${failedCount} failed`
+      : runningCount > 0
+        ? `${runningCount} running`
+        : allDone
+          ? `${doneCount} done`
+          : "pending";
   const defaultVisibleCount = 3;
   const visibleBlocks = showAll ? blocks : blocks.slice(0, defaultVisibleCount);
   const hiddenCount = blocks.length - visibleBlocks.length;
@@ -1034,18 +1404,33 @@ function ToolCallsGroup({ blocks, toolResults, isStreaming, toolCallDurations }:
           fontFamily: "var(--font-mono)",
         }}
       >
-        <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>
-          Tools
-        </span>
-        <span style={{ color: failedCount > 0 ? "var(--danger)" : runningCount > 0 ? "var(--accent)" : "var(--text-dim)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
+        <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>Tools</span>
+        <span
+          style={{
+            color:
+              failedCount > 0
+                ? "var(--danger)"
+                : runningCount > 0
+                  ? "var(--accent)"
+                  : "var(--text-dim)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            minWidth: 0,
+          }}
+        >
           {blocks.length} steps · {stateSummary}
         </span>
         {showTimer && (
-          <span style={{
-            flexShrink: 0, fontVariantNumeric: "tabular-nums",
-            color: "var(--text-dim)", opacity: 0.5,
-            ...(isStreaming && !allDone ? { animation: "pulse 1.5s ease-in-out infinite" } : {}),
-          }}>
+          <span
+            style={{
+              flexShrink: 0,
+              fontVariantNumeric: "tabular-nums",
+              color: "var(--text-dim)",
+              opacity: 0.5,
+              ...(isStreaming && !allDone ? { animation: "pulse 1.5s ease-in-out infinite" } : {}),
+            }}
+          >
             {elapsed}s
           </span>
         )}
@@ -1084,8 +1469,14 @@ function ToolCallsGroup({ blocks, toolResults, isStreaming, toolCallDurations }:
             fontSize: 12,
             fontFamily: "var(--font-mono)",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-subtle)"; e.currentTarget.style.color = "var(--text-muted)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--text-dim)"; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--bg-subtle)";
+            e.currentTarget.style.color = "var(--text-muted)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "none";
+            e.currentTarget.style.color = "var(--text-dim)";
+          }}
         >
           Show {hiddenCount} more
         </button>
@@ -1094,8 +1485,11 @@ function ToolCallsGroup({ blocks, toolResults, isStreaming, toolCallDurations }:
   );
 }
 
-
-function PairedResult({ text, isEmpty, isError }: {
+function PairedResult({
+  text,
+  isEmpty,
+  isError,
+}: {
   text: string;
   isEmpty: boolean;
   isError: boolean;
@@ -1111,7 +1505,7 @@ function PairedResult({ text, isEmpty, isError }: {
         style={{
           margin: 0,
           padding: "8px 10px",
-          color: isError ? "var(--danger)" : (isEmpty ? "var(--text-dim)" : "var(--text-muted)"),
+          color: isError ? "var(--danger)" : isEmpty ? "var(--text-dim)" : "var(--text-muted)",
           fontSize: 12,
           lineHeight: 1.5,
           overflow: "auto",
@@ -1129,7 +1523,6 @@ function PairedResult({ text, isEmpty, isError }: {
   );
 }
 
-
 function getToolPreview(block: ToolCallContent): string {
   const input = block.input;
   if (!input || typeof input !== "object") return "";
@@ -1146,5 +1539,3 @@ function getToolPreview(block: ToolCallContent): string {
   const first = input[keys[0]];
   return String(first).slice(0, 120);
 }
-
-

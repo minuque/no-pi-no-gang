@@ -1,10 +1,17 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import type { OAuthProvider, OAuthLoginState } from "./ModelsConfigTypes";
-import { SectionTitle } from "./FormFields";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; onRefresh: () => void }) {
+import { SectionTitle } from "./FormFields";
+import type { OAuthLoginState, OAuthProvider } from "./ModelsConfigTypes";
+
+export function OAuthDetail({
+  provider,
+  onRefresh,
+}: {
+  provider: OAuthProvider;
+  onRefresh: () => void;
+}) {
   const [loginState, setLoginState] = useState<OAuthLoginState>({ phase: "idle" });
   const [inputValue, setInputValue] = useState("");
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -25,7 +32,9 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
   }, [provider.id]);
 
   useEffect(() => {
-    return () => { eventSourceRef.current?.close(); };
+    return () => {
+      eventSourceRef.current?.close();
+    };
   }, []);
 
   const handleLogin = useCallback(() => {
@@ -38,13 +47,25 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
 
     es.onmessage = (e) => {
       const data = JSON.parse(e.data) as {
-        type: string; url?: string; instructions?: string | null;
-        token?: string; message?: string; placeholder?: string | null;
-        userCode?: string; verificationUri?: string; intervalSeconds?: number | null; expiresInSeconds?: number | null;
+        type: string;
+        url?: string;
+        instructions?: string | null;
+        token?: string;
+        message?: string;
+        placeholder?: string | null;
+        userCode?: string;
+        verificationUri?: string;
+        intervalSeconds?: number | null;
+        expiresInSeconds?: number | null;
         options?: { id: string; label: string }[];
       };
       if (data.type === "auth") {
-        setLoginState({ phase: "auth", url: data.url!, instructions: data.instructions ?? null, token: data.token! });
+        setLoginState({
+          phase: "auth",
+          url: data.url!,
+          instructions: data.instructions ?? null,
+          token: data.token!,
+        });
         window.open(data.url!, "_blank", "noopener,noreferrer");
       } else if (data.type === "device_code") {
         setLoginState({
@@ -56,9 +77,19 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
         });
         window.open(data.verificationUri!, "_blank", "noopener,noreferrer");
       } else if (data.type === "prompt_request") {
-        setLoginState({ phase: "prompt", message: data.message!, placeholder: data.placeholder ?? null, token: data.token! });
+        setLoginState({
+          phase: "prompt",
+          message: data.message!,
+          placeholder: data.placeholder ?? null,
+          token: data.token!,
+        });
       } else if (data.type === "select_request") {
-        setLoginState({ phase: "select", message: data.message!, options: data.options ?? [], token: data.token! });
+        setLoginState({
+          phase: "select",
+          message: data.message!,
+          options: data.options ?? [],
+          token: data.token!,
+        });
       } else if (data.type === "progress") {
         setLoginState({ phase: "progress", message: data.message! });
       } else if (data.type === "success") {
@@ -75,7 +106,9 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
     };
     es.onerror = () => {
       es.close();
-      setLoginState((prev) => prev.phase === "success" ? prev : { phase: "error", message: "Connection lost" });
+      setLoginState((prev) =>
+        prev.phase === "success" ? prev : { phase: "error", message: "Connection lost" },
+      );
     };
   }, [provider.id, onRefresh]);
 
@@ -85,55 +118,84 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
     onRefresh();
   }, [provider.id, onRefresh]);
 
-  const submitCode = useCallback(async (token: string, code: string) => {
-    if (!code.trim()) return;
-    setLoginState({ phase: "progress", message: "Verifying…" });
-    try {
-      const res = await fetch(`/api/auth/login/${encodeURIComponent(provider.id)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, code: code.trim() }),
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({})) as { error?: string };
-        setLoginState({ phase: "error", message: d.error ?? `Server error ${res.status}` });
-        return;
+  const submitCode = useCallback(
+    async (token: string, code: string) => {
+      if (!code.trim()) return;
+      setLoginState({ phase: "progress", message: "Verifying…" });
+      try {
+        const res = await fetch(`/api/auth/login/${encodeURIComponent(provider.id)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, code: code.trim() }),
+        });
+        if (!res.ok) {
+          const d = (await res.json().catch(() => ({}))) as { error?: string };
+          setLoginState({ phase: "error", message: d.error ?? `Server error ${res.status}` });
+          return;
+        }
+        setInputValue("");
+        // Success path: SSE stream will emit "success" and update state
+      } catch (e) {
+        setLoginState({
+          phase: "error",
+          message: e instanceof Error ? e.message : "Network error",
+        });
       }
-      setInputValue("");
-      // Success path: SSE stream will emit "success" and update state
-    } catch (e) {
-      setLoginState({ phase: "error", message: e instanceof Error ? e.message : "Network error" });
-    }
-  }, [provider.id]);
+    },
+    [provider.id],
+  );
 
-  const submitSelection = useCallback(async (token: string, value: string) => {
-    setLoginState({ phase: "progress", message: "Continuing…" });
-    try {
-      const res = await fetch(`/api/auth/login/${encodeURIComponent(provider.id)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, code: value }),
-      });
-      if (!res.ok) {
-        const d = await res.json().catch(() => ({})) as { error?: string };
-        setLoginState({ phase: "error", message: d.error ?? `Server error ${res.status}` });
+  const submitSelection = useCallback(
+    async (token: string, value: string) => {
+      setLoginState({ phase: "progress", message: "Continuing…" });
+      try {
+        const res = await fetch(`/api/auth/login/${encodeURIComponent(provider.id)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, code: value }),
+        });
+        if (!res.ok) {
+          const d = (await res.json().catch(() => ({}))) as { error?: string };
+          setLoginState({ phase: "error", message: d.error ?? `Server error ${res.status}` });
+        }
+      } catch (e) {
+        setLoginState({
+          phase: "error",
+          message: e instanceof Error ? e.message : "Network error",
+        });
       }
-    } catch (e) {
-      setLoginState({ phase: "error", message: e instanceof Error ? e.message : "Network error" });
-    }
-  }, [provider.id]);
+    },
+    [provider.id],
+  );
 
-  const isWorking = loginState.phase === "connecting" || loginState.phase === "progress" ||
-    loginState.phase === "auth" || loginState.phase === "device_code" ||
-    loginState.phase === "prompt" || loginState.phase === "select";
+  const isWorking =
+    loginState.phase === "connecting" ||
+    loginState.phase === "progress" ||
+    loginState.phase === "auth" ||
+    loginState.phase === "device_code" ||
+    loginState.phase === "prompt" ||
+    loginState.phase === "select";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <SectionTitle>Subscription</SectionTitle>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: provider.loggedIn ? "var(--success)" : "var(--border)", display: "inline-block" }} />
-          <span style={{ fontSize: 11, color: provider.loggedIn ? "var(--success)" : "var(--text-dim)" }}>
+          <span
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: "50%",
+              background: provider.loggedIn ? "var(--success)" : "var(--border)",
+              display: "inline-block",
+            }}
+          />
+          <span
+            style={{
+              fontSize: 11,
+              color: provider.loggedIn ? "var(--success)" : "var(--text-dim)",
+            }}
+          >
             {provider.loggedIn ? "connected" : "not connected"}
           </span>
         </div>
@@ -143,7 +205,9 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
       <div style={{ minHeight: 48 }}>
         {loginState.phase === "idle" && (
           <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
-            {provider.loggedIn ? "Already connected. You can re-login or disconnect." : `Connect your ${provider.name} account.`}
+            {provider.loggedIn
+              ? "Already connected. You can re-login or disconnect."
+              : `Connect your ${provider.name} account.`}
           </p>
         )}
         {loginState.phase === "connecting" && (
@@ -159,7 +223,16 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
                 <button
                   key={option.id}
                   onClick={() => submitSelection(loginState.token, option.id)}
-                  style={{ padding: "6px 9px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text)", cursor: "pointer", fontSize: 12, textAlign: "left" }}
+                  style={{
+                    padding: "6px 9px",
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 5,
+                    color: "var(--text)",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    textAlign: "left",
+                  }}
                 >
                   {option.label}
                 </button>
@@ -177,7 +250,12 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
             {loginState.phase === "auth" && (
               <p style={{ margin: 0, fontSize: 11, color: "var(--text-dim)", lineHeight: 1.5 }}>
                 If the browser window did not open,{" "}
-                <a href={loginState.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", wordBreak: "break-all" }}>
+                <a
+                  href={loginState.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "var(--accent)", wordBreak: "break-all" }}
+                >
                   click here to open the login page
                 </a>
                 .
@@ -188,14 +266,41 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
                 ref={inputRef}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") submitCode(loginState.token, inputValue); }}
-                placeholder={loginState.phase === "auth" ? "http://localhost:1455/auth/callback?code=…" : (loginState.placeholder ?? "Enter value…")}
-                style={{ flex: 1, padding: "6px 9px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text)", fontSize: 12, outline: "none", fontFamily: "var(--font-mono)", boxSizing: "border-box" }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submitCode(loginState.token, inputValue);
+                }}
+                placeholder={
+                  loginState.phase === "auth"
+                    ? "http://localhost:1455/auth/callback?code=…"
+                    : (loginState.placeholder ?? "Enter value…")
+                }
+                style={{
+                  flex: 1,
+                  padding: "6px 9px",
+                  background: "var(--bg)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 5,
+                  color: "var(--text)",
+                  fontSize: 12,
+                  outline: "none",
+                  fontFamily: "var(--font-mono)",
+                  boxSizing: "border-box",
+                }}
               />
               <button
                 onClick={() => submitCode(loginState.token, inputValue)}
                 disabled={!inputValue.trim()}
-                style={{ padding: "6px 12px", background: inputValue.trim() ? "var(--accent-hover)" : "var(--bg-panel)", border: "none", borderRadius: 5, color: inputValue.trim() ? "var(--accent-on)" : "var(--text-dim)", cursor: inputValue.trim() ? "pointer" : "not-allowed", fontSize: 12, fontWeight: 600, flexShrink: 0 }}
+                style={{
+                  padding: "6px 12px",
+                  background: inputValue.trim() ? "var(--accent-hover)" : "var(--bg-panel)",
+                  border: "none",
+                  borderRadius: 5,
+                  color: inputValue.trim() ? "var(--accent-on)" : "var(--text-dim)",
+                  cursor: inputValue.trim() ? "pointer" : "not-allowed",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  flexShrink: 0,
+                }}
               >
                 Submit
               </button>
@@ -207,22 +312,45 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
             <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
               Open the verification page and enter this code:
             </p>
-            <div style={{ padding: "8px 10px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text)", fontSize: 16, fontWeight: 700, fontFamily: "var(--font-mono)", letterSpacing: 0 }}>
+            <div
+              style={{
+                padding: "8px 10px",
+                background: "var(--bg)",
+                border: "1px solid var(--border)",
+                borderRadius: 5,
+                color: "var(--text)",
+                fontSize: 16,
+                fontWeight: 700,
+                fontFamily: "var(--font-mono)",
+                letterSpacing: 0,
+              }}
+            >
               {loginState.userCode}
             </div>
             <p style={{ margin: 0, fontSize: 11, color: "var(--text-dim)", lineHeight: 1.5 }}>
-              <a href={loginState.verificationUri} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", wordBreak: "break-all" }}>
+              <a
+                href={loginState.verificationUri}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "var(--accent)", wordBreak: "break-all" }}
+              >
                 {loginState.verificationUri}
               </a>
-              {loginState.expiresInSeconds ? ` Expires in ${Math.ceil(loginState.expiresInSeconds / 60)} minutes.` : ""}
+              {loginState.expiresInSeconds
+                ? ` Expires in ${Math.ceil(loginState.expiresInSeconds / 60)} minutes.`
+                : ""}
             </p>
           </div>
         )}
         {loginState.phase === "progress" && (
-          <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>{loginState.message}</p>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
+            {loginState.message}
+          </p>
         )}
         {loginState.phase === "success" && (
-          <p style={{ margin: 0, fontSize: 12, color: "var(--success)" }}>Connected successfully.</p>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--success)" }}>
+            Connected successfully.
+          </p>
         )}
         {loginState.phase === "error" && (
           <p style={{ margin: 0, fontSize: 12, color: "var(--danger)" }}>{loginState.message}</p>
@@ -233,8 +361,19 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
       <div style={{ display: "flex", gap: 8 }}>
         {isWorking ? (
           <button
-            onClick={() => { eventSourceRef.current?.close(); setLoginState({ phase: "idle" }); }}
-            style={{ padding: "5px 12px", background: "none", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-muted)", cursor: "pointer", fontSize: 12 }}
+            onClick={() => {
+              eventSourceRef.current?.close();
+              setLoginState({ phase: "idle" });
+            }}
+            style={{
+              padding: "5px 12px",
+              background: "none",
+              border: "1px solid var(--border)",
+              borderRadius: 5,
+              color: "var(--text-muted)",
+              cursor: "pointer",
+              fontSize: 12,
+            }}
           >
             Cancel
           </button>
@@ -242,14 +381,31 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
           <>
             <button
               onClick={handleLogin}
-              style={{ padding: "5px 14px", background: "var(--accent-hover)", border: "none", borderRadius: 5, color: "var(--accent-on)", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+              style={{
+                padding: "5px 14px",
+                background: "var(--accent-hover)",
+                border: "none",
+                borderRadius: 5,
+                color: "var(--accent-on)",
+                cursor: "pointer",
+                fontSize: 12,
+                fontWeight: 600,
+              }}
             >
               {provider.loggedIn ? "Re-login" : "Login"}
             </button>
             {provider.loggedIn && (
               <button
                 onClick={handleLogout}
-                style={{ padding: "5px 12px", background: "none", border: "1px solid color-mix(in oklab, var(--danger), transparent 70%)", borderRadius: 5, color: "var(--danger)", cursor: "pointer", fontSize: 12 }}
+                style={{
+                  padding: "5px 12px",
+                  background: "none",
+                  border: "1px solid color-mix(in oklab, var(--danger), transparent 70%)",
+                  borderRadius: 5,
+                  color: "var(--danger)",
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
               >
                 Disconnect
               </button>

@@ -1,10 +1,17 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import type { ApiKeyProvider } from "./ModelsConfigTypes";
-import { Field, SecretTextInput, SectionTitle } from "./FormFields";
+import { useCallback, useEffect, useState } from "react";
 
-export function ApiKeyDetail({ provider, onRefresh }: { provider: ApiKeyProvider; onRefresh: () => void }) {
+import { Field, SecretTextInput, SectionTitle } from "./FormFields";
+import type { ApiKeyProvider } from "./ModelsConfigTypes";
+
+export function ApiKeyDetail({
+  provider,
+  onRefresh,
+}: {
+  provider: ApiKeyProvider;
+  onRefresh: () => void;
+}) {
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
@@ -29,7 +36,7 @@ export function ApiKeyDetail({ provider, onRefresh }: { provider: ApiKeyProvider
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ apiKey: apiKey.trim() }),
       });
-      const d = await res.json() as { success?: boolean; error?: string };
+      const d = (await res.json()) as { success?: boolean; error?: string };
       if (!res.ok || d.error) {
         setError(d.error ?? `HTTP ${res.status}`);
       } else {
@@ -49,8 +56,10 @@ export function ApiKeyDetail({ provider, onRefresh }: { provider: ApiKeyProvider
     setRemoving(true);
     setError(null);
     try {
-      const res = await fetch(`/api/auth/api-key/${encodeURIComponent(provider.id)}`, { method: "DELETE" });
-      const d = await res.json() as { success?: boolean; error?: string };
+      const res = await fetch(`/api/auth/api-key/${encodeURIComponent(provider.id)}`, {
+        method: "DELETE",
+      });
+      const d = (await res.json()) as { success?: boolean; error?: string };
       if (!res.ok || d.error) setError(d.error ?? `HTTP ${res.status}`);
       else onRefresh();
     } catch (e) {
@@ -65,8 +74,21 @@ export function ApiKeyDetail({ provider, onRefresh }: { provider: ApiKeyProvider
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <SectionTitle>API Key</SectionTitle>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ width: 7, height: 7, borderRadius: "50%", background: provider.configured ? "var(--success)" : "var(--border)", display: "inline-block" }} />
-          <span style={{ fontSize: 11, color: provider.configured ? "var(--success)" : "var(--text-dim)" }}>
+          <span
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: "50%",
+              background: provider.configured ? "var(--success)" : "var(--border)",
+              display: "inline-block",
+            }}
+          />
+          <span
+            style={{
+              fontSize: 11,
+              color: provider.configured ? "var(--success)" : "var(--text-dim)",
+            }}
+          >
             {provider.configured ? "configured" : "not configured"}
           </span>
         </div>
@@ -83,7 +105,9 @@ export function ApiKeyDetail({ provider, onRefresh }: { provider: ApiKeyProvider
           <SecretTextInput
             value={apiKey}
             onChange={setApiKey}
-            onKeyDown={(e) => { if (e.key === "Enter" && apiKey.trim()) handleSave(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && apiKey.trim()) handleSave();
+            }}
             placeholder={provider.configured ? "Enter new key to replace…" : "sk-…"}
             style={{ flex: 1 }}
             autoComplete="off"
@@ -95,16 +119,34 @@ export function ApiKeyDetail({ provider, onRefresh }: { provider: ApiKeyProvider
             disabled={saving || !apiKey.trim() || savedOk}
             style={{
               padding: "6px 12px",
-              background: savedOk ? "var(--success)" : apiKey.trim() ? "var(--accent-hover)" : "var(--bg-panel)",
-              border: "none", borderRadius: 5,
-              color: (apiKey.trim() || savedOk) ? "var(--accent-on)" : "var(--text-dim)",
-              cursor: (saving || !apiKey.trim() || savedOk) ? "not-allowed" : "pointer",
-              fontSize: 12, fontWeight: 600, flexShrink: 0,
-              display: "flex", alignItems: "center", gap: 5,
+              background: savedOk
+                ? "var(--success)"
+                : apiKey.trim()
+                  ? "var(--accent-hover)"
+                  : "var(--bg-panel)",
+              border: "none",
+              borderRadius: 5,
+              color: apiKey.trim() || savedOk ? "var(--accent-on)" : "var(--text-dim)",
+              cursor: saving || !apiKey.trim() || savedOk ? "not-allowed" : "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
             }}
           >
             {savedOk && (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             )}
@@ -120,10 +162,14 @@ export function ApiKeyDetail({ provider, onRefresh }: { provider: ApiKeyProvider
           onClick={handleRemove}
           disabled={removing}
           style={{
-            alignSelf: "flex-start", padding: "5px 12px",
-            background: "none", border: "1px solid color-mix(in oklab, var(--danger), transparent 70%)",
-            borderRadius: 5, color: "var(--danger)",
-            cursor: removing ? "not-allowed" : "pointer", fontSize: 12,
+            alignSelf: "flex-start",
+            padding: "5px 12px",
+            background: "none",
+            border: "1px solid color-mix(in oklab, var(--danger), transparent 70%)",
+            borderRadius: 5,
+            color: "var(--danger)",
+            cursor: removing ? "not-allowed" : "pointer",
+            fontSize: 12,
           }}
         >
           {removing ? "Removing…" : "Disconnect"}

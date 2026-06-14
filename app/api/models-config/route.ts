@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { join, dirname } from "path";
+
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { dirname, join } from "path";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   try {
-    const body = await req.json() as Record<string, unknown>;
+    const body = (await req.json()) as Record<string, unknown>;
     writeModelsJson(body);
     // Model registry refreshes on each /api/models request (no local cache to invalidate)
     return NextResponse.json({ success: true });

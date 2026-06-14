@@ -1,5 +1,6 @@
-import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { NextResponse } from "next/server";
+
+import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 
 export const dynamic = "force-dynamic";
 
@@ -13,14 +14,20 @@ export async function GET(_req: Request, { params }: Params) {
   const status = registry.getProviderAuthStatus(provider);
   const displayName = registry.getProviderDisplayName(provider);
   const models = registry.getAll().filter((m) => m.provider === provider).length;
-  return NextResponse.json({ provider, displayName, configured: status.configured, source: status.source, models });
+  return NextResponse.json({
+    provider,
+    displayName,
+    configured: status.configured,
+    source: status.source,
+    models,
+  });
 }
 
 // POST /api/auth/api-key/[provider]  body: { apiKey: string }
 export async function POST(req: Request, { params }: Params) {
   const { provider } = await params;
   try {
-    const { apiKey } = await req.json() as { apiKey?: string };
+    const { apiKey } = (await req.json()) as { apiKey?: string };
     if (!apiKey || typeof apiKey !== "string" || !apiKey.trim()) {
       return NextResponse.json({ error: "apiKey is required" }, { status: 400 });
     }

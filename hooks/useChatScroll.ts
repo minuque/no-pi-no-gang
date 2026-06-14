@@ -74,7 +74,8 @@ export function useChatScroll({ follow = false, onAtBottomChange }: UseChatScrol
   }, [updateAtBottom]);
 
   const scheduleFollowBottom = useCallback(() => {
-    if (!followRef.current || !shouldAutoScrollRef.current || followFrameRef.current !== null) return;
+    if (!followRef.current || !shouldAutoScrollRef.current || followFrameRef.current !== null)
+      return;
 
     followFrameRef.current = requestAnimationFrame(() => {
       followFrameRef.current = null;
@@ -121,28 +122,34 @@ export function useChatScroll({ follow = false, onAtBottomChange }: UseChatScrol
     lastScrollTopRef.current = el.scrollTop;
   }, [measureAtBottom, updateAtBottom]);
 
-  const handleWheel = useCallback((event: WheelEvent) => {
-    const el = containerRef.current;
-    if (el && event.deltaY < 0 && el.scrollTop > 0) {
-      shouldAutoScrollRef.current = false;
-      updateAtBottom(false);
-    }
-  }, [updateAtBottom]);
+  const handleWheel = useCallback(
+    (event: WheelEvent) => {
+      const el = containerRef.current;
+      if (el && event.deltaY < 0 && el.scrollTop > 0) {
+        shouldAutoScrollRef.current = false;
+        updateAtBottom(false);
+      }
+    },
+    [updateAtBottom],
+  );
 
   const handleTouchStart = useCallback((event: TouchEvent) => {
     touchYRef.current = event.touches[0]?.clientY ?? null;
   }, []);
 
-  const handleTouchMove = useCallback((event: TouchEvent) => {
-    const prevY = touchYRef.current;
-    const nextY = event.touches[0]?.clientY ?? null;
-    const el = containerRef.current;
-    if (el && prevY !== null && nextY !== null && nextY > prevY && el.scrollTop > 0) {
-      shouldAutoScrollRef.current = false;
-      updateAtBottom(false);
-    }
-    touchYRef.current = nextY;
-  }, [updateAtBottom]);
+  const handleTouchMove = useCallback(
+    (event: TouchEvent) => {
+      const prevY = touchYRef.current;
+      const nextY = event.touches[0]?.clientY ?? null;
+      const el = containerRef.current;
+      if (el && prevY !== null && nextY !== null && nextY > prevY && el.scrollTop > 0) {
+        shouldAutoScrollRef.current = false;
+        updateAtBottom(false);
+      }
+      touchYRef.current = nextY;
+    },
+    [updateAtBottom],
+  );
 
   // -- Attach scroll listener --
   useEffect(() => {

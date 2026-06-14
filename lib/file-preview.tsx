@@ -1,28 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
-import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vs } from "react-syntax-highlighter/dist/cjs/styles/prism";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
-import { useTheme } from "@/hooks/useTheme";
-import { encodeFilePathForApi, getFileName } from "@/lib/file-paths";
 
+import dynamic from "next/dynamic";
+
+import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
+import bash from "react-syntax-highlighter/dist/cjs/languages/prism/bash";
+import css from "react-syntax-highlighter/dist/cjs/languages/prism/css";
+import go from "react-syntax-highlighter/dist/cjs/languages/prism/go";
+import java from "react-syntax-highlighter/dist/cjs/languages/prism/java";
+import javascript from "react-syntax-highlighter/dist/cjs/languages/prism/javascript";
+import json from "react-syntax-highlighter/dist/cjs/languages/prism/json";
+import markdown from "react-syntax-highlighter/dist/cjs/languages/prism/markdown";
+import markup from "react-syntax-highlighter/dist/cjs/languages/prism/markup";
+import python from "react-syntax-highlighter/dist/cjs/languages/prism/python";
+import rust from "react-syntax-highlighter/dist/cjs/languages/prism/rust";
+import sql from "react-syntax-highlighter/dist/cjs/languages/prism/sql";
 /* register the most common code-block languages to avoid loading all ~200 */
 import tsx from "react-syntax-highlighter/dist/cjs/languages/prism/tsx";
 import typescript from "react-syntax-highlighter/dist/cjs/languages/prism/typescript";
-import javascript from "react-syntax-highlighter/dist/cjs/languages/prism/javascript";
-import python from "react-syntax-highlighter/dist/cjs/languages/prism/python";
-import bash from "react-syntax-highlighter/dist/cjs/languages/prism/bash";
-import json from "react-syntax-highlighter/dist/cjs/languages/prism/json";
-import css from "react-syntax-highlighter/dist/cjs/languages/prism/css";
-import markup from "react-syntax-highlighter/dist/cjs/languages/prism/markup";
-import sql from "react-syntax-highlighter/dist/cjs/languages/prism/sql";
 import yaml from "react-syntax-highlighter/dist/cjs/languages/prism/yaml";
-import go from "react-syntax-highlighter/dist/cjs/languages/prism/go";
-import rust from "react-syntax-highlighter/dist/cjs/languages/prism/rust";
-import java from "react-syntax-highlighter/dist/cjs/languages/prism/java";
-import markdown from "react-syntax-highlighter/dist/cjs/languages/prism/markdown";
+import { vs } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
+
+import { useTheme } from "@/hooks/useTheme";
+import { encodeFilePathForApi, getFileName } from "@/lib/file-paths";
 
 SyntaxHighlighter.registerLanguage("tsx", tsx);
 SyntaxHighlighter.registerLanguage("typescript", typescript);
@@ -40,12 +42,26 @@ SyntaxHighlighter.registerLanguage("java", java);
 SyntaxHighlighter.registerLanguage("markdown", markdown);
 
 /* lazy-load react-markdown only when previewing a .md file */
-const MarkdownRenderer = dynamic(() => import("./markdown-renderer").then((m) => m.MarkdownRenderer), { ssr: false });
+const MarkdownRenderer = dynamic(
+  () => import("./markdown-renderer").then((m) => m.MarkdownRenderer),
+  { ssr: false },
+);
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif"]);
-const AUDIO_EXTS = new Set(["mp3", "wav", "ogg", "oga", "opus", "m4a", "aac", "flac", "weba", "webm"]);
+const AUDIO_EXTS = new Set([
+  "mp3",
+  "wav",
+  "ogg",
+  "oga",
+  "opus",
+  "m4a",
+  "aac",
+  "flac",
+  "weba",
+  "webm",
+]);
 const DOCUMENT_PREVIEW_EXTS = new Set(["pdf", "docx"]);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

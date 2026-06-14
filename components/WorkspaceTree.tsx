@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { getFileIcon, FolderIcon } from "./FileIcons";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { encodeFilePathForApi, getRelativeFilePath, joinFilePath } from "@/lib/file-paths";
+
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
+import { FolderIcon, getFileIcon } from "./FileIcons";
 
 // ── Shared types (mirrored from FileExplorer) ─────────────────────────────
 
@@ -75,15 +77,9 @@ function TreeNode({
   const [loading, setLoading] = useState(false);
   const [hovered, setHovered] = useState(false);
 
-  const relativePath = useMemo(
-    () => getRelativeFilePath(node.fullPath, cwd),
-    [node.fullPath, cwd],
-  );
+  const relativePath = useMemo(() => getRelativeFilePath(node.fullPath, cwd), [node.fullPath, cwd]);
 
-  const absolutePath = useMemo(
-    () => getAbsolutePath(relativePath, cwd),
-    [relativePath, cwd],
-  );
+  const absolutePath = useMemo(() => getAbsolutePath(relativePath, cwd), [relativePath, cwd]);
 
   const loadChildren = useCallback(
     async (force = false) => {
@@ -174,11 +170,7 @@ function TreeNode({
         )}
         {!node.isDir && <span style={{ width: 10, flexShrink: 0 }} />}
         <span style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
-          {node.isDir ? (
-            <FolderIcon size={14} open={open} />
-          ) : (
-            getFileIcon(node.name, 14)
-          )}
+          {node.isDir ? <FolderIcon size={14} open={open} /> : getFileIcon(node.name, 14)}
         </span>
         <span
           style={{
@@ -356,16 +348,21 @@ export function WorkspaceTree({ cwd, onSelectFile, onAddToChat, refreshKey }: Pr
     setContextMenu({ point: { x: e.clientX, y: e.clientY }, node });
   }, []);
 
-  const handleContainerContextMenu = useCallback((e: React.MouseEvent) => {
-    // Only if clicking the root container (blank area), not a tree node
-    if (e.target === e.currentTarget) {
-      e.preventDefault();
-      setContextMenu(null);
-      // Trigger a refresh
-      // The refreshKey prop is passed in; we reload root entries
-      fetchEntries(cwd).then((entries) => setRoots(entries)).catch(() => {});
-    }
-  }, [cwd]);
+  const handleContainerContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      // Only if clicking the root container (blank area), not a tree node
+      if (e.target === e.currentTarget) {
+        e.preventDefault();
+        setContextMenu(null);
+        // Trigger a refresh
+        // The refreshKey prop is passed in; we reload root entries
+        fetchEntries(cwd)
+          .then((entries) => setRoots(entries))
+          .catch(() => {});
+      }
+    },
+    [cwd],
+  );
 
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
 
@@ -412,7 +409,10 @@ export function WorkspaceTree({ cwd, onSelectFile, onAddToChat, refreshKey }: Pr
   const flatEntries = useMemo(() => {
     if (!searchQuery.trim()) return null;
 
-    function flatten(nodes: FileNode[], parentPath: string): Array<{ path: string; node: FileNode }> {
+    function flatten(
+      nodes: FileNode[],
+      parentPath: string,
+    ): Array<{ path: string; node: FileNode }> {
       const result: Array<{ path: string; node: FileNode }> = [];
       for (const n of nodes) {
         const fullPath = parentPath ? joinFilePath(parentPath, n.name) : n.name;
@@ -440,11 +440,7 @@ export function WorkspaceTree({ cwd, onSelectFile, onAddToChat, refreshKey }: Pr
   }
 
   if (error) {
-    return (
-      <div style={{ padding: "8px 12px", fontSize: 11, color: "var(--danger)" }}>
-        {error}
-      </div>
-    );
+    return <div style={{ padding: "8px 12px", fontSize: 11, color: "var(--danger)" }}>{error}</div>;
   }
 
   return (

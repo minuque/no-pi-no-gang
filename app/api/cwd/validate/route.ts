@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { statSync, type Stats } from "fs";
+
+import { type Stats, statSync } from "fs";
 import { homedir } from "os";
 import { isAbsolute, resolve } from "path";
 
@@ -13,7 +14,7 @@ function normalizeCwd(cwd: string): string {
 // Validates a candidate workspace before the UI selects it.
 export async function POST(req: Request) {
   try {
-    const body = await req.json() as { cwd?: unknown };
+    const body = (await req.json()) as { cwd?: unknown };
     const cwd = typeof body.cwd === "string" ? body.cwd.trim() : "";
 
     if (!cwd) {

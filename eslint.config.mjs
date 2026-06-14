@@ -1,5 +1,6 @@
 import coreWebVitals from "eslint-config-next/core-web-vitals";
 import typescript from "eslint-config-next/typescript";
+import eslintConfigPrettier from "eslint-config-prettier";
 
 const eslintConfig = [
   { ignores: [".claude/**"] },
@@ -12,6 +13,7 @@ const eslintConfig = [
       "react-hooks/set-state-in-effect": "off",
     },
   },
+  eslintConfigPrettier,
 ];
 
 export default eslintConfig;
