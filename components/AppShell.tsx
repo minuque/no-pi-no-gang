@@ -4,6 +4,8 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "sonner";
+import NProgress from "nprogress";
+import "nprogress/nprogress.css";
 import { SessionSidebar } from "./SessionSidebar";
 import { useTheme } from "@/hooks/useTheme";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
@@ -106,6 +108,19 @@ export function AppShell() {
   const [contextUsage, setContextUsage] = useState<{ percent: number | null; contextWindow: number; tokens: number | null } | null>(null);
   const handleContextUsageChange = useCallback((usage: { percent: number | null; contextWindow: number; tokens: number | null } | null) => {
     setContextUsage(usage);
+  }, []);
+
+  // NProgress — global top loading bar driven by ChatWindow loading state
+  useEffect(() => {
+    NProgress.configure({ showSpinner: false, speed: 400, trickleSpeed: 200, minimum: 0.08 });
+  }, []);
+
+  const handleChatLoadingChange = useCallback((loading: boolean) => {
+    if (loading) {
+      NProgress.start();
+    } else {
+      NProgress.done();
+    }
   }, []);
 
   // Single active panel — only one dropdown open at a time
@@ -690,6 +705,7 @@ export function AppShell() {
             onSystemPromptChange={handleSystemPromptChange}
             onSessionStatsChange={handleSessionStatsChange}
             onContextUsageChange={handleContextUsageChange}
+            onLoadingChange={handleChatLoadingChange}
             recentCwds={recentCwds}
             homeDir={homeDir}
             onCwdSelect={handleCwdChange}

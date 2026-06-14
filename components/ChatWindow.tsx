@@ -24,6 +24,7 @@ interface Props {
   onSystemPromptChange?: (prompt: string | null) => void;
   onSessionStatsChange?: (stats: { tokens: { input: number; output: number; cacheRead: number; cacheWrite: number }; cost?: number } | null) => void;
   onContextUsageChange?: (usage: { percent: number | null; contextWindow: number; tokens: number | null } | null) => void;
+  onLoadingChange?: (loading: boolean) => void;
   recentCwds?: string[];
   homeDir?: string;
   onCwdSelect?: (cwd: string) => void;
@@ -123,7 +124,7 @@ function Typewriter({ phrases }: { phrases: string[] }) {
   );
 }
 
-export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onStreamingChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, recentCwds, homeDir = "", onCwdSelect, onCwdDefault }: Props) {
+export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onStreamingChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, onLoadingChange, recentCwds, homeDir = "", onCwdSelect, onCwdDefault }: Props) {
   const {
     data, loading, error, messages, entryIds, streamState, commands,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
@@ -163,6 +164,11 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
     onContextUsageChange?.(contextUsageRef.current);
   }, [ctxKey, onContextUsageChange]);
   useEffect(() => () => { onContextUsageChange?.(null); }, [onContextUsageChange]);
+
+  useEffect(() => {
+    onLoadingChange?.(loading);
+  }, [loading, onLoadingChange]);
+  useEffect(() => () => { onLoadingChange?.(false); }, [onLoadingChange]);
 
   useEffect(() => {
     onStreamingChange?.(agentRunning);
