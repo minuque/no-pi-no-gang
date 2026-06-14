@@ -159,9 +159,18 @@ bin/                # npm CLI 启动入口
 | `node_modules/.bin/tsc --noEmit` | 类型检查 |
 | `node node_modules/next/dist/bin/next lint` | Next lint |
 | `bun run lint` | ESLint 全仓检查 |
+| `bun run build` | 生产构建（Turbopack） |
 | `bun run start` | 启动已构建产物，端口 `7777` |
 
-注意：开发期间不要运行 `bun run build` 或 `next build`，避免污染 `.next/` 影响开发服务。
+### 验收标准
+
+提交前必须通过：
+
+```bash
+bun run build && bun run start
+```
+
+构建成功且服务可正常访问即为通过。开发期间避免频繁构建，优先用 `bun run dev`。
 
 ## 相关文档
 
@@ -172,7 +181,13 @@ bin/                # npm CLI 启动入口
 
 ## 贡献与验证
 
-提交变更前至少执行与改动范围匹配的验证：
+提交前必须通过验收标准：
+
+```bash
+bun run build && bun run start
+```
+
+变更相关验证：
 
 ```bash
 node_modules/.bin/tsc --noEmit

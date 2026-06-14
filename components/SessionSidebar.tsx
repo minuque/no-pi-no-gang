@@ -214,7 +214,7 @@ function PiAgentTitle() {
   return (
     <img
       src={isDark ? "/pi-logo-on-dark.svg" : "/pi-logo-on-light.svg"}
-      alt="Pi Agent Web"
+      alt="No Pi No Gang"
       width={22} height={22} style={{ opacity: 0.85 }}
     />
   );

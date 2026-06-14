@@ -519,7 +519,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
               <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1, lineHeight: 1.4 }}>
                 <img
                   src={isDark ? "/pi-logo-on-dark.svg" : "/pi-logo-on-light.svg"}
-                  alt="Pi Agent Web"
+                  alt="No Pi No Gang"
                   width={28} height={28}
                 />
                 <span style={{ fontSize: 14, minWidth: 0, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>

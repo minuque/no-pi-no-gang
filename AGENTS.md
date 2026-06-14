@@ -5,10 +5,19 @@
 ```bash
 bun run dev   # 端口 7777
 ```
-**开发期间切勿运行 `next build`**——会污染 `.next/` 目录并导致 `npm run dev` 崩坏。
 
 类型检查：`node_modules/.bin/tsc --noEmit`
 代码检查：`node node_modules/next/dist/bin/next lint`
+
+### 验收标准
+
+提交前必须通过：
+
+```bash
+bun run build && bun run start
+```
+
+构建成功且服务可正常访问即为通过。开发期间优先用 `bun run dev`，避免频繁构建。
 
 ---
 
