@@ -543,6 +543,7 @@ export function AppShell() {
           <button
             onClick={() => setSidebarOpen((v) => !v)}
             title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
             style={{
               display: "flex", alignItems: "center", justifyContent: "center",
               width: 36, height: 36, padding: 0,
@@ -629,6 +630,7 @@ export function AppShell() {
             <button
               onClick={() => setWorkspacePanelOpen((v) => !v)}
               title={workspacePanelOpen ? "Close workspace panel" : "Open workspace panel"}
+              aria-label={workspacePanelOpen ? "Close workspace panel" : "Open workspace panel"}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center",
                 width: 36, height: 36, padding: 0,

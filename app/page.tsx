@@ -28,29 +28,14 @@ function SsrFallback() {
         background: "#111113",
       }}
     >
-      <svg
-        width="32"
-        height="32"
-        viewBox="0 0 32 32"
-        fill="none"
-        style={{ animation: "session-load-spin 1.2s linear infinite" }}
-      >
-        <circle
-          cx="16" cy="16" r="13"
-          stroke="#333"
-          strokeWidth="3"
-          fill="none"
-        />
-        <circle
-          cx="16" cy="16" r="13"
-          stroke="#7c8aff"
-          strokeWidth="3"
-          fill="none"
-          strokeDasharray="81.7"
-          strokeDashoffset="61.3"
-          strokeLinecap="round"
-        />
-      </svg>
+      {/* Large logo acts as LCP element — loaded from HTML, no JS needed */}
+      <img
+        src="/pi-logo-on-dark.svg"
+        alt="Pi Agent"
+        width={48}
+        height={48}
+        style={{ opacity: 0.9 }}
+      />
       <span style={{ color: "#555", fontSize: 13, letterSpacing: "0.03em" }}>
         Pi Agent
       </span>

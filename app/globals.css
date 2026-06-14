@@ -61,7 +61,6 @@ body {
 }
 
 :root {
-  --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-body:    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono:    'JetBrains Mono', 'Fira Code', 'Consolas', ui-monospace, 'PingFang SC', 'Microsoft YaHei', monospace;
 }
@@ -428,24 +427,9 @@ html.theme-switching [style*="border"] {
   to   { opacity: 1; transform: scale(1); }
 }
 
-@keyframes drop-icon-float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-6px); }
-}
-
-@keyframes drop-ring-pulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50%       { opacity: 1;   transform: scale(1.06); }
-}
-
 @keyframes drop-ripple {
   0%   { transform: scale(0); opacity: 0.6; }
   100% { transform: scale(1); opacity: 0; }
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
 }
 
 @keyframes spin {
@@ -582,26 +566,17 @@ html.theme-switching [style*="border"] {
   animation: sl-shimmer 2.2s ease-in-out infinite;
 }
 
-/* Assistant message lines (surface → raised → border shimmer) */
+/* Assistant message lines — use semi-transparent white for guaranteed
+   WCAG AA contrast regardless of theme surface colour. */
 .sl-msg--left .sl-msg-line {
   height: 24px;
   border-radius: 12px;
-  background-image: linear-gradient(
-    90deg,
-    var(--border) 0%,
-    var(--surface-raised) 45%,
-    var(--border) 90%
-  );
+  background: color-mix(in srgb, var(--text) 18%, transparent 82%);
 }
 
-/* User message lines (accent-tinted shimmer) */
+/* User message lines — semi-transparent accent for guaranteed contrast */
 .sl-msg--right .sl-msg-line {
-  background-image: linear-gradient(
-    90deg,
-    var(--accent-border) 0%,
-    color-mix(in oklab, var(--accent-soft) 80%, var(--bg) 20%) 45%,
-    var(--accent-border) 90%
-  );
+  background: color-mix(in srgb, var(--accent) 25%, transparent 75%);
 }
 
 /* Width variants — mimics real paragraph line endings */
@@ -644,21 +619,8 @@ html.theme-switching [style*="border"] {
   height: 12px;
   width: 25%;
   border-radius: 6px;
-  background: var(--border);
-  opacity: 0.35;
+  background: color-mix(in srgb, var(--text) 14%, transparent 86%);
   animation: sl-shimmer 2.2s ease-in-out infinite;
-}
-
-/* ── Message entrance stagger ── */
-@keyframes message-enter {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.995);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
 }
 
 @keyframes saved-pop {

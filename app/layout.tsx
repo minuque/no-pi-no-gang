@@ -1,16 +1,67 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "@fontsource/jetbrains-mono/400.css";
 import "@fontsource/jetbrains-mono/400-italic.css";
-import "@fontsource/jetbrains-mono/500.css";
 import "@fontsource/jetbrains-mono/600.css";
-import "@fontsource/jetbrains-mono/600-italic.css";
 import "@fontsource/jetbrains-mono/700.css";
-import "@fontsource/jetbrains-mono/700-italic.css";
 import "./globals.css";
 
+const APP_NAME = "Pi Agent";
+const APP_DESCRIPTION = "Pi Coding Agent — interactive chat, code analysis, and automated development tasks.";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#111113" },
+    { media: "(prefers-color-scheme: light)", color: "#f8f8fa" },
+  ],
+  colorScheme: "dark light",
+};
+
 export const metadata: Metadata = {
-  title: "no-pi-no-gang",
-  description: "Pi Coding Agent Web Interface",
+  title: {
+    default: APP_NAME,
+    template: `%s | ${APP_NAME}`,
+  },
+  description: APP_DESCRIPTION,
+  applicationName: APP_NAME,
+  manifest: "/manifest.json",
+  keywords: ["pi coding agent", "AI coding", "coding assistant", "code analysis"],
+  authors: [{ name: "no-pi-no-gang" }],
+  creator: "no-pi-no-gang",
+  referrer: "origin-when-cross-origin",
+  formatDetection: {
+    telephone: false,
+    email: false,
+    address: false,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  openGraph: {
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+    url: process.env.NEXT_PUBLIC_APP_URL || "https://no-pi-no-gang.vercel.app",
+    siteName: APP_NAME,
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+  },
+  icons: {
+    icon: { url: "/favicon.ico", type: "image/x-icon" },
+  },
 };
 
 export default function RootLayout({
@@ -29,9 +80,9 @@ export default function RootLayout({
       </head>
       <body style={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
         <a href="#main" className="skip-link">Skip to main content</a>
-        <div id="main" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <main id="main" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           {children}
-        </div>
+        </main>
       </body>
     </html>
   );

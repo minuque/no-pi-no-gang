@@ -1,0 +1,16 @@
+{
+  "name": "Pi Agent Web",
+  "short_name": "Pi Agent",
+  "description": "Pi Coding Agent Web Interface",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111113",
+  "theme_color": "#7c8aff",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

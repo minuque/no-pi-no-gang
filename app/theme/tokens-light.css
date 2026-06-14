@@ -121,7 +121,6 @@ html.light {
    *
    * 亮底不需要改字体 — 同一套栈在亮/暗下表现都稳定。
    * ════════════════════════════════════════════════════════════════════ */
-  --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', "Cascadia Code", Consolas, "Courier New", monospace;
 

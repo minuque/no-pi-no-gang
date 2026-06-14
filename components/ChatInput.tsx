@@ -733,6 +733,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 isStreaming ? "Agent is running…"
                   : "Describe a task or ask a question"
               }
+              aria-label="Chat message input"
               rows={1}
               style={{
                 flex: 1,

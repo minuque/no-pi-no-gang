@@ -215,7 +215,7 @@ function PiAgentTitle() {
     <img
       src={isDark ? "/pi-logo-on-dark.svg" : "/pi-logo-on-light.svg"}
       alt="Pi Agent Web"
-      style={{ height: 22, width: "auto", opacity: 0.85 }}
+      width={22} height={22} style={{ opacity: 0.85 }}
     />
   );
 }
@@ -634,7 +634,7 @@ function CwdGroupSection({
           }}>
             <span>{group.sessions.length} session{group.sessions.length !== 1 ? "s" : ""}</span>
             {group.modified && (
-              <span title={group.modified} style={{ opacity: 0.55 }}>
+              <span title={group.modified}>
                 {formatRelativeTime(group.modified)}
               </span>
             )}
@@ -1005,18 +1005,18 @@ function SessionItem({
                 color: "var(--text-dim)", fontSize: 10.5,
                 fontFamily: "var(--font-mono)", lineHeight: "16px",
                 flexShrink: 0,
-                opacity: isFork ? 0.7 : 0.5,
+                opacity: isFork ? 0.85 : 0.65,
               }}>
                 {isFork ? "fork" : "root"}
               </span>
-              <span title={session.modified} style={{ opacity: 0.55 }}>
+              <span title={session.modified}>
                 {formatRelativeTime(session.modified)}
               </span>
-              <span style={{ opacity: 0.5 }}>
+              <span>
                 {session.messageCount} msg{session.messageCount !== 1 ? "s" : ""}
               </span>
               {branchCount > 0 && (
-                <span style={{ opacity: 0.58 }}>
+                <span>
                   {branchCount} branch{branchCount !== 1 ? "es" : ""}
                 </span>
               )}

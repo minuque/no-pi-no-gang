@@ -1,13 +1,46 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import dynamic from "next/dynamic";
+import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vs } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { useTheme } from "@/hooks/useTheme";
 import { encodeFilePathForApi, getFileName } from "@/lib/file-paths";
+
+/* register the most common code-block languages to avoid loading all ~200 */
+import tsx from "react-syntax-highlighter/dist/cjs/languages/prism/tsx";
+import typescript from "react-syntax-highlighter/dist/cjs/languages/prism/typescript";
+import javascript from "react-syntax-highlighter/dist/cjs/languages/prism/javascript";
+import python from "react-syntax-highlighter/dist/cjs/languages/prism/python";
+import bash from "react-syntax-highlighter/dist/cjs/languages/prism/bash";
+import json from "react-syntax-highlighter/dist/cjs/languages/prism/json";
+import css from "react-syntax-highlighter/dist/cjs/languages/prism/css";
+import markup from "react-syntax-highlighter/dist/cjs/languages/prism/markup";
+import sql from "react-syntax-highlighter/dist/cjs/languages/prism/sql";
+import yaml from "react-syntax-highlighter/dist/cjs/languages/prism/yaml";
+import go from "react-syntax-highlighter/dist/cjs/languages/prism/go";
+import rust from "react-syntax-highlighter/dist/cjs/languages/prism/rust";
+import java from "react-syntax-highlighter/dist/cjs/languages/prism/java";
+import markdown from "react-syntax-highlighter/dist/cjs/languages/prism/markdown";
+
+SyntaxHighlighter.registerLanguage("tsx", tsx);
+SyntaxHighlighter.registerLanguage("typescript", typescript);
+SyntaxHighlighter.registerLanguage("javascript", javascript);
+SyntaxHighlighter.registerLanguage("python", python);
+SyntaxHighlighter.registerLanguage("bash", bash);
+SyntaxHighlighter.registerLanguage("json", json);
+SyntaxHighlighter.registerLanguage("css", css);
+SyntaxHighlighter.registerLanguage("html", markup);
+SyntaxHighlighter.registerLanguage("sql", sql);
+SyntaxHighlighter.registerLanguage("yaml", yaml);
+SyntaxHighlighter.registerLanguage("go", go);
+SyntaxHighlighter.registerLanguage("rust", rust);
+SyntaxHighlighter.registerLanguage("java", java);
+SyntaxHighlighter.registerLanguage("markdown", markdown);
+
+/* lazy-load react-markdown only when previewing a .md file */
+const MarkdownRenderer = dynamic(() => import("./markdown-renderer").then((m) => m.MarkdownRenderer), { ssr: false });
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -238,14 +271,7 @@ function TextContent({ filePath, isDark }: { filePath: string; isDark: boolean }
   }
 
   if (isMarkdown) {
-    return (
-      <div
-        className="markdown-body markdown-file-preview"
-        style={{ padding: "24px 32px", maxWidth: 800 }}
-      >
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{data.content}</ReactMarkdown>
-      </div>
-    );
+    return <MarkdownRenderer content={data.content} />;
   }
 
   return (
