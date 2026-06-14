@@ -122,6 +122,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   // session and no cwd, the UI must still render ChatInput so they can pick a
   // project — loading=true would block it with a spinner forever.
   const [loading, setLoading] = useState(session !== null);
+  const [branchLoading, setBranchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
@@ -268,17 +269,32 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   );
 
   const loadContext = useCallback(async (sid: string, leafId: string | null) => {
+    const gen = loadGenRef.current;
+    const started = performance.now();
+    setBranchLoading(true);
     try {
       const url = leafId
         ? `/api/sessions/${encodeURIComponent(sid)}/context?leafId=${encodeURIComponent(leafId)}`
         : `/api/sessions/${encodeURIComponent(sid)}/context`;
       const res = await fetch(url);
+      // Discard stale responses from rapid branch switches
+      if (loadGenRef.current !== gen) return;
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = (await res.json()) as { context: { messages: AgentMessage[]; entryIds: string[] } };
+      if (loadGenRef.current !== gen) return;
       setMessages(mergeToolCallMessages(d.context.messages));
       setEntryIds(d.context.entryIds ?? []);
     } catch (e) {
       console.error("Failed to load context:", e);
+    } finally {
+      if (loadGenRef.current !== gen) return;
+      const elapsed = performance.now() - started;
+      const minDelay = Math.max(0, 500 - elapsed);
+      if (minDelay > 0) {
+        setTimeout(() => setBranchLoading(false), minDelay);
+      } else {
+        setBranchLoading(false);
+      }
     }
   }, []);
 
@@ -767,6 +783,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     async (entryId: string) => {
       const sid = sessionIdRef.current;
       if (!sid) return;
+      loadGenRef.current += 1;
       sendAgentCommand(sid, { type: "navigate_tree", targetId: entryId }).catch(() => {});
       setActiveLeafId(entryId);
       await loadContext(sid, entryId);
@@ -779,6 +796,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setActiveLeafId(leafId);
       const sid = sessionIdRef.current;
       if (!sid) return;
+      loadGenRef.current += 1;
       await loadContext(sid, leafId);
       if (leafId) {
         sendAgentCommand(sid, { type: "navigate_tree", targetId: leafId }).catch(() => {});
@@ -996,6 +1014,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // State
     data,
     loading,
+    branchLoading,
     error,
     activeLeafId,
     messages,

@@ -5,7 +5,7 @@ import { useCallback, useSyncExternalStore } from "react";
 // View Transitions API isn't in TypeScript DOM types yet.
 declare global {
   interface Document {
-    startViewTransition?(cb: () => void): { finished: Promise<void> };
+    startViewTransition(cb: () => void): { finished: Promise<void> };
   }
 }
 

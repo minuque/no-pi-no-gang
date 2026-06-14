@@ -165,6 +165,7 @@ export function ChatWindow({
   const {
     data,
     loading,
+    branchLoading,
     error,
     messages,
     entryIds,
@@ -911,6 +912,44 @@ export function ChatWindow({
           </div>
 
           {chatInputElement}
+
+          {/* Branch-switch loading overlay */}
+          {branchLoading && !loading && !showWelcome && (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                zIndex: 20,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "color-mix(in oklab, var(--bg), transparent 15%)",
+                backdropFilter: "blur(1px)",
+                animation: "fade-in 0.15s ease both",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    border: "2.5px solid var(--border)",
+                    borderTopColor: "var(--accent)",
+                    animation: "spin 0.7s linear infinite",
+                  }}
+                />
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Loading branch…</span>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
