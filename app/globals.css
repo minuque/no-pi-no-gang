@@ -22,21 +22,6 @@
   --font-mono-font: var(--font-mono);
 }
 
-/* Theme toggle: circular wipe via View Transitions API.
-   Disable the UA cross-fade; the actual clip-path animation is driven by
-   Element.animate() in hooks/useTheme.ts after transition.ready resolves. */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-::view-transition-old(root) {
-  z-index: 1;
-}
-::view-transition-new(root) {
-  z-index: 2;
-}
-
 * {
   box-sizing: border-box;
 }
@@ -53,7 +38,6 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
-  scrollbar-gutter: stable;
   scrollbar-width: thin;
 }
 
@@ -394,6 +378,27 @@ span.linenumber {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
   border-radius: 3px;
+}
+
+/* ── Theme switching — smooth colour adoption ──
+ *
+ * Applied briefly during light↔dark toggle.  Gives inline-styled elements
+ * (most of this app) a brief transition so the new theme settles in gently
+ * instead of snapping.  Matches the 280–300ms dissolve/reveal window. */
+html.theme-switching,
+html.theme-switching body,
+html.theme-switching [style*="background"],
+html.theme-switching [style*="color"],
+html.theme-switching [style*="border"] {
+  transition: background-color 250ms ease, color 250ms ease, border-color 250ms ease, box-shadow 250ms ease, opacity 250ms ease;
+}
+
+/* View Transitions API — override the default 250ms linear crossfade
+   with a smoother, slightly faster curve that feels snappy but not jarring. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Skip-to-content — visually hidden until focused */
