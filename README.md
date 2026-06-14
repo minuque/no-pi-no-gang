@@ -1,13 +1,3 @@
----
-title: no-pi-no-gang
-description: pi.dev WebUI — 浏览器中的完整会话体验
-tags:
-  - pi
-  - nextjs
-  - ai-agent
-  - webui
----
-
 # no-pi-no-gang
 
 <p align="center">
@@ -15,7 +5,7 @@ tags:
 </p>
 
 <p align="center">
-  <strong><a href="https://github.com/badlogic/pi-mono">pi.dev</a> WebUI</strong>
+  <strong><a href="https://github.com/badlogic/pi-mono">pi.dev</a></strong>
 </p>
 
 <p align="center">
