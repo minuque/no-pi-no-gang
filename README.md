@@ -103,9 +103,9 @@ no-pi-no-gang 复用 pi 智能体的本地数据目录：
 
 no-pi-no-gang 是 pi 智能体的 Web 外壳：浏览器负责交互，Next.js API 负责读取本地数据和转发命令，真正的智能体运行在进程内 `AgentSession`，历史事实落在 `~/.pi/agent/`。
 
-![架构总览](docs/architecture.svg)
+![架构总览](docs/architecture.svg) 
 
-> 交互式版本（含 PNG/PDF 导出）：[docs/architecture.html](docs/architecture.html)
+> 交互式版本 by `architecture-diagram`：[docs/architecture.html](docs/architecture.html)
 
 ### 三条主链路
 

@@ -20,6 +20,7 @@ interface Props {
   modelsRefreshKey?: number;
   chatInputRef?: React.RefObject<ChatInputHandle | null>;
   onBranchDataChange?: (tree: SessionTreeNode[], activeLeafId: string | null, onLeafChange: (leafId: string | null) => void) => void;
+  onStreamingChange?: (isStreaming: boolean) => void;
   onSystemPromptChange?: (prompt: string | null) => void;
   onSessionStatsChange?: (stats: { tokens: { input: number; output: number; cacheRead: number; cacheWrite: number }; cost?: number } | null) => void;
   onContextUsageChange?: (usage: { percent: number | null; contextWindow: number; tokens: number | null } | null) => void;
@@ -122,7 +123,7 @@ function Typewriter({ phrases }: { phrases: string[] }) {
   );
 }
 
-export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, recentCwds, homeDir = "", onCwdSelect, onCwdDefault }: Props) {
+export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onStreamingChange, onSystemPromptChange, onSessionStatsChange, onContextUsageChange, recentCwds, homeDir = "", onCwdSelect, onCwdDefault }: Props) {
   const {
     data, loading, error, messages, entryIds, streamState, commands,
     agentRunning, modelNames, modelList, modelThinkingLevels, modelThinkingLevelMaps, toolPreset, thinkingLevel,
@@ -163,6 +164,11 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
   }, [ctxKey, onContextUsageChange]);
   useEffect(() => () => { onContextUsageChange?.(null); }, [onContextUsageChange]);
 
+  useEffect(() => {
+    onStreamingChange?.(agentRunning);
+  }, [agentRunning, onStreamingChange]);
+  useEffect(() => () => { onStreamingChange?.(false); }, [onStreamingChange]);
+
   const onDrop = useCallback((files: File[]) => {
     chatInputRef?.current?.addImages(files);
   }, [chatInputRef]);
@@ -202,24 +208,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
 
   const cwd = session?.cwd ?? newSessionCwd;
   const projectName = cwd ? cwd.split(/[/\\]/).pop() : undefined;
-
-  const branchOptions = useMemo(() => {
-    const options: { id: string; label: string }[] = [];
-    const tree = data?.tree;
-    if (!tree) return options;
-    function walk(nodes: SessionTreeNode[]) {
-      for (const node of nodes) {
-        if (node.children.length > 1) {
-          for (const child of node.children) {
-            if (child.label) options.push({ id: child.entry.id, label: child.label });
-          }
-        }
-        walk(node.children);
-      }
-    }
-    walk(tree);
-    return options;
-  }, [data?.tree]);
 
   const activeBranch = useMemo(() => {
     const tree = data?.tree;
@@ -437,9 +425,6 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
       commands={commands}
       contextUsage={contextUsage}
       currentProject={projectName}
-      activeBranch={activeBranch}
-      branchOptions={branchOptions}
-      onBranchChange={handleNavigate}
       recentCwds={recentCwds}
       homeDir={homeDir}
       onCwdSelect={onCwdSelect}
@@ -521,7 +506,7 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                 justifyContent: "space-between",
                 gap: 12,
                 marginLeft: 16,
-                marginRight: 52,
+                marginRight: 24,
                 fontFamily: "var(--font-mono)",
               }}
             >

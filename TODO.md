@@ -88,11 +88,28 @@
 
 AI 可执行粒度：
 
+- [x] 确认左侧分支整合方案：第一版按 `cwd -> session -> branch` 组织，Fork 子会话是主层级，同文件 leaf branch 只显示在当前选中 session 下。
+- [x] 将顶部 BranchNavigator 和 ChatInput 分支下拉移入左侧 SessionSidebar，顶部不再保留第二个分支入口。
 - [ ] 给会话节点补齐 `parentSession`、`cwd`、`updatedAt`、`model`、`orphaned`、`isStreaming`、`hasCompaction` 的最小可用字段。
 - [ ] 复用 `buildSessionTree()` 做默认父子树展示，并加“当前 cwd / 按 cwd 分组 / 全部”视角切换。
 - [ ] Fork 按钮、Fork 结果提示、子会话节点文案统一说明“新 `.jsonl` 会话文件”。
 - [ ] BranchNavigator 文案统一说明“同一 `.jsonl` 内分支路径”。
 - [ ] 消息锚点显示 `entryId`、当前 leaf/branch、是否在当前路径上。
+
+已确认的左侧分支 UI 规则：
+
+- 一级结构固定为 `cwd -> session -> branch`。
+- `session` 树表达文件级 Fork：使用 `parentSessionId` / `buildSessionTree()` 组织父子会话。
+- 当前选中 session 下才显示同文件 leaf branch；其他 session 不批量读取详情、不显示 leaf。
+- leaf branch 只显示分叉后的可选路径；线性消息链必须压缩，不能逐条消息渲染成重复 branch 节点。
+- 默认全折叠；打开或刷新当前 session 时，自动展开当前 session 的祖先链。
+- 点击 session 行主体切换 session；点击 chevron 只展开/折叠；点击 leaf 行只切换 leaf，不 remount session。
+- streaming 中禁用 leaf 切换，避免 `navigate_tree` 与正在生成的上下文串线。
+- 无 fork、无 leaf 分支的 session 只显示普通 session 行，不显示空 branch 容器。
+- 不显示 fork 数量或 branch 数量 badge，保持左侧简洁。
+- 当前选中 session 的元信息行显示新增 branch 数，不包含原始路径。
+- leaf 行文案只显示现有 label，不附加短 id、时间或摘要。
+- 第一版只改前端 UI，不改 API、存储或 `.jsonl` 结构。
 
 验收：
 

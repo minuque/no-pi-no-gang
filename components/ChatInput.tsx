@@ -30,9 +30,6 @@ interface Props {
   contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null;
   commands?: { name: string; description: string }[];
   currentProject?: string;
-  activeBranch?: string;
-  branchOptions?: { id: string; label: string }[];
-  onBranchChange?: (id: string) => void;
   recentCwds?: string[];
   homeDir?: string;
   onCwdSelect?: (cwd: string) => void;
@@ -68,9 +65,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   retryInfo,
   contextUsage, commands = [],
   currentProject,
-  activeBranch,
-  branchOptions,
-  onBranchChange,
   recentCwds = [],
   homeDir = "",
   onCwdSelect,
@@ -90,7 +84,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandFiltered, setCommandFiltered] = useState<{ name: string; description: string }[]>([]);
   const [focused, setFocused] = useState(false);
-  const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
   const [contextTooltipOpen, setContextTooltipOpen] = useState(false);
 
   // CWD picker state
@@ -111,7 +104,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const isComposingRef = useRef(false);
   const lastCompositionEndAtRef = useRef(0);
   const commandDropdownRef = useRef<HTMLDivElement>(null);
-  const branchDropdownRef = useRef<HTMLDivElement>(null);
   const sentHistoryRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
   const historyDraftRef = useRef("");
@@ -547,9 +539,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       }
       if (commandDropdownRef.current && !commandDropdownRef.current.contains(e.target as Node)) {
         setShowCommands(false);
-      }
-      if (branchDropdownRef.current && !branchDropdownRef.current.contains(e.target as Node)) {
-        setBranchDropdownOpen(false);
       }
       if (cwdDropdownRef.current && !cwdDropdownRef.current.contains(e.target as Node)) {
         setCwdDropdownOpen(false);
@@ -1053,79 +1042,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 No tools
               </span>
             )}
-
-            {/* 🌿 Branch pill */}
-            <div ref={branchDropdownRef} style={{ position: "relative" }}>
-              <button
-                onClick={() => { if (!isStreaming && branchOptions && branchOptions.length > 0) setBranchDropdownOpen(v => !v); }}
-                disabled={isStreaming}
-                title="Switch branch"
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "4px 10px", height: 28,
-                  background: branchDropdownOpen ? "var(--bg-hover)" : "none",
-                  border: "1px solid var(--border)", borderRadius: 9999,
-                  color: branchDropdownOpen ? "var(--text)" : "var(--text-muted)",
-                  cursor: isStreaming ? "not-allowed" : "pointer",
-                  fontSize: 12, fontFamily: "var(--font-body)", whiteSpace: "nowrap",
-                  opacity: isStreaming ? 0.5 : 1,
-                  transition: "background 0.12s, color 0.12s",
-                }}
-                onMouseEnter={(e) => {
-                  if (isStreaming) return;
-                  e.currentTarget.style.background = "var(--bg-hover)";
-                  e.currentTarget.style.color = "var(--text)";
-                }}
-                onMouseLeave={(e) => {
-                  if (isStreaming) return;
-                  e.currentTarget.style.background = branchDropdownOpen ? "var(--bg-hover)" : "none";
-                  e.currentTarget.style.color = "var(--text-muted)";
-                }}
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                  <line x1="6" y1="3" x2="6" y2="15" />
-                  <circle cx="18" cy="6" r="3" />
-                  <circle cx="6" cy="18" r="3" />
-                  <path d="M18 9a9 9 0 0 1-9 9" />
-                </svg>
-                {activeBranch || "main"}
-              </button>
-              {branchDropdownOpen && branchOptions && branchOptions.length > 0 && (
-                <div style={{
-                  position: "absolute", bottom: "calc(100% + 6px)", left: 0,
-                  zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
-                  borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
-                  overflow: "hidden", minWidth: 140,
-                }}>
-                  {branchOptions.map((opt) => (
-                    <button
-                      key={opt.id}
-                      onClick={() => { onBranchChange?.(opt.id); setBranchDropdownOpen(false); }}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 8,
-                        width: "100%", padding: "7px 12px",
-                        background: opt.id === activeBranch ? "var(--bg-selected)" : "none",
-                        border: "none",
-                        color: opt.id === activeBranch ? "var(--text)" : "var(--text-muted)",
-                        cursor: "pointer", fontSize: 12, textAlign: "left" as const,
-                        fontWeight: opt.id === activeBranch ? 600 : 400,
-                        whiteSpace: "nowrap",
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-hover)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = opt.id === activeBranch ? "var(--bg-selected)" : "none"; }}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                        <line x1="6" y1="3" x2="6" y2="15" />
-                        <circle cx="18" cy="6" r="3" />
-                        <circle cx="6" cy="18" r="3" />
-                        <path d="M18 9a9 9 0 0 1-9 9" />
-                      </svg>
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
 
           </div>
 

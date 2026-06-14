@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Toaster } from "sonner";
 import { SessionSidebar } from "./SessionSidebar";
-import { BranchNavigator } from "./BranchNavigator";
 import { useTheme } from "@/hooks/useTheme";
 import type { SessionInfo, SessionTreeNode } from "@/lib/types";
 import type { ChatInputHandle } from "./ChatInput";
@@ -73,6 +72,7 @@ export function AppShell() {
   // Branch navigator state — populated by ChatWindow via onBranchDataChange
   const [branchTree, setBranchTree] = useState<SessionTreeNode[]>([]);
   const [branchActiveLeafId, setBranchActiveLeafId] = useState<string | null>(null);
+  const [branchSwitchDisabled, setBranchSwitchDisabled] = useState(false);
   const branchLeafChangeFnRef = useRef<((leafId: string | null) => void) | null>(null);
 
   const handleBranchDataChange = useCallback((tree: SessionTreeNode[], activeLeafId: string | null, onLeafChange: (leafId: string | null) => void) => {
@@ -83,6 +83,10 @@ export function AppShell() {
 
   const handleBranchLeafChange = useCallback((leafId: string | null) => {
     branchLeafChangeFnRef.current?.(leafId);
+  }, []);
+
+  const handleStreamingChange = useCallback((isStreaming: boolean) => {
+    setBranchSwitchDisabled(isStreaming);
   }, []);
 
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
@@ -105,10 +109,10 @@ export function AppShell() {
   }, []);
 
   // Single active panel — only one dropdown open at a time
-  const [activeTopPanel, setActiveTopPanel] = useState<"branches" | "system" | null>(null);
+  const [activeTopPanel, setActiveTopPanel] = useState<"system" | null>(null);
   const [topPanelPos, setTopPanelPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
-  const toggleTopPanel = useCallback((panel: "branches" | "system") => {
+  const toggleTopPanel = useCallback((panel: "system") => {
     setActiveTopPanel((cur) => cur === panel ? null : panel);
   }, []);
 
@@ -373,6 +377,10 @@ export function AppShell() {
         selectedCwd={selectedSession?.cwd ?? newSessionCwd ?? activeCwd ?? null}
         onCwdChange={handleCwdChange}
         onSessionsChange={setAllSessions}
+        branchTree={branchTree}
+        branchActiveLeafId={branchActiveLeafId}
+        onBranchLeafChange={handleBranchLeafChange}
+        branchSwitchDisabled={branchSwitchDisabled}
       />
       <div style={{ padding: "8px", flexShrink: 0, position: "relative" }}>
         <button
@@ -542,16 +550,6 @@ export function AppShell() {
           </button>
           {showChat && (
             <div style={{ display: "flex", alignItems: "stretch", height: "100%" }}>
-              <BranchNavigator
-                tree={branchTree}
-                activeLeafId={branchActiveLeafId}
-                onLeafChange={handleBranchLeafChange}
-                inline
-                containerRef={topBarRef}
-                open={activeTopPanel === "branches"}
-                onToggle={() => toggleTopPanel("branches")}
-                hasSession
-              />
               <button
                 ref={systemBtnRef}
                 onClick={() => toggleTopPanel("system")}
@@ -688,6 +686,7 @@ export function AppShell() {
             modelsRefreshKey={modelsRefreshKey}
             chatInputRef={chatInputRef}
             onBranchDataChange={handleBranchDataChange}
+            onStreamingChange={handleStreamingChange}
             onSystemPromptChange={handleSystemPromptChange}
             onSessionStatsChange={handleSessionStatsChange}
             onContextUsageChange={handleContextUsageChange}

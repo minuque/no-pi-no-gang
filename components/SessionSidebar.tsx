@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import type { SessionInfo } from "@/lib/types";
+import type { SessionEntry, SessionInfo, SessionTreeNode as BranchTreeNode } from "@/lib/types";
 
 import { useTheme } from "@/hooks/useTheme";
 
@@ -16,6 +16,10 @@ interface Props {
   selectedCwd?: string | null;
   onCwdChange?: (cwd: string | null) => void;
   onSessionsChange?: (sessions: SessionInfo[]) => void;
+  branchTree?: BranchTreeNode[];
+  branchActiveLeafId?: string | null;
+  onBranchLeafChange?: (leafId: string | null) => void;
+  branchSwitchDisabled?: boolean;
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -56,18 +60,17 @@ function getCwdLabel(cwd: string): string {
 interface CwdSessionGroup {
   cwd: string;
   sessions: SessionInfo[];
-  tree: SessionTreeNode[];
+  tree: SessionSessionTreeNode[];
   modified: string;
-  forkCount: number;
 }
 
-interface SessionTreeNode {
+interface SessionSessionTreeNode {
   session: SessionInfo;
-  children: SessionTreeNode[];
+  children: SessionSessionTreeNode[];
 }
 
-function buildSessionTree(sessions: SessionInfo[]): SessionTreeNode[] {
-  const byId = new Map<string, SessionTreeNode>();
+function buildSessionTree(sessions: SessionInfo[]): SessionSessionTreeNode[] {
+  const byId = new Map<string, SessionSessionTreeNode>();
   for (const s of sessions) {
     byId.set(s.id, { session: s, children: [] });
   }
@@ -91,7 +94,7 @@ function buildSessionTree(sessions: SessionInfo[]): SessionTreeNode[] {
     return null;
   }
 
-  const roots: SessionTreeNode[] = [];
+  const roots: SessionSessionTreeNode[] = [];
   for (const node of byId.values()) {
     const ancestor = resolveAncestor(node.session.id);
     if (ancestor) {
@@ -102,12 +105,88 @@ function buildSessionTree(sessions: SessionInfo[]): SessionTreeNode[] {
   }
 
   // Sort each level by modified desc
-  const sort = (nodes: SessionTreeNode[]) => {
+  const sort = (nodes: SessionSessionTreeNode[]) => {
     nodes.sort((a, b) => b.session.modified.localeCompare(a.session.modified));
     nodes.forEach((n) => sort(n.children));
   };
   sort(roots);
   return roots;
+}
+
+function branchHasSplit(nodes: BranchTreeNode[]): boolean {
+  for (const node of nodes) {
+    if (node.children.length > 1) return true;
+    if (branchHasSplit(node.children)) return true;
+  }
+  return false;
+}
+
+function countBranchPaths(node: BranchTreeNode): number {
+  const displayNode = compressBranchNode(node);
+  if (displayNode.children.length === 0) return 1;
+  return displayNode.children.reduce((total, child) => total + countBranchPaths(child), 0);
+}
+
+function countAdditionalBranches(nodes: BranchTreeNode[]): number {
+  if (!branchHasSplit(nodes) || nodes.length === 0) return 0;
+  const root = compressBranchRoot(nodes[0]);
+  const pathCount = root.children.reduce((total, child) => total + countBranchPaths(child), 0);
+  return Math.max(0, pathCount - 1);
+}
+
+function buildBranchActivePath(nodes: BranchTreeNode[], targetId: string | null): Set<string> {
+  if (!targetId) return new Set();
+  function search(items: BranchTreeNode[], path: string[]): string[] | null {
+    for (const node of items) {
+      const next = [...path, node.entry.id];
+      if (node.entry.id === targetId) return next;
+      const found = search(node.children, next);
+      if (found) return found;
+    }
+    return null;
+  }
+  return new Set(search(nodes, []) ?? []);
+}
+
+function compressBranchRoot(node: BranchTreeNode): BranchTreeNode {
+  let current = node;
+  while (current.children.length === 1) current = current.children[0];
+  return current;
+}
+
+function compressBranchNode(node: BranchTreeNode): BranchTreeNode {
+  let current = node;
+  while (current.children.length === 1) current = current.children[0];
+  return current;
+}
+
+function getBranchLabel(entry: SessionEntry): string {
+  if (entry.type === "message" && "message" in entry) {
+    const msg = entry.message as { role: string; content: unknown };
+    const content = msg.content;
+    let text = "";
+    if (typeof content === "string") {
+      text = content;
+    } else if (Array.isArray(content)) {
+      text = content
+        .filter((block): block is { type: "text"; text: string } => block.type === "text")
+        .map((block) => block.text)
+        .join(" ");
+    }
+    if (text.length > 40) text = text.slice(0, 40) + "...";
+    if (text) return text;
+    if (msg.role === "assistant") return "[assistant]";
+  }
+  return entry.type;
+}
+
+function containsSession(nodes: SessionSessionTreeNode[], sessionId: string | null): boolean {
+  if (!sessionId) return false;
+  for (const node of nodes) {
+    if (node.session.id === sessionId) return true;
+    if (containsSession(node.children, sessionId)) return true;
+  }
+  return false;
 }
 
 function buildCwdSessionGroups(sessions: SessionInfo[]): CwdSessionGroup[] {
@@ -125,7 +204,6 @@ function buildCwdSessionGroups(sessions: SessionInfo[]): CwdSessionGroup[] {
       sessions: groupSessions,
       tree: buildSessionTree(groupSessions),
       modified: groupSessions.reduce((latest, session) => session.modified > latest ? session.modified : latest, ""),
-      forkCount: groupSessions.filter((session) => Boolean(session.parentSessionId)).length,
     }))
     .sort((a, b) => b.modified.localeCompare(a.modified));
 }
@@ -268,12 +346,16 @@ function HeaderBtn({
   );
 }
 
-export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selCwd, onCwdChange, onSessionsChange }: Props) {
+export function SessionSidebar({
+  selectedSessionId, onSelectSession, onNewSession, initialSessionId, onInitialRestoreDone,
+  refreshKey, onSessionDeleted, selectedCwd: selCwd, onCwdChange, onSessionsChange,
+  branchTree = [], branchActiveLeafId = null, onBranchLeafChange, branchSwitchDisabled = false,
+}: Props) {
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sessionRefreshDone, setSessionRefreshDone] = useState(false);
-  const [collapsedCwds, setCollapsedCwds] = useState<Set<string>>(() => new Set());
+  const [expandedCwds, setExpandedCwds] = useState<Set<string>>(() => new Set());
   const sessionRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadSessions = useCallback(async (showLoading = false) => {
@@ -371,24 +453,35 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
         sessions: [],
         tree: [],
         modified: "",
-        forkCount: 0,
       }, ...groups];
     }
     return groups;
   }, [allSessions, selCwd]);
 
+  useEffect(() => {
+    if (!selectedSessionId) return;
+    const selectedGroup = cwdGroups.find((group) => containsSession(group.tree, selectedSessionId));
+    if (!selectedGroup) return;
+    setExpandedCwds((prev) => {
+      if (prev.has(selectedGroup.cwd)) return prev;
+      const next = new Set(prev);
+      next.add(selectedGroup.cwd);
+      return next;
+    });
+  }, [cwdGroups, selectedSessionId]);
+
   const handleSelectCwd = useCallback((cwd: string) => {
     onCwdChange?.(cwd);
-    setCollapsedCwds((prev) => {
-      if (!prev.has(cwd)) return prev;
+    setExpandedCwds((prev) => {
+      if (prev.has(cwd)) return prev;
       const next = new Set(prev);
-      next.delete(cwd);
+      next.add(cwd);
       return next;
     });
   }, [onCwdChange]);
 
   const handleToggleCwd = useCallback((cwd: string) => {
-    setCollapsedCwds((prev) => {
+    setExpandedCwds((prev) => {
       const next = new Set(prev);
       if (next.has(cwd)) next.delete(cwd);
       else next.add(cwd);
@@ -438,10 +531,14 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
             group={group}
             selectedSessionId={selectedSessionId}
             isActive={group.cwd === selCwd}
-            isCollapsed={collapsedCwds.has(group.cwd)}
+            isCollapsed={!expandedCwds.has(group.cwd)}
             onSelectCwd={handleSelectCwd}
             onToggleCwd={handleToggleCwd}
             onSelectSession={onSelectSession}
+            branchTree={branchTree}
+            branchActiveLeafId={branchActiveLeafId}
+            onBranchLeafChange={onBranchLeafChange}
+            branchSwitchDisabled={branchSwitchDisabled}
             onRenamed={loadSessions}
             onSessionDeleted={(id) => {
               onSessionDeleted?.(id);
@@ -458,6 +555,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
 function CwdGroupSection({
   group, selectedSessionId, isActive, isCollapsed,
   onSelectCwd, onToggleCwd, onSelectSession, onRenamed, onSessionDeleted,
+  branchTree, branchActiveLeafId, onBranchLeafChange, branchSwitchDisabled,
 }: {
   group: CwdSessionGroup;
   selectedSessionId: string | null;
@@ -466,6 +564,10 @@ function CwdGroupSection({
   onSelectCwd: (cwd: string) => void;
   onToggleCwd: (cwd: string) => void;
   onSelectSession: (s: SessionInfo) => void;
+  branchTree: BranchTreeNode[];
+  branchActiveLeafId: string | null;
+  onBranchLeafChange?: (leafId: string | null) => void;
+  branchSwitchDisabled: boolean;
   onRenamed?: () => void;
   onSessionDeleted?: (id: string) => void;
 }) {
@@ -531,11 +633,6 @@ function CwdGroupSection({
             color: "var(--text-dim)", fontSize: 11.5,
           }}>
             <span>{group.sessions.length} session{group.sessions.length !== 1 ? "s" : ""}</span>
-            {group.forkCount > 0 && (
-              <span style={{ color: "var(--text-dim)", opacity: 0.7 }}>
-                {group.forkCount} fork{group.forkCount !== 1 ? "s" : ""}
-              </span>
-            )}
             {group.modified && (
               <span title={group.modified} style={{ opacity: 0.55 }}>
                 {formatRelativeTime(group.modified)}
@@ -580,6 +677,10 @@ function CwdGroupSection({
               onSelectSession={onSelectSession}
               onRenamed={onRenamed}
               onSessionDeleted={onSessionDeleted}
+              branchTree={branchTree}
+              branchActiveLeafId={branchActiveLeafId}
+              onBranchLeafChange={onBranchLeafChange}
+              branchSwitchDisabled={branchSwitchDisabled}
               depth={0}
             />
           ))}
@@ -591,17 +692,34 @@ function CwdGroupSection({
 
 // ─── Session Tree Item (recursive) ───
 function SessionTreeItem({
-  node, selectedSessionId, onSelectSession, onRenamed, onSessionDeleted, depth,
+  node, selectedSessionId, onSelectSession, onRenamed, onSessionDeleted,
+  branchTree, branchActiveLeafId, onBranchLeafChange, branchSwitchDisabled, depth,
 }: {
-  node: SessionTreeNode;
+  node: SessionSessionTreeNode;
   selectedSessionId: string | null;
   onSelectSession: (s: SessionInfo) => void;
   onRenamed?: () => void;
   onSessionDeleted?: (id: string) => void;
+  branchTree: BranchTreeNode[];
+  branchActiveLeafId: string | null;
+  onBranchLeafChange?: (leafId: string | null) => void;
+  branchSwitchDisabled: boolean;
   depth: number;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const isSelectedPath = containsSession([node], selectedSessionId);
+  const [collapsed, setCollapsed] = useState(true);
   const hasChildren = node.children.length > 0;
+  const branchCount = node.session.id === selectedSessionId ? countAdditionalBranches(branchTree) : 0;
+  const showLeafBranches = branchCount > 0;
+  const branchRoot = branchTree.length > 0 ? compressBranchRoot(branchTree[0]) : null;
+  const branchActivePathIds = useMemo(
+    () => buildBranchActivePath(branchTree, branchActiveLeafId),
+    [branchTree, branchActiveLeafId]
+  );
+
+  useEffect(() => {
+    if (isSelectedPath) setCollapsed(false);
+  }, [isSelectedPath]);
 
   return (
     <div>
@@ -613,7 +731,7 @@ function SessionTreeItem({
         onDeleted={(id) => onSessionDeleted?.(id)}
         depth={depth}
         hasChildren={hasChildren}
-        childCount={node.children.length}
+        branchCount={branchCount}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((v) => !v)}
       />
@@ -627,7 +745,25 @@ function SessionTreeItem({
               onSelectSession={onSelectSession}
               onRenamed={onRenamed}
               onSessionDeleted={onSessionDeleted}
+              branchTree={branchTree}
+              branchActiveLeafId={branchActiveLeafId}
+              onBranchLeafChange={onBranchLeafChange}
+              branchSwitchDisabled={branchSwitchDisabled}
               depth={depth + 1}
+            />
+          ))}
+        </div>
+      )}
+      {showLeafBranches && branchRoot && branchRoot.children.length > 1 && (
+        <div style={{ marginLeft: (depth + 1) * 14 + 6, padding: "1px 0 6px 0" }}>
+          {branchRoot.children.map((child) => (
+            <BranchLeafItem
+              key={child.entry.id}
+              node={child}
+              activePathIds={branchActivePathIds}
+              depth={0}
+              onSelect={onBranchLeafChange}
+              disabled={branchSwitchDisabled}
             />
           ))}
         </div>
@@ -636,11 +772,74 @@ function SessionTreeItem({
   );
 }
 
+function BranchLeafItem({
+  node, activePathIds, depth, onSelect, disabled,
+}: {
+  node: BranchTreeNode;
+  activePathIds: Set<string>;
+  depth: number;
+  onSelect?: (leafId: string | null) => void;
+  disabled: boolean;
+}) {
+  const displayNode = compressBranchNode(node);
+  const isActive = activePathIds.has(displayNode.entry.id);
+  const isOnPath = activePathIds.has(node.entry.id) || isActive;
+  const label = displayNode.label ?? getBranchLabel(displayNode.entry);
+
+  return (
+    <div>
+      <button
+        onClick={() => {
+          if (!disabled) onSelect?.(displayNode.entry.id);
+        }}
+        disabled={disabled}
+        title={disabled ? "Branch switching is disabled while streaming" : label}
+        style={{
+          display: "flex", alignItems: "center", gap: 6,
+          width: "100%", height: 24,
+          padding: "0 8px 0 0",
+          marginLeft: depth * 14,
+          background: isActive ? "color-mix(in oklab, var(--accent), transparent 92%)" : "none",
+          border: "none",
+          borderLeft: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
+          borderRadius: "0 4px 4px 0",
+          color: isActive ? "var(--text)" : isOnPath ? "var(--text-muted)" : "var(--text-dim)",
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? 0.45 : 1,
+          textAlign: "left",
+        }}
+      >
+        <span style={{
+          width: 7, height: 7, borderRadius: "50%",
+          marginLeft: 7, flexShrink: 0,
+          background: isActive ? "var(--accent)" : isOnPath ? "var(--text-muted)" : "var(--border)",
+        }} />
+        <span style={{
+          minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          fontSize: 11.5, lineHeight: "18px",
+        }}>
+          {label}
+        </span>
+      </button>
+      {displayNode.children.map((child) => (
+        <BranchLeafItem
+          key={child.entry.id}
+          node={child}
+          activePathIds={activePathIds}
+          depth={depth + 1}
+          onSelect={onSelect}
+          disabled={disabled}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ─── Single Session Item ───
 function SessionItem({
   session, isSelected, onClick, onRenamed, onDeleted,
-  depth = 0, hasChildren = false, childCount = 0,
-  collapsed = false, onToggleCollapse,
+  depth = 0, hasChildren = false,
+  branchCount = 0, collapsed = false, onToggleCollapse,
 }: {
   session: SessionInfo;
   isSelected: boolean;
@@ -649,7 +848,7 @@ function SessionItem({
   onDeleted?: (id: string) => void;
   depth?: number;
   hasChildren?: boolean;
-  childCount?: number;
+  branchCount?: number;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }) {
@@ -816,9 +1015,9 @@ function SessionItem({
               <span style={{ opacity: 0.5 }}>
                 {session.messageCount} msg{session.messageCount !== 1 ? "s" : ""}
               </span>
-              {childCount > 0 && (
-                <span style={{ opacity: 0.45 }}>
-                  {childCount} fork{childCount !== 1 ? "s" : ""}
+              {branchCount > 0 && (
+                <span style={{ opacity: 0.58 }}>
+                  {branchCount} branch{branchCount !== 1 ? "es" : ""}
                 </span>
               )}
             </div>
