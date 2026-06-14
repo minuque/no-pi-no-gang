@@ -76,7 +76,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 }: Props, ref) {
   const [value, setValue] = useState("");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
-  const [modelDropdownRect, setModelDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const [thinkingDropdownOpen, setThinkingDropdownOpen] = useState(false);
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [showCommands, setShowCommands] = useState(false);
@@ -1054,11 +1053,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             {modelOptions.length > 0 && currentName && onModelChange && (
                 <div ref={dropdownRef} style={{ position: "relative" }}>
                   <button
-                    onClick={(e) => {
-                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                      setModelDropdownRect({ top: rect.top, left: rect.left, width: rect.width });
-                      setModelDropdownOpen((v) => !v);
-                    }}
+                    onClick={() => setModelDropdownOpen((v) => !v)}
                     disabled={isStreaming}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 4,
@@ -1102,17 +1097,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                       </span>
                     )}
                   </button>
-                  {modelDropdownOpen && modelDropdownRect && (() => {
-                    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-                    const bottom = viewportHeight - modelDropdownRect.top + 6;
-                    const maxH = Math.max(120, Math.min(modelDropdownRect.top - 8, viewportHeight * 0.6));
-                    return (
+                  {modelDropdownOpen && (
                     <div ref={modelDropdownPanelRef} style={{
-                      position: "fixed",
-                      bottom, left: modelDropdownRect.left,
-                      zIndex: 500, background: "var(--bg)", border: "1px solid var(--border)",
+                      position: "absolute", bottom: "calc(100% + 6px)", left: 0,
+                      zIndex: 100, background: "var(--bg)", border: "1px solid var(--border)",
                       borderRadius: 8, boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
-                      overflow: "hidden", width: "max-content", minWidth: modelDropdownRect.width, maxHeight: maxH, overflowY: "auto",
+                      overflow: "hidden", width: "max-content", minWidth: 180, maxHeight: 360, overflowY: "auto",
                     }}>
                       {modelsByProvider.map((group, gi) => (
                         <div key={group.provider}>
@@ -1155,8 +1145,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                         </div>
                       ))}
                     </div>
-                    );
-                  })()}
+                  )}
                 </div>
             )}
             {!isStreaming && onThinkingLevelChange && (
