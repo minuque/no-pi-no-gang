@@ -150,6 +150,8 @@ function TreeNode({
           background: hovered ? "var(--bg-hover)" : "transparent",
           borderRadius: 4,
           userSelect: "none",
+          contentVisibility: "auto",
+          containIntrinsicSize: "auto 24px",
         }}
       >
         {node.isDir && (
@@ -165,7 +167,6 @@ function TreeNode({
             style={{
               flexShrink: 0,
               transform: open ? "rotate(90deg)" : "none",
-              transition: "transform 0.1s",
             }}
           >
             <polyline points="3 2 7 5 3 8" />

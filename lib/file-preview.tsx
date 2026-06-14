@@ -249,29 +249,30 @@ function TextContent({ filePath, isDark }: { filePath: string; isDark: boolean }
   }
 
   return (
-    <SyntaxHighlighter
-      language={data.language === "text" ? "plaintext" : data.language}
-      style={isDark ? vscDarkPlus : vs}
-      showLineNumbers
-      lineNumberStyle={{
-        color: "var(--text-dim)",
-        fontStyle: "normal",
-        minWidth: "3em",
-        paddingRight: "1em",
-      }}
-      customStyle={{
-        margin: 0,
-        padding: "12px 0",
-        background: "var(--bg)",
-        fontSize: 13,
-        lineHeight: 1.6,
-        fontFamily: "var(--font-mono)",
-        fontWeight: 400,
-        minHeight: "100%",
-      }}
-      codeTagProps={{ style: { fontFamily: "var(--font-mono)", fontWeight: 400 } }}
-    >
-      {data.content}
-    </SyntaxHighlighter>
+    <div style={{ background: "var(--bg)", minHeight: "100%" }}>
+      <SyntaxHighlighter
+        language={data.language === "text" ? "plaintext" : data.language}
+        style={isDark ? vscDarkPlus : vs}
+        showLineNumbers
+        lineNumberStyle={{
+          color: "var(--text-dim)",
+          fontStyle: "normal",
+          minWidth: "3em",
+          paddingRight: "1em",
+        }}
+        customStyle={{
+          margin: 0,
+          padding: "12px 0",
+          background: "transparent",
+          fontSize: 13,
+          lineHeight: 1.6,
+          fontFamily: "var(--font-mono)",
+          fontWeight: 400,
+        }}
+        codeTagProps={{ style: { fontFamily: "var(--font-mono)", fontWeight: 400 } }}
+      >
+        {data.content}
+      </SyntaxHighlighter>
+    </div>
   );
 }

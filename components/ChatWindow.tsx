@@ -593,30 +593,26 @@ export function ChatWindow({ session, newSessionCwd, onAgentEnd, onSessionCreate
                     } : undefined}
                     className="relative mx-auto max-w-[1148px] px-4"
                   >
-                    {entryId && (
+                    {entryId && msg.role === "assistant" && (
                       <span
                         title={anchorTitle}
                         style={{
                           position: "absolute",
                           left: 0,
-                          top: 4,
+                          top: 2,
                           transform: "translateX(-50%)",
                           display: "inline-flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          width: 18,
-                          height: 18,
+                          width: 20,
+                          height: 20,
                           borderRadius: 9999,
+                          background: "var(--surface)",
                           border: "1px solid var(--border)",
-                          background: "var(--bg)",
-                          color: msg.role === "user" ? "var(--accent)" : "var(--text-dim)",
-                          fontSize: 12,
-                          fontFamily: "var(--font-mono)",
                           pointerEvents: "auto",
-                          opacity: 0.75,
                         }}
                       >
-                        {msg.role === "user" ? "U" : "A"}
+                        <img src="/favicon.ico" alt="" style={{ width: 13, height: 13, display: "block" }} />
                       </span>
                     )}
                     <MessageView
