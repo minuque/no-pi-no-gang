@@ -401,7 +401,7 @@ export function SessionSidebar({ selectedSessionId, onSelectSession, onNewSessio
       {/* Header */}
       <div style={{
         display: "flex", alignItems: "center",
-        height: 36, padding: "0 10px",
+        height: 44, padding: "0 10px",
         borderBottom: "1px solid var(--border)",
         flexShrink: 0, gap: 10,
       }}>
