@@ -44,9 +44,6 @@ no-pi-no-gang 是 [pi.dev](https://github.com/badlogic/pi-mono) 的 Web UI——
 
 ## 快速开始
 
-> [!tip] 前置要求
-> 需要 ==Bun ≥1.0== 运行环境。
-
 ```bash
 # 本地开发
 bun install
@@ -123,17 +120,18 @@ bin/              # npm CLI 启动入口
 | `bun run lint` | ESLint 全仓检查 |
 | `node_modules/.bin/tsc --noEmit` | 类型检查 |
 
-> [!important] 提交前验收
-> ```bash
-> bun run build && bun run start
-> ```
+提交前验收：
+
+```bash
+bun run build && bun run start
+```
 
 ## 相关文档
 
-- [[ROADMAP]] — 系统架构、数据流、迭代路线
-- [[TODO]] — 按优先级组织的任务包
-- [[Pi_SDK]] — pi SDK 接口说明
-- [[AGENTS]] — 协作、验证和文档约束
+- [ROADMAP.md](ROADMAP.md) — 系统架构、数据流、迭代路线
+- [TODO.md](TODO.md) — 按优先级组织的任务包
+- [Pi_SDK.md](Pi_SDK.md) — pi SDK 接口说明
+- [AGENTS.md](AGENTS.md) — 协作、验证和文档约束
 
 ## 致谢
 
