@@ -39,7 +39,7 @@ const nextConfig: NextConfig = {
       "img-src 'self' blob: data:",
       "font-src 'self'",
       `connect-src 'self'${isDev ? " ws:" : ""}`,
-      "object-src 'none'",
+      "object-src 'none'",    
       "base-uri 'self'",
       "form-action 'self'",
       "frame-ancestors 'none'",
