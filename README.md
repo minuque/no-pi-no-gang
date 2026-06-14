@@ -32,14 +32,30 @@ no-pi-no-gang 是 [pi.dev](https://github.com/badlogic/pi-mono) 的 Web UI——
 | 文件工作台 | 侧边栏浏览工作目录，辅助上下文追溯 |
 | 运行态恢复 | 刷新后自动检测并重连 SSE |
 
-## 快速开始
+## 安装
 
 ```bash
-# 本地开发
+# 配置 GitHub Packages registry（仅需一次）
+npm config set @minuque:registry https://npm.pkg.github.com/
+
+# Unix: 从 bash 读取 GH_TOKEN
+npm login --registry=https://npm.pkg.github.com
+# Username: 你的 GitHub 用户名
+# Password: GitHub personal access token（需 write:packages 权限）
+
+# 安装为项目依赖
+npm install @minuque/no-pi-no-gang
+
+# 或直接运行
+npx @minuque/no-pi-no-gang
+```
+
+## 本地开发
+
+```bash
 bun install
 bun run dev                     # → http://localhost:7777
 
-# 生产构建
 bun run build
 bun run start                   # → http://localhost:7777
 ```

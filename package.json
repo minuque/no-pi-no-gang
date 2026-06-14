@@ -3,6 +3,13 @@
   "version": "0.0.1",
   "description": "Web UI for the pi coding agent",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/minuque/no-pi-no-gang.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "bin": {
     "no-pi-no-gang": "bin/no-pi-no-gang.js"
   },
