@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import type { ToolEntry } from "@/components/ToolPanel";
 import { sendAgentCommand } from "@/lib/agent-client";
 import { normalizeToolCalls } from "@/lib/normalize";
+import type { SlashCommandItem } from "@/lib/pi-resources";
 import type {
   AgentMessage,
   AssistantMessage,
@@ -167,7 +168,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [compactError, setCompactError] = useState<string | null>(null);
   const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
   const [eventStatus, setEventStatus] = useState<AgentEventStatus>("idle");
-  const [commands, setCommands] = useState<{ name: string; description: string }[]>([]);
+  const [commands, setCommands] = useState<SlashCommandItem[]>([]);
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
@@ -511,8 +512,19 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     try {
       const res = await fetch(`/api/skills?cwd=${encodeURIComponent(cwd)}`);
       if (!res.ok) return;
-      const data = (await res.json()) as { skills?: { name: string; description: string }[] };
-      setCommands(data.skills?.map((s) => ({ name: s.name, description: s.description })) ?? []);
+      const data = (await res.json()) as {
+        commands?: SlashCommandItem[];
+        skills?: { name: string; description: string }[];
+      };
+      setCommands(
+        data.commands ??
+          data.skills?.map((s) => ({
+            name: `skill:${s.name}`,
+            description: s.description,
+            source: "skill",
+          })) ??
+          [],
+      );
     } catch (e) {
       console.error("Failed to fetch commands:", e);
     }
@@ -642,11 +654,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         return;
       }
       loadGenRef.current += 1;
-      const cmdMatch = message.match(/^(\/[a-zA-Z0-9._-]+)\s*(.*)$/);
+      const cmdMatch = message.match(/^\/(\S+)\s*(.*)$/);
       if (cmdMatch) {
-        const cmdName = cmdMatch[1].slice(1);
+        const cmdName = cmdMatch[1];
         const restMsg = cmdMatch[2];
-        if (commands.some((c) => c.name === cmdName)) {
+        if (commands.some((c) => c.name.toLowerCase() === cmdName.toLowerCase())) {
           return handleCommand(cmdName, restMsg, images);
         }
       }

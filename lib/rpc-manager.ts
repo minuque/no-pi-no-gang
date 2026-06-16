@@ -1,6 +1,7 @@
 import { SessionManager, createAgentSession } from "@earendil-works/pi-coding-agent";
 
-import type { AgentSessionLike, ToolInfo } from "./pi-types";
+import { dedupeSlashCommands, getProjectResourceLoaderOptions } from "./pi-resources";
+import type { AgentSessionLike, SlashCommandInfoLike, ToolInfo } from "./pi-types";
 import { cacheSessionPath } from "./session-reader";
 
 // ============================================================================
@@ -13,6 +14,26 @@ export interface AgentEvent {
 }
 
 type EventListener = (event: AgentEvent) => void;
+
+function getSlashCommands(inner: AgentSessionLike): SlashCommandInfoLike[] {
+  return dedupeSlashCommands([
+    ...(inner.extensionRunner?.getRegisteredCommands().map((command) => ({
+      name: command.invocationName,
+      description: command.description ?? "",
+      source: "extension" as const,
+    })) ?? []),
+    ...(inner.promptTemplates?.map((template) => ({
+      name: template.name,
+      description: template.description ?? "",
+      source: "prompt" as const,
+    })) ?? []),
+    ...(inner.resourceLoader?.getSkills().skills.map((skill) => ({
+      name: `skill:${skill.name}`,
+      description: skill.description ?? "",
+      source: "skill" as const,
+    })) ?? []),
+  ]);
+}
 
 // ============================================================================
 // AgentSessionWrapper
@@ -263,59 +284,18 @@ export class AgentSessionWrapper {
         return null;
       }
 
+      case "get_commands":
+        return getSlashCommands(this.inner);
+
       case "command": {
         const commandName = command.command as string;
         const userMessage = command.message as string;
         const promptImages = command.images as
           | Array<{ type: "image"; data: string; mimeType: string }>
           | undefined;
-
-        // Find the skill matching the command name
-        const { DefaultResourceLoader, getAgentDir } =
-          await import("@earendil-works/pi-coding-agent");
-        const cwd =
-          (this.inner as { cwd?: string }).cwd ??
-          (this.inner.agent?.state as { cwd?: string } | undefined)?.cwd ??
-          process.cwd();
-
-        const loader = new DefaultResourceLoader({ cwd, agentDir: getAgentDir() });
-        await loader.reload();
-        const { skills } = loader.getSkills();
-
-        // Match by name (case-insensitive)
-        const skill = skills.find(
-          (s: { name: string }) => s.name.toLowerCase() === commandName.toLowerCase(),
-        );
-
-        if (skill) {
-          // Read SKILL.md content
-          const fs = await import("fs");
-          const skillContent = fs.readFileSync(skill.filePath, "utf8");
-          // Strip frontmatter (--- ... ---)
-          const bodyContent = skillContent.replace(/^---[\s\S]*?---\r?\n?/, "").trim();
-
-          // Inject skill instructions into the SYSTEM PROMPT (not user prompt)
-          const originalPrompt = this.inner.agent.state?.systemPrompt ?? "";
-          const skillBlock = `\n\n<system-reminder>\nUse the following skill instructions to help with the user's request:\n\n${bodyContent}\n</system-reminder>`;
-          this.inner.agent.state!.systemPrompt = originalPrompt + skillBlock;
-
-          // Restore original system prompt after this turn completes
-          const restore = () => {
-            if (this.inner.agent.state) {
-              this.inner.agent.state.systemPrompt = originalPrompt;
-            }
-          };
-          const unsub = this.inner.subscribe((event: AgentEvent) => {
-            if (event.type === "agent_end") {
-              restore();
-              unsub();
-            }
-          });
-        }
-
-        // Send user message WITHOUT skill content injection
+        const text = userMessage?.trim() ? `/${commandName} ${userMessage}` : `/${commandName}`;
         this.inner
-          .prompt(userMessage, promptImages?.length ? { images: promptImages } : undefined)
+          .prompt(text, promptImages?.length ? { images: promptImages } : undefined)
           .catch(() => {});
         return null;
       }
@@ -386,8 +366,15 @@ export async function startRpcSession(
   if (inflight) return inflight;
 
   const starting = (async () => {
-    const { SessionManager, getAgentDir } = await import("@earendil-works/pi-coding-agent");
+    const { DefaultResourceLoader, SessionManager, getAgentDir } =
+      await import("@earendil-works/pi-coding-agent");
     const agentDir = getAgentDir();
+    const resourceLoader = new DefaultResourceLoader({
+      cwd,
+      agentDir,
+      ...getProjectResourceLoaderOptions(cwd),
+    });
+    await resourceLoader.reload();
 
     const sessionManager = sessionFile
       ? SessionManager.open(sessionFile, undefined)
@@ -406,7 +393,17 @@ export async function startRpcSession(
       cwd,
       agentDir,
       sessionManager,
+      resourceLoader,
       ...(toolsOption !== undefined ? { tools: toolsOption } : {}),
+    });
+    const wrapper = new AgentSessionWrapper(inner);
+    await inner.bindExtensions?.({
+      abortHandler: () => {
+        inner.abort().catch(() => {});
+      },
+      shutdownHandler: () => {
+        wrapper.destroy();
+      },
     });
 
     // If specific tool names were requested (non-empty), narrow active tools now
@@ -421,7 +418,6 @@ export async function startRpcSession(
       inner.agent.state.systemPrompt = "";
     }
 
-    const wrapper = new AgentSessionWrapper(inner);
     wrapper.start();
 
     const realSessionId = inner.sessionId as string;

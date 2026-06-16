@@ -10,6 +10,8 @@ import React, {
   useState,
 } from "react";
 
+import type { SlashCommandItem } from "@/lib/pi-resources";
+
 export interface AttachedImage {
   data: string; // base64, no prefix
   mimeType: string;
@@ -38,7 +40,7 @@ interface Props {
   thinkingLevelMap?: Record<string, string | null> | null;
   retryInfo?: { attempt: number; maxAttempts: number; errorMessage?: string } | null;
   contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null;
-  commands?: { name: string; description: string }[];
+  commands?: SlashCommandItem[];
   currentProject?: string;
   recentCwds?: string[];
   homeDir?: string;
@@ -68,6 +70,13 @@ const THINKING_LEVEL_DESC: Record<(typeof THINKING_LEVELS)[number], string> = {
   high: "高强度推理",
   xhigh: "最高强度推理",
 };
+
+function getCommandSourceLabel(source: SlashCommandItem["source"]): string {
+  if (source === "extension") return "ext";
+  if (source === "prompt") return "prompt";
+  if (source === "skill") return "skill";
+  return "cmd";
+}
 
 export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
   {
@@ -102,11 +111,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
   const [thinkingDropdownOpen, setThinkingDropdownOpen] = useState(false);
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [showCommands, setShowCommands] = useState(false);
-  const [commandQuery, setCommandQuery] = useState("");
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
-  const [commandFiltered, setCommandFiltered] = useState<{ name: string; description: string }[]>(
-    [],
-  );
+  const [commandFiltered, setCommandFiltered] = useState<SlashCommandItem[]>([]);
   const [focused, setFocused] = useState(false);
   const [contextTooltipOpen, setContextTooltipOpen] = useState(false);
 
@@ -524,11 +530,20 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
       if (slashIdx !== -1 && (slashIdx === 0 || beforeCursor[slashIdx - 1] === " ")) {
         const query = beforeCursor.slice(slashIdx + 1);
         if (!query.includes(" ")) {
-          const filtered = commands.filter((c) =>
-            c.name.toLowerCase().startsWith(query.toLowerCase()),
-          );
+          const normalizedQuery = query.toLowerCase();
+          const filtered = commands
+            .filter((c) => {
+              const name = c.name.toLowerCase();
+              const description = c.description.toLowerCase();
+              return name.startsWith(normalizedQuery) || description.includes(normalizedQuery);
+            })
+            .sort((a, b) => {
+              const aStarts = a.name.toLowerCase().startsWith(normalizedQuery);
+              const bStarts = b.name.toLowerCase().startsWith(normalizedQuery);
+              if (aStarts !== bStarts) return aStarts ? -1 : 1;
+              return a.name.localeCompare(b.name);
+            });
           setCommandFiltered(filtered);
-          setCommandQuery(query);
           setShowCommands(filtered.length > 0);
           setSelectedCommandIndex(0);
           return;
@@ -567,6 +582,14 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
       : null;
 
   // Close dropdowns on outside click
+  useEffect(() => {
+    if (!showCommands) return;
+    const item = commandDropdownRef.current?.querySelector<HTMLButtonElement>(
+      `[data-command-index="${selectedCommandIndex}"]`,
+    );
+    item?.scrollIntoView({ block: "nearest" });
+  }, [showCommands, selectedCommandIndex]);
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (
@@ -961,37 +984,53 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                 right: 0,
                 zIndex: 100,
                 background: "var(--bg)",
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
+                border: "1px solid color-mix(in srgb, var(--border) 78%, transparent)",
+                borderRadius: 10,
+                boxShadow: "0 -10px 28px rgba(0,0,0,0.34)",
                 overflow: "hidden",
                 width: "100%",
-                maxHeight: 240,
+                maxHeight: 280,
                 overflowY: "auto",
+                padding: 4,
               }}
             >
               {commandFiltered.map((cmd, i) => (
                 <button
-                  key={cmd.name}
+                  key={`${cmd.source ?? "cmd"}:${cmd.name}`}
+                  data-command-index={i}
                   style={{
-                    display: "flex",
+                    display: "grid",
+                    gridTemplateColumns: "minmax(120px, max-content) minmax(0, 1fr) auto",
                     alignItems: "center",
-                    gap: 8,
+                    gap: 10,
                     width: "100%",
-                    padding: "7px 12px",
-                    background: i === selectedCommandIndex ? "var(--bg-hover)" : "none",
+                    minHeight: 34,
+                    padding: "7px 10px",
+                    background:
+                      i === selectedCommandIndex
+                        ? "color-mix(in srgb, var(--accent) 12%, var(--bg-hover))"
+                        : "none",
                     border: "none",
                     color: i === selectedCommandIndex ? "var(--text)" : "var(--text-muted)",
                     cursor: "pointer",
                     fontSize: 12,
                     textAlign: "left",
                     fontWeight: i === selectedCommandIndex ? 600 : 400,
-                    whiteSpace: "nowrap",
+                    borderRadius: 7,
                   }}
                   onMouseEnter={() => setSelectedCommandIndex(i)}
                   onClick={() => selectCommand(cmd.name)}
                 >
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, flexShrink: 0 }}>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 13,
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     /{cmd.name}
                   </span>
                   <span
@@ -1000,9 +1039,25 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                       color: "var(--text-dim)",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {cmd.description}
+                  </span>
+                  <span
+                    style={{
+                      justifySelf: "end",
+                      padding: "1px 6px",
+                      border: "1px solid color-mix(in srgb, var(--border) 80%, transparent)",
+                      borderRadius: 999,
+                      color: "var(--text-dim)",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 10,
+                      lineHeight: "16px",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {getCommandSourceLabel(cmd.source)}
                   </span>
                 </button>
               ))}

@@ -20,6 +20,12 @@ export interface ToolInfo {
   description: string;
 }
 
+export interface SlashCommandInfoLike {
+  name: string;
+  description?: string;
+  source?: "extension" | "prompt" | "skill";
+}
+
 export interface NavigateTreeResult {
   editorText?: string;
   cancelled: boolean;
@@ -38,6 +44,13 @@ export interface AgentSessionLike {
   readonly sessionManager: SessionManager;
   readonly settingsManager: SettingsManager;
   readonly agent: { state?: { systemPrompt?: string; thinkingLevel?: string } };
+  readonly promptTemplates?: ReadonlyArray<{ name: string; description?: string }>;
+  readonly resourceLoader?: {
+    getSkills(): { skills: Array<{ name: string; description?: string }> };
+  };
+  readonly extensionRunner?: {
+    getRegisteredCommands(): Array<{ invocationName: string; description?: string }>;
+  };
 
   subscribe(listener: (event: AgentSessionEvent) => void): () => void;
   prompt(
@@ -64,4 +77,14 @@ export interface AgentSessionLike {
   setActiveToolsByName(names: string[]): void;
   abortCompaction(): void;
   getContextUsage(): ContextUsage | undefined;
+  bindExtensions?(bindings: {
+    abortHandler?: () => void;
+    shutdownHandler?: () => void;
+    onError?: (error: {
+      extensionPath: string;
+      event: string;
+      error: string;
+      stack?: string;
+    }) => void;
+  }): Promise<void>;
 }
