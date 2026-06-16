@@ -162,6 +162,10 @@ export function MessageView({
         isStreaming={isStreaming}
         toolResults={toolResults}
         modelNames={modelNames}
+        entryId={entryId}
+        onFork={onFork}
+        forking={forking}
+        onNavigate={onNavigate}
         showTimestamp={showTimestamp}
         prevTimestamp={prevTimestamp}
         onRetry={onRetry}
@@ -648,6 +652,10 @@ function AssistantMessageView({
   isStreaming,
   toolResults,
   modelNames,
+  entryId,
+  onFork,
+  forking,
+  onNavigate,
   showTimestamp,
   prevTimestamp,
   onRetry,
@@ -656,6 +664,10 @@ function AssistantMessageView({
   isStreaming?: boolean;
   toolResults?: Map<string, ToolResultMessage>;
   modelNames?: Record<string, string>;
+  entryId?: string;
+  onFork?: (entryId: string) => void;
+  forking?: boolean;
+  onNavigate?: (entryId: string) => void;
   showTimestamp?: boolean;
   prevTimestamp?: number;
   onRetry?: () => void;
@@ -666,6 +678,8 @@ function AssistantMessageView({
   const [copied, setCopied] = useState(false);
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
+  const canFork = !!entryId && !!onFork && !isStreaming;
+  const canNavigate = !!entryId && !!onNavigate && !isStreaming;
 
   // Streaming-based timing for thinking blocks
   const blockStartTimesRef = useRef<Map<number, number>>(new Map());
@@ -876,6 +890,95 @@ function AssistantMessageView({
               </svg>
             )}
             {copied ? "Copied" : "Copy"}
+          </button>
+        )}
+        {canNavigate && (
+          <button
+            onClick={() => onNavigate!(entryId!)}
+            title="Branch from this assistant message"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              padding: "3px 8px",
+              height: 22,
+              background: "none",
+              border: "none",
+              borderRadius: 5,
+              color: "var(--text-dim)",
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 400,
+              whiteSpace: "nowrap",
+              transition: "opacity 0.12s, color 0.12s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--accent)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--text-dim)";
+            }}
+          >
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="15 10 20 15 15 20" />
+              <path d="M4 4v7a4 4 0 0 0 4 4h12" />
+            </svg>
+            Branch
+          </button>
+        )}
+        {canFork && (
+          <button
+            onClick={() => onFork!(entryId!)}
+            disabled={forking}
+            title={forking ? "Creating new session..." : "Fork from this assistant message"}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              padding: "3px 8px",
+              height: 22,
+              background: "none",
+              border: "none",
+              borderRadius: 5,
+              color: forking ? "var(--accent)" : "var(--text-dim)",
+              cursor: forking ? "not-allowed" : "pointer",
+              fontSize: 12,
+              fontWeight: 400,
+              whiteSpace: "nowrap",
+              transition: "opacity 0.12s, color 0.12s",
+            }}
+            onMouseEnter={(e) => {
+              if (!forking) e.currentTarget.style.color = "var(--accent)";
+            }}
+            onMouseLeave={(e) => {
+              if (!forking) e.currentTarget.style.color = "var(--text-dim)";
+            }}
+          >
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="6" y1="3" x2="6" y2="15" />
+              <circle cx="18" cy="6" r="3" />
+              <circle cx="6" cy="18" r="3" />
+              <path d="M18 9a9 9 0 0 1-9 9" />
+            </svg>
+            {forking ? "Creating..." : "Fork"}
           </button>
         )}
         {time && !isStreaming && (
