@@ -17,7 +17,7 @@ try {
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ["@earendil-works/pi-coding-agent", "@earendil-works/pi-ai"],
-  allowedDevOrigins: ["192.168.*.*"],
+  allowedDevOrigins: ["127.0.0.1", "localhost", "192.168.*.*"],
   experimental: {
     turbopackFileSystemCacheForDev: true,
   },

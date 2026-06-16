@@ -110,6 +110,7 @@ function getToolResultPreview(result?: ToolResultMessage): string {
 }
 
 function ToolStateDot({ state }: { state: ToolCallState }) {
+  const color = getToolStateColor(state);
   return (
     <span
       aria-hidden
@@ -117,9 +118,15 @@ function ToolStateDot({ state }: { state: ToolCallState }) {
         width: 6,
         height: 6,
         borderRadius: "50%",
-        background: getToolStateColor(state),
+        background: color,
+        boxShadow:
+          state === "running"
+            ? `0 0 0 4px color-mix(in oklab, ${color}, transparent 86%)`
+            : `0 0 0 2px color-mix(in oklab, ${color}, transparent 92%)`,
         flexShrink: 0,
-        ...(state === "running" ? { animation: "pulse 1.5s ease-in-out infinite" } : {}),
+        transform: state === "pending" ? "scale(0.78)" : "scale(1)",
+        transition: "background 220ms ease, box-shadow 220ms ease, transform 220ms ease",
+        ...(state === "running" ? { animation: "pulse 1.8s ease-in-out infinite" } : {}),
       }}
     />
   );
@@ -553,6 +560,8 @@ function UserMessageView({
                     gap: 4,
                     padding: "3px 8px",
                     height: 22,
+                    minWidth: 68,
+                    justifyContent: "center",
                     background: "none",
                     border: "none",
                     borderRadius: 5,
@@ -603,6 +612,8 @@ function UserMessageView({
                     gap: 4,
                     padding: "3px 8px",
                     height: 22,
+                    minWidth: 78,
+                    justifyContent: "center",
                     background: "none",
                     border: "none",
                     borderRadius: 5,
@@ -611,7 +622,7 @@ function UserMessageView({
                     fontSize: 12,
                     fontWeight: 400,
                     whiteSpace: "nowrap",
-                    transition: "color 0.12s",
+                    transition: "color 0.16s ease, opacity 0.16s ease",
                   }}
                   onMouseEnter={(e) => {
                     if (!forking) e.currentTarget.style.color = "var(--accent)";
@@ -902,6 +913,8 @@ function AssistantMessageView({
               gap: 4,
               padding: "3px 8px",
               height: 22,
+              minWidth: 68,
+              justifyContent: "center",
               background: "none",
               border: "none",
               borderRadius: 5,
@@ -946,6 +959,8 @@ function AssistantMessageView({
               gap: 4,
               padding: "3px 8px",
               height: 22,
+              minWidth: 78,
+              justifyContent: "center",
               background: "none",
               border: "none",
               borderRadius: 5,
@@ -1331,6 +1346,7 @@ function ToolCallBlock({
           textAlign: "left",
           minWidth: 0,
           borderRadius: 5,
+          transition: "background 160ms ease, color 180ms ease",
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = "var(--bg-subtle)";
@@ -1348,38 +1364,40 @@ function ToolCallBlock({
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            flex: resultPreview ? "0 1 auto" : 1,
+            flex: "0 1 45%",
             minWidth: 0,
           }}
         >
           {getToolPreview(block)}
         </span>
-        {resultPreview && (
-          <span
-            style={{
-              color: isError ? "var(--danger)" : "var(--text-dim)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              flex: 1,
-              minWidth: 0,
-            }}
-          >
-            {resultPreview}
-          </span>
-        )}
-        {duration !== undefined && (
-          <span
-            style={{
-              fontSize: 12,
-              color: "var(--text-dim)",
-              flexShrink: 0,
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
-            {duration}s
-          </span>
-        )}
+        <span
+          style={{
+            color: isError ? "var(--danger)" : "var(--text-dim)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            flex: 1,
+            minWidth: 36,
+            opacity: resultPreview ? 1 : 0,
+            transition: "opacity 180ms ease, color 220ms ease",
+          }}
+        >
+          {resultPreview || " "}
+        </span>
+        <span
+          style={{
+            width: 30,
+            fontSize: 12,
+            color: "var(--text-dim)",
+            flexShrink: 0,
+            textAlign: "right",
+            fontVariantNumeric: "tabular-nums",
+            opacity: duration !== undefined ? 1 : 0,
+            transition: "opacity 180ms ease",
+          }}
+        >
+          {duration ?? 0}s
+        </span>
         <svg
           width="10"
           height="10"
@@ -1475,6 +1493,8 @@ function ToolCallsGroup({
   const failedCount = states.filter((state) => state === "error").length;
   const runningCount = states.filter((state) => state === "running").length;
   const doneCount = states.filter((state) => state === "done").length;
+  const summaryColor =
+    failedCount > 0 ? "var(--danger)" : runningCount > 0 ? "var(--accent)" : "var(--text-dim)";
   const stateSummary =
     failedCount > 0
       ? `${failedCount} failed`
@@ -1510,36 +1530,35 @@ function ToolCallsGroup({
         <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>Tools</span>
         <span
           style={{
-            color:
-              failedCount > 0
-                ? "var(--danger)"
-                : runningCount > 0
-                  ? "var(--accent)"
-                  : "var(--text-dim)",
+            color: summaryColor,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
             minWidth: 0,
+            transition: "color 220ms ease",
           }}
         >
           {blocks.length} steps · {stateSummary}
         </span>
-        {showTimer && (
-          <span
-            style={{
-              flexShrink: 0,
-              fontVariantNumeric: "tabular-nums",
-              color: "var(--text-dim)",
-              opacity: 0.5,
-              ...(isStreaming && !allDone ? { animation: "pulse 1.5s ease-in-out infinite" } : {}),
-            }}
-          >
-            {elapsed}s
-          </span>
-        )}
+        <span
+          style={{
+            width: 34,
+            flexShrink: 0,
+            textAlign: "right",
+            fontVariantNumeric: "tabular-nums",
+            color: "var(--text-dim)",
+            opacity: showTimer ? 0.55 : 0,
+            transition: "opacity 180ms ease",
+            ...(isStreaming && !allDone && showTimer
+              ? { animation: "pulse 1.8s ease-in-out infinite" }
+              : {}),
+          }}
+        >
+          {elapsed}s
+        </span>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", flexDirection: "column", transition: "opacity 180ms ease" }}>
         {visibleBlocks.map((block, i) => {
           const result = toolResults?.get(block.toolCallId);
           return (

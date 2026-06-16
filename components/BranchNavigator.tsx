@@ -111,6 +111,9 @@ function TreeNodeView({
           alignItems: "center",
           height: 24,
           cursor: "pointer",
+          opacity: isOnPath ? 1 : 0.82,
+          transform: isActive ? "translateX(1px)" : "translateX(0)",
+          transition: "opacity 180ms ease, transform 180ms ease",
         }}
         onClick={() => onSelect(rep.entry.id)}
       >
@@ -189,7 +192,10 @@ function TreeNodeView({
                 : "var(--border)",
             border: isActive ? "none" : "1px solid var(--text-dim)",
             marginRight: 6,
-            transition: "background 0.12s",
+            boxShadow: isActive
+              ? "0 0 0 4px color-mix(in oklab, var(--accent), transparent 88%)"
+              : "none",
+            transition: "background 180ms ease, border-color 180ms ease, box-shadow 180ms ease",
           }}
         />
 
@@ -265,12 +271,22 @@ export function BranchNavigator({
 }: Props) {
   const [openInternal, setOpenInternal] = useState(false);
   const open = openProp !== undefined ? openProp : openInternal;
+  const [panelMounted, setPanelMounted] = useState(open);
   const btnRef = useRef<HTMLButtonElement>(null);
   const [dropdownPos, setDropdownPos] = useState<{
     top: number;
     left: number;
     width: number;
   } | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setPanelMounted(true);
+      return;
+    }
+    const id = window.setTimeout(() => setPanelMounted(false), 180);
+    return () => window.clearTimeout(id);
+  }, [open]);
 
   useEffect(() => {
     if (!open || !inline) return;
@@ -377,7 +393,7 @@ export function BranchNavigator({
           {branchIcon}
           <span>Branches</span>
         </button>
-        {open && dropdownPos && (
+        {panelMounted && dropdownPos && (
           <div
             style={{
               position: "fixed",
@@ -387,6 +403,12 @@ export function BranchNavigator({
               background: "var(--bg-panel)",
               borderBottom: "1px solid var(--border)",
               zIndex: 500,
+              maxHeight: open ? 300 : 0,
+              opacity: open ? 1 : 0,
+              overflow: "hidden",
+              pointerEvents: open ? "auto" : "none",
+              transform: open ? "translateY(0)" : "translateY(-4px)",
+              transition: "opacity 160ms ease, transform 180ms ease, max-height 180ms ease",
             }}
           >
             {hasContent && firstNode ? (
@@ -453,7 +475,7 @@ export function BranchNavigator({
       </button>
 
       {/* Tree panel - overlay */}
-      {open && (
+      {panelMounted && (
         <div
           style={{
             position: "absolute",
@@ -464,6 +486,12 @@ export function BranchNavigator({
             borderBottom: "1px solid var(--border)",
             boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
             zIndex: 100,
+            maxHeight: open ? 300 : 0,
+            opacity: open ? 1 : 0,
+            overflow: "hidden",
+            pointerEvents: open ? "auto" : "none",
+            transform: open ? "translateY(0)" : "translateY(-4px)",
+            transition: "opacity 160ms ease, transform 180ms ease, max-height 180ms ease",
           }}
         >
           {hasContent && firstNode ? (

@@ -325,12 +325,14 @@ export function ChatWindow({
   const streamStartRef = useRef<number | null>(null);
   const [streamingTokens, setStreamingTokens] = useState<number>(0);
   const [streamingTps, setStreamingTps] = useState<number | null>(null);
+  const lastStreamMetricsRef = useRef({ tokens: 0, tps: 0 });
   const streamStateRef = useRef(streamState);
   streamStateRef.current = streamState;
 
   useEffect(() => {
     if (!agentRunning) {
       streamStartRef.current = null;
+      lastStreamMetricsRef.current = { tokens: 0, tps: 0 };
       setStreamingTokens(0);
       setStreamingTps(null);
       return;
@@ -357,9 +359,26 @@ export function ChatWindow({
       const now = Date.now();
       if (streamStartRef.current === null) streamStartRef.current = now;
       const elapsed = (now - streamStartRef.current) / 1000;
-      if (elapsed > 0.5) setStreamingTps(est / elapsed);
+      if (
+        est === 0 ||
+        Math.abs(est - lastStreamMetricsRef.current.tokens) >= 4 ||
+        lastStreamMetricsRef.current.tokens === 0
+      ) {
+        lastStreamMetricsRef.current.tokens = est;
+        setStreamingTokens(est);
+      }
+      if (elapsed > 0.8) {
+        const tps = Math.round((est / elapsed) * 10) / 10;
+        if (
+          lastStreamMetricsRef.current.tps === 0 ||
+          Math.abs(tps - lastStreamMetricsRef.current.tps) >= 0.4
+        ) {
+          lastStreamMetricsRef.current.tps = tps;
+          setStreamingTps(tps);
+        }
+      }
     };
-    const id = setInterval(tick, 300);
+    const id = setInterval(tick, 600);
     return () => clearInterval(id);
   }, [agentRunning]);
 

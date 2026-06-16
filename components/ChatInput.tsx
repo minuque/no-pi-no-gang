@@ -760,10 +760,15 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
               </span>
             )}
             {isStreaming &&
-              streamingTps != null &&
-              streamingTps > 0 &&
               (() => {
-                const tier = streamingTps >= 50 ? "high" : streamingTps >= 20 ? "mid" : "low";
+                const hasTps = streamingTps != null && streamingTps > 0;
+                const tier = hasTps
+                  ? streamingTps >= 50
+                    ? "high"
+                    : streamingTps >= 20
+                      ? "mid"
+                      : "low"
+                  : "low";
                 return (
                   <span
                     style={{
@@ -774,15 +779,31 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                       fontSize: 12,
                       fontWeight: 500,
                       lineHeight: "18px",
+                      minWidth: 58,
+                      textAlign: "center",
                       flexShrink: 0,
+                      opacity: hasTps ? 1 : 0,
+                      fontVariantNumeric: "tabular-nums",
+                      transition: "opacity 180ms ease, background 220ms ease, color 220ms ease",
                     }}
                   >
-                    {streamingTps.toFixed(1)} t/s
+                    {hasTps ? streamingTps.toFixed(1) : "0.0"} t/s
                   </span>
                 );
               })()}
-            {isStreaming && streamingTokens !== undefined && streamingTokens > 0 && (
-              <span style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
+            {isStreaming && (
+              <span
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
+                  minWidth: 52,
+                  flexShrink: 0,
+                  opacity: streamingTokens !== undefined && streamingTokens > 0 ? 1 : 0,
+                  fontVariantNumeric: "tabular-nums",
+                  transition: "opacity 180ms ease",
+                }}
+              >
                 <svg
                   width="11"
                   height="11"
@@ -796,7 +817,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                   <line x1="5" y1="1.5" x2="5" y2="8.5" />
                   <polyline points="2 6 5 8.5 8 6" />
                 </svg>
-                {streamingTokens}
+                {streamingTokens ?? 0}
               </span>
             )}
           </div>

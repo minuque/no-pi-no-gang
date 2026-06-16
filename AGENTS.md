@@ -19,6 +19,8 @@ bun run build && bun run start
 
 构建成功且服务可正常访问即为通过。开发期间优先用 `bun run dev`，避免频繁构建。
 
+**任务执行完成后用生产构建，不用 dev 构建。** `bun run dev` 带 HMR 和开发工具，占用资源多；任务完成验证结果时用 `bun run build && bun run start`，减少资源占用。
+
 ---
 
 ## 架构
