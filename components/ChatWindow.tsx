@@ -54,6 +54,9 @@ function phaseLabel(phase: AgentPhase): string {
   if (phase?.kind === "running_skill") {
     return `Running skill: ${phase.skill}...`;
   }
+  if (phase?.kind === "running_command") {
+    return `Running command: ${phase.command}...`;
+  }
   if (phase?.kind === "running_tools") {
     const names = phase.tools.map((t) => t.name);
     if (names.length === 0) return "Running tool...";

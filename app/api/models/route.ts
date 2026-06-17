@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const nameMap = new Map<string, string>();
-  let modelList: { id: string; name: string; provider: string }[] = [];
+  let modelList: { id: string; name: string; provider: string; contextWindow?: number }[] = [];
   let defaultModel: { provider: string; modelId: string } | null = null;
   const thinkingLevels: Record<string, string[]> = {};
   const thinkingLevelMaps: Record<string, Record<string, string | null>> = {};
@@ -20,11 +20,14 @@ export async function GET() {
     const authStorage = AuthStorage.create();
     const registry = ModelRegistry.create(authStorage);
     const available = registry.getAvailable();
-    modelList = available.map((m: { id: string; name: string; provider: string }) => ({
-      id: m.id,
-      name: m.name,
-      provider: m.provider,
-    }));
+    modelList = available.map(
+      (m: { id: string; name: string; provider: string; contextWindow?: number }) => ({
+        id: m.id,
+        name: m.name,
+        provider: m.provider,
+        contextWindow: m.contextWindow,
+      }),
+    );
     for (const m of available) {
       const key = `${m.provider}:${m.id}`;
       nameMap.set(key, m.name);

@@ -1300,13 +1300,26 @@ function ToolCallBlock({
 
   return (
     <div style={{ position: "relative", paddingLeft: 18, paddingBottom: isLast ? 0 : 2 }}>
+      {!isFirst && (
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: 5,
+            top: 0,
+            height: 11,
+            width: 1,
+            background: "var(--border)",
+          }}
+        />
+      )}
       {!isLast && (
         <span
           aria-hidden
           style={{
             position: "absolute",
             left: 5,
-            top: isFirst ? 15 : 0,
+            top: 18,
             bottom: -2,
             width: 1,
             background: "var(--border)",

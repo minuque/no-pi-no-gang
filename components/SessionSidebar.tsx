@@ -623,7 +623,7 @@ export function SessionSidebar({
       </div>
 
       {/* Session list */}
-      <div style={{ flex: "1 1 auto", overflowY: "auto", minHeight: 80 }}>
+      <div style={{ flex: "1 1 auto", overflowY: "auto", overflowX: "hidden", minHeight: 80 }}>
         {loading && (
           <div
             style={{
@@ -963,6 +963,7 @@ function BranchLeafItem({
   const isActive = activePathIds.has(displayNode.entry.id);
   const isOnPath = activePathIds.has(node.entry.id) || isActive;
   const label = displayNode.label ?? getBranchLabel(displayNode.entry);
+  const indent = depth * 14;
 
   return (
     <div>
@@ -976,10 +977,10 @@ function BranchLeafItem({
           display: "flex",
           alignItems: "center",
           gap: 6,
-          width: "100%",
+          width: `calc(100% - ${indent}px)`,
           height: 24,
           padding: "0 8px 0 0",
-          marginLeft: depth * 14,
+          marginLeft: indent,
           background: isActive ? "color-mix(in oklab, var(--accent), transparent 92%)" : "none",
           border: "none",
           borderLeft: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
@@ -1234,36 +1235,43 @@ function SessionItem({
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
+                minWidth: 0,
+                overflow: "hidden",
+                whiteSpace: "nowrap",
                 color: "var(--text-dim)",
                 fontSize: 11.5,
               }}
             >
               {/* Session type badge */}
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  height: 16,
-                  padding: "0 5px",
-                  borderRadius: 3,
-                  background: isFork ? "var(--bg-hover)" : "none",
-                  border: isFork ? "1px solid var(--border)" : "none",
-                  color: "var(--text-dim)",
-                  fontSize: 10.5,
-                  fontFamily: "var(--font-mono)",
-                  lineHeight: "16px",
-                  flexShrink: 0,
-                  opacity: isFork ? 0.85 : 0.65,
-                }}
-              >
-                {isFork ? "fork" : "root"}
+              {isFork && (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    height: 16,
+                    padding: "0 5px",
+                    borderRadius: 3,
+                    background: "var(--bg-hover)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-dim)",
+                    fontSize: 10.5,
+                    fontFamily: "var(--font-mono)",
+                    lineHeight: "16px",
+                    flexShrink: 0,
+                    opacity: 0.85,
+                  }}
+                >
+                  fork
+                </span>
+              )}
+              <span title={session.modified} style={{ flexShrink: 0 }}>
+                {formatRelativeTime(session.modified)}
               </span>
-              <span title={session.modified}>{formatRelativeTime(session.modified)}</span>
-              <span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
                 {session.messageCount} msg{session.messageCount !== 1 ? "s" : ""}
               </span>
               {branchCount > 0 && (
-                <span>
+                <span style={{ flexShrink: 0 }}>
                   {branchCount} branch{branchCount !== 1 ? "es" : ""}
                 </span>
               )}

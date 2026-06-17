@@ -58,8 +58,6 @@ export interface ChatInputHandle {
   addImages: (files: File[]) => void;
 }
 
-const COMPOSITION_END_ENTER_GRACE_MS = 100;
-
 const THINKING_LEVELS = ["auto", "off", "minimal", "low", "medium", "high", "xhigh"] as const;
 const THINKING_LEVEL_DESC: Record<(typeof THINKING_LEVELS)[number], string> = {
   auto: "沿用 pi 默认设置",
@@ -132,7 +130,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
   const thinkingDropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isComposingRef = useRef(false);
-  const lastCompositionEndAtRef = useRef(0);
   const commandDropdownRef = useRef<HTMLDivElement>(null);
   const sentHistoryRef = useRef<string[]>([]);
   const historyIndexRef = useRef(-1);
@@ -217,7 +214,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
   }, []);
 
   const handleSend = useCallback(() => {
-    const msg = value.trim();
+    const currentValue = textareaRef.current?.value ?? value;
+    const msg = currentValue.trim();
     if (!msg && !attachedImages.length) return;
     if (isStreaming) return;
     // Save to input history (dedupe consecutive identical messages)
@@ -430,19 +428,16 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
       }
 
       const nativeEvent = e.nativeEvent;
-      const recentlyComposed =
-        Date.now() - lastCompositionEndAtRef.current < COMPOSITION_END_ENTER_GRACE_MS;
       const isComposing =
         isComposingRef.current || nativeEvent.isComposing || nativeEvent.keyCode === 229;
 
-      if (e.key === "Enter" && !e.shiftKey && (isComposing || recentlyComposed)) {
-        if (recentlyComposed) e.preventDefault();
+      if (e.key === "Enter" && !e.shiftKey && isComposing) {
         return;
       }
 
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        if (!isStreaming && document.activeElement === textareaRef.current) handleSend();
+        if (!isStreaming) handleSend();
       }
     },
     [isStreaming, handleSend, showCommands, commandFiltered, selectedCommandIndex, selectCommand],
@@ -891,7 +886,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
               }}
               onCompositionEnd={() => {
                 isComposingRef.current = false;
-                lastCompositionEndAtRef.current = Date.now();
               }}
               onInput={handleInput}
               onPaste={handlePaste}

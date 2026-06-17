@@ -25,7 +25,7 @@ export interface SessionData {
     messages: AgentMessage[];
     entryIds: string[];
     thinkingLevel: string;
-    model: { provider: string; modelId: string } | null;
+    model: { provider: string; modelId: string; contextWindow?: number } | null;
   };
 }
 
@@ -59,15 +59,58 @@ interface AgentEvent {
   [key: string]: unknown;
 }
 
+type ModelListItem = { id: string; name: string; provider: string; contextWindow?: number };
+type ContextUsageState = {
+  percent: number | null;
+  contextWindow: number;
+  tokens: number | null;
+};
+
 async function responseError(res: Response): Promise<string> {
   const data = (await res.json().catch(() => ({}))) as { error?: string };
   return data.error ?? `HTTP ${res.status}`;
+}
+
+function deriveContextUsage(
+  messages: AgentMessage[],
+  model: { provider: string; modelId: string; contextWindow?: number } | null,
+  modelList: ModelListItem[],
+): ContextUsageState | null {
+  const contextWindow =
+    model?.contextWindow ??
+    modelList.find((m) => m.provider === model?.provider && m.id === model?.modelId)?.contextWindow;
+  if (!contextWindow) return null;
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (msg.role !== "assistant") continue;
+    const usage = (msg as AssistantMessage).usage as
+      | (AssistantMessage["usage"] & { totalTokens?: number })
+      | undefined;
+    if (!usage) continue;
+    const tokens =
+      usage.totalTokens ??
+      (usage.input ?? 0) + (usage.output ?? 0) + (usage.cacheRead ?? 0) + (usage.cacheWrite ?? 0);
+    if (tokens <= 0) continue;
+    return {
+      percent: (tokens / contextWindow) * 100,
+      contextWindow,
+      tokens,
+    };
+  }
+
+  return {
+    percent: 0,
+    contextWindow,
+    tokens: 0,
+  };
 }
 
 export type AgentPhase =
   | { kind: "waiting_model" }
   | { kind: "running_tools"; tools: { id: string; name: string }[] }
   | { kind: "running_skill"; skill: string }
+  | { kind: "running_command"; command: string }
   | null;
 
 export type AgentEventStatus = "idle" | "connecting" | "connected" | "reconnecting";
@@ -134,7 +177,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   });
   const [agentRunning, setAgentRunning] = useState(false);
   const [modelNames, setModelNames] = useState<Record<string, string>>({});
-  const [modelList, setModelList] = useState<{ id: string; name: string; provider: string }[]>([]);
+  const [modelList, setModelList] = useState<ModelListItem[]>([]);
   const [modelThinkingLevels, setModelThinkingLevels] = useState<Record<string, string[]>>({});
   const [modelThinkingLevelMaps, setModelThinkingLevelMaps] = useState<
     Record<string, Record<string, string | null>>
@@ -150,11 +193,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     maxAttempts: number;
     errorMessage?: string;
   } | null>(null);
-  const [contextUsage, setContextUsage] = useState<{
-    percent: number | null;
-    contextWindow: number;
-    tokens: number | null;
-  } | null>(null);
+  const [contextUsage, setContextUsage] = useState<ContextUsageState | null>(null);
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
   const [forkingEntryId, setForkingEntryId] = useState<string | null>(null);
   const [currentModelOverride, setCurrentModelOverride] = useState<{
@@ -183,6 +222,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const currentModel = currentModelOverride ?? data?.context.model ?? pendingModel ?? null;
   const displayModel = isNew ? newSessionModel : currentModel;
+  const currentModelRef = useRef(currentModel);
+  currentModelRef.current = currentModel;
 
   const sessionStats = (() => {
     const tokens = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
@@ -200,6 +241,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const total = tokens.input + tokens.output + tokens.cacheRead + tokens.cacheWrite;
     return total > 0 ? { tokens, cost } : null;
   })();
+
+  useEffect(() => {
+    if (contextUsage !== null || messages.length === 0) return;
+    const fallback = deriveContextUsage(messages, currentModel, modelList);
+    if (fallback) setContextUsage(fallback);
+  }, [contextUsage, currentModel, messages, modelList]);
 
   const loadSession = useCallback(
     async (sid: string, showLoading = false, includeState = false) => {
@@ -242,7 +289,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (loadGenRef.current !== gen) return null;
         setData(d);
         setActiveLeafId(d.leafId);
-        setMessages(mergeToolCallMessages(d.context.messages));
+        const mergedMessages = mergeToolCallMessages(d.context.messages);
+        setMessages(mergedMessages);
         setEntryIds(d.context.entryIds ?? []);
         setCurrentModelOverride(null);
         setError(null);
@@ -254,9 +302,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         ) {
           setThinkingLevel(d.context.thinkingLevel as ThinkingLevelOption);
         }
-        // Sync context usage from session state
+        // Sync context usage from live state; fall back to persisted usage on cold load.
         if (d.agentState?.state?.contextUsage !== undefined) {
           setContextUsage(d.agentState.state.contextUsage ?? null);
+        } else {
+          setContextUsage(
+            deriveContextUsage(mergedMessages, d.context.model, modelListRef.current),
+          );
         }
         return d.agentState ?? null;
       } catch (e) {
@@ -283,8 +335,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = (await res.json()) as { context: { messages: AgentMessage[]; entryIds: string[] } };
       if (loadGenRef.current !== gen) return;
-      setMessages(mergeToolCallMessages(d.context.messages));
+      const mergedMessages = mergeToolCallMessages(d.context.messages);
+      setMessages(mergedMessages);
       setEntryIds(d.context.entryIds ?? []);
+      setContextUsage(
+        deriveContextUsage(mergedMessages, currentModelRef.current, modelListRef.current),
+      );
     } catch (e) {
       console.error("Failed to load context:", e);
     } finally {
@@ -533,6 +589,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const handleCommand = useCallback(
     async (commandName: string, message: string, images?: AttachedImage[]) => {
       if (agentRunning) return;
+      const commandInfo = commands.find((c) => c.name.toLowerCase() === commandName.toLowerCase());
       // Require at least one model to be configured
       if (modelListRef.current.length === 0) {
         toast.error("No models configured. Add models in Settings → Models first.");
@@ -560,8 +617,37 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       };
       setMessages((prev) => [...prev, userMsg]);
       setAgentRunning(true);
-      setAgentPhase({ kind: "running_skill", skill: commandName });
+      setAgentPhase(
+        commandInfo?.source === "extension"
+          ? { kind: "running_command", command: commandName }
+          : { kind: "running_skill", skill: commandName },
+      );
       dispatch({ type: "start" });
+      const normalizedCommand = commandName.toLowerCase();
+      const normalizedArgs = message.trim().toLowerCase();
+      if (
+        commandInfo?.source === "extension" &&
+        normalizedCommand === "mcp" &&
+        (!normalizedArgs || normalizedArgs === "status")
+      ) {
+        const assistantMsg: AssistantMessage = {
+          role: "assistant",
+          content: [
+            {
+              type: "text",
+              text: "`/mcp` 状态面板目前只能在终端/TUI 里打开，Web UI 还不能渲染这个 extension 面板。请在终端里运行 `/mcp` 查看状态。",
+            },
+          ],
+          model: "",
+          provider: "",
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+        setAgentRunning(false);
+        setAgentPhase(null);
+        dispatch({ type: "end" });
+        return;
+      }
       const piImages = images?.map((img) => ({
         type: "image" as const,
         data: img.data,
@@ -618,6 +704,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             ...(piImages?.length ? { images: piImages } : {}),
           });
         }
+        if (commandInfo?.source === "extension") {
+          setAgentRunning(false);
+          setAgentPhase(null);
+          dispatch({ type: "end" });
+        }
       } catch (e) {
         console.error("Failed to send command:", e);
         toast.error(e instanceof Error ? e.message : String(e));
@@ -636,6 +727,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       agentRunning,
       connectEvents,
       onSessionCreated,
+      commands,
     ],
   );
 
@@ -984,7 +1076,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       .then(
         (d: {
           models: Record<string, string>;
-          modelList?: { id: string; name: string; provider: string }[];
+          modelList?: ModelListItem[];
           defaultModel?: { provider: string; modelId: string } | null;
           thinkingLevels?: Record<string, string[]>;
           thinkingLevelMaps?: Record<string, Record<string, string | null>>;
