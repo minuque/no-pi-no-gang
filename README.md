@@ -1,131 +1,131 @@
+<div align="center">
+
 # no-pi-no-gang
 
-<p align="center">
-  <img src="public/pi-logo-on-dark.svg" alt="pi logo" width="100" />
-</p>
+<img src="public/pi-logo.svg" alt="pi logo" width="100" />
 
-<p align="center">
-  <strong><a href="https://github.com/badlogic/pi-mono">pi.dev</a></strong>
-</p>
+**<a href="https://github.com/badlogic/pi-mono">pi.dev</a> Web UI**
 
-<p align="center">
-  <img src="https://img.shields.io/badge/version-0.0.1-blue" alt="version" />
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="license" />
-  <img src="https://img.shields.io/badge/Bun-≥1.0-fbf0df?logo=bun&logoColor=000" alt="Bun" />
-  <img src="https://img.shields.io/badge/Next.js-16-black" alt="Next.js 16" />
-  <img src="https://img.shields.io/badge/React-19-149eca" alt="React 19" />
-</p>
+<img src="https://img.shields.io/badge/version-0.0.1-blue" alt="version" />
+<img src="https://img.shields.io/badge/license-MIT-green" alt="license" />
+<img src="https://img.shields.io/badge/Bun-≥1.0-fbf0df?logo=bun&logoColor=000" alt="Bun" />
+<img src="https://img.shields.io/badge/Next.js-16-black" alt="Next.js 16" />
+<img src="https://img.shields.io/badge/React-19-149eca" alt="React 19" />
 
-## 概述
+English | [中文](README_ZH.md)
 
-no-pi-no-gang 是 [pi.dev](https://github.com/badlogic/pi-mono) 的 Web UI——浏览器中的完整会话体验，附带图形化会话浏览、文件工作台和模型配置。沿用 pi 的 `.jsonl` + `AgentSession` 事实源模型，不引入额外持久层。
+</div>
 
-## 功能
+## Overview
 
-| 能力 | 说明 |
+no-pi-no-gang is a Web UI for [pi.dev](https://github.com/badlogic/pi-mono) — a complete session experience in the browser, with graphical session browsing, a file workbench, and model configuration. It follows pi's `.jsonl` + `AgentSession` source-of-truth model, with no additional persistence layer.
+
+## Features
+
+| Capability | Description |
 |---|---|
-| 会话浏览 | 按工作目录聚合本地 pi 会话，读取历史消息和分支树 |
-| 实时对话 | SSE 流式响应、工具调用、思考/压缩态可视化 |
-| Fork / Branch | 文件级 Fork + 同文件内消息分支切换 |
-| 模型配置 | 界面内切换模型、配置工具集、管理供应商 |
-| 技能管理 | 搜索、安装、查看技能配置 |
-| 文件工作台 | 侧边栏浏览工作目录，辅助上下文追溯 |
-| 运行态恢复 | 刷新后自动检测并重连 SSE |
+| Session Browsing | Aggregate local pi sessions by working directory, read message history and branch trees |
+| Real-time Chat | SSE streaming responses, tool calls, thinking/compression state visualization |
+| Fork / Branch | File-level fork + in-file message branch switching |
+| Model Config | Switch models, configure tool sets, manage providers in the UI |
+| Skill Management | Search, install, and inspect skill configurations |
+| File Workbench | Sidebar file browser for working directory context |
+| Run-state Recovery | Auto-detect and reconnect SSE after page refresh |
 
-## 快速开始
+## Quick Start
 
 ```bash
-# 本地开发
+# Local development
 bun install
 bun run dev                     # → http://localhost:7777
 
-# 生产构建
+# Production build
 bun run build
 bun run start                   # → http://localhost:7777
 ```
 
-## 架构
+## Architecture
 
-no-pi-no-gang 是基于 pi 的 Web UI：浏览器负责交互，Next.js API 层转发命令，`AgentSession` 运行智能体逻辑，`~/.pi/agent/` 落盘历史。
+no-pi-no-gang is a Web UI built on pi: the browser handles interaction, the Next.js API layer forwards commands, `AgentSession` runs agent logic, and `~/.pi/agent/` persists history to disk.
 
-![架构总览](docs/architecture.svg)
+![Architecture Overview](docs/architecture.svg)
 
-### 数据目录
+### Data Directory
 
-复用 pi 的本地数据，无需额外配置：
+Reuses pi's local data — no extra configuration needed:
 
 ```text
 ~/.pi/agent/
-  sessions/<cwd>/<timestamp>_<uuid>.jsonl   # 会话历史
-  models.json                                # 模型配置
-  settings.json                              # 用户偏好
+  sessions/<cwd>/<timestamp>_<uuid>.jsonl   # Session history
+  models.json                                # Model configuration
+  settings.json                              # User preferences
 ```
 
-### 三条主链路
+### Three Main Paths
 
-| 链路 | 入口 | 核心 | 输出 |
+| Path | Entry | Core | Output |
 |---|---|---|---|
-| 历史读取 | `GET /api/sessions` | `session-reader.ts` 扫描解析 `.jsonl` | 会话树、消息列表、分支上下文 |
-| 命令发送 | `POST /api/agent/*` | `rpc-manager.ts` 管理 `AgentSession` 生命周期 | prompt / fork / navigate 等动作 |
-| 事件流 | `GET /api/agent/[id]/events` | `session.subscribe()` + SSE | 流式消息、工具调用、状态变更 |
+| History Read | `GET /api/sessions` | `session-reader.ts` scans & parses `.jsonl` | Session trees, message lists, branch context |
+| Command Send | `POST /api/agent/*` | `rpc-manager.ts` manages `AgentSession` lifecycle | Prompt / fork / navigate actions |
+| Event Stream | `GET /api/agent/[id]/events` | `session.subscribe()` + SSE | Streaming messages, tool calls, state changes |
 
-### 模块边界
+### Module Boundaries
 
-| 层级 | 负责 | 不负责 |
+| Layer | Responsible for | Not responsible for |
 |---|---|---|
-| 浏览器 UI | 展示会话、发送命令、消费 SSE | 直接读写 `.jsonl` 或执行智能体逻辑 |
-| Next.js API | 校验请求、读取本地文件、管理 SSE | 保存额外业务数据库 |
-| `session-reader.ts` | 只读解析历史会话 | 创建 `AgentSession` |
-| `rpc-manager.ts` | `AgentSession` 生命周期和命令分发 | 解析会话列表 |
-| `AgentSession` | 执行 pi 动作、写入会话事实 | 管理 Web UI 状态 |
+| Browser UI | Display sessions, send commands, consume SSE | Direct `.jsonl` reads or agent logic execution |
+| Next.js API | Validate requests, read local files, manage SSE | Persisting extra business databases |
+| `session-reader.ts` | Read-only historical session parsing | Creating `AgentSession` |
+| `rpc-manager.ts` | `AgentSession` lifecycle & command dispatch | Parsing session lists |
+| `AgentSession` | Execute pi actions, write session facts | Managing Web UI state |
 
-## 项目结构
+## Project Structure
 
 ```text
 app/api/
-  agent/          # 新建会话、消息、Fork/Branch、压缩、SSE
-  sessions/       # 会话列表、详情、上下文
-  files/          # 工作目录文件读取
-  models/         # 可用模型列表
-  models-config/  # models.json 读写与测试
-  auth/           # provider、OAuth、API Key 登录
-  skills/         # 技能搜索、安装和列表
-components/       # 三栏 UI、聊天流、会话树、文件工作台
-hooks/            # 前端状态机与会话事件处理
+  agent/          # New session, messages, Fork/Branch, compression, SSE
+  sessions/       # Session list, detail, context
+  files/          # Working directory file reads
+  models/         # Available model list
+  models-config/  # models.json read/write & testing
+  auth/           # Provider, OAuth, API Key login
+  skills/         # Skill search, install, and listing
+components/       # Three-column UI, chat stream, session tree, file workbench
+hooks/            # Frontend state machine & session event handling
 lib/
-  session-reader.ts  # .jsonl 读取、解析、规范化
-  rpc-manager.ts     # AgentSession 包装、生命周期、命令分发
-  normalize.ts       # 消息字段兼容和 toolCall 规范化
-docs/             # 补充文档
-bin/              # npm CLI 启动入口
+  session-reader.ts  # .jsonl read, parse, normalize
+  rpc-manager.ts     # AgentSession wrapper, lifecycle, command dispatch
+  normalize.ts       # Message field compatibility & toolCall normalization
+docs/             # Supplementary documentation
+bin/              # npm CLI launcher
 ```
 
-## 脚本
+## Scripts
 
-| 命令 | 说明 |
+| Command | Description |
 |---|---|
-| `bun run dev` | 开发服务 `localhost:7777` |
-| `bun run build` | 生产构建 |
-| `bun run start` | 启动构建产物 |
-| `bun run lint` | ESLint 全仓检查 |
-| `node_modules/.bin/tsc --noEmit` | 类型检查 |
+| `bun run dev` | Dev server at `localhost:7777` |
+| `bun run build` | Production build |
+| `bun run start` | Launch built output |
+| `bun run lint` | ESLint full-repo check |
+| `node_modules/.bin/tsc --noEmit` | Type check |
 
-提交前验收：
+Pre-commit verification:
 
 ```bash
 bun run build && bun run start
 ```
 
-## 相关文档
+## Related Docs
 
-- [ROADMAP.md](ROADMAP.md) — 系统架构、数据流、迭代路线
-- [TODO.md](TODO.md) — 按优先级组织的任务包
-- [Pi_SDK.md](Pi_SDK.md) — pi SDK 接口说明
-- [AGENTS.md](AGENTS.md) — 协作、验证和文档约束
+- [ROADMAP.md](ROADMAP.md) — System architecture, data flow, iteration roadmap
+- [TODO.md](TODO.md) — Priority-organized task packages
+- [Pi_SDK.md](Pi_SDK.md) — pi SDK interface reference
+- [AGENTS.md](AGENTS.md) — Collaboration, verification, and documentation conventions
 
-## 致谢
+## Acknowledgments
 
-本项目 fork 自 [agegr/pi-web](https://github.com/agegr/pi-web)，感谢原作者的杰出贡献。
+This project is forked from [agegr/pi-web](https://github.com/agegr/pi-web). Thanks to the original author for their outstanding contribution.
 
 ## License
 
