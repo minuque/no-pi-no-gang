@@ -34,19 +34,19 @@
 
 ### Must
 
-- [ ] **会话节点元数据补缺**：`SessionInfo` 已有 `parentSessionId`、`cwd`、`modified`；继续补 `model`、`orphaned`、`hasCompaction`，并把 live `isStreaming` 从 agent state 合并到节点展示。
+- [x] **会话节点元数据补缺**：`SessionInfo` 已有 `parentSessionId`、`cwd`、`modified`；继续补 `model`、`orphaned`、`hasCompaction`，并把 live `isStreaming` 从 agent state 合并到节点展示。
 - [ ] **Fork / Branch 文案统一**：Fork 明确是"创建新 `.jsonl` 会话文件"；Branch 明确是"同一 `.jsonl` 内路径切换"。
 - [ ] **分支切换状态同步**：消息列表、`entryIds`、leaf、BranchNavigator 来自同一次 `buildSessionContext()`。
-- [ ] **Chat 状态表达补齐**：当前已有输入区运行提示；继续补齐 `streaming`、`compacting`、`thinkingLevel`、SSE 连接、readonly / destroyed 状态的统一展示。
-- [ ] **SSE 断线状态区分**：区分"正在重连 / 会话已销毁 / 当前只读浏览"。
-- [ ] **Agent 状态展示补缺**：进入会话时已通过 `includeState` 读取 live state；继续把 `exists/running`、`isStreaming`、`isCompacting`、`thinkingLevel`、最后更新时间映射到明确 UI 状态。
+- [x] **Chat 状态表达补齐**：当前已有输入区运行提示；继续补齐 `streaming`、`compacting`、`thinkingLevel`、SSE 连接、readonly / destroyed 状态的统一展示。
+- [x] **SSE 断线状态区分**：区分"正在重连 / 会话已销毁 / 当前只读浏览"。
+- [x] **Agent 状态展示补缺**：进入会话时已通过 `includeState` 读取 live state；继续把 `exists/running`、`isStreaming`、`isCompacting`、`thinkingLevel`、最后更新时间映射到明确 UI 状态。
 
 ### Should
 
-- [ ] **消息锚点补齐**：assistant 消息已有 entry / leaf / branch 锚点；继续覆盖 user / toolResult，并显式标记是否在当前路径上。
-- [ ] **Tool call 失败展示**：优先展示结构化错误，无可读错误时提供展开入口。
+- [x] **消息锚点补齐**：assistant 消息已有 entry / leaf / branch 锚点；继续覆盖 user / toolResult，并显式标记是否在当前路径上。
+- [x] **Tool call 失败展示**：优先展示结构化错误，无可读错误时提供展开入口。
 - [ ] **连续 tool call 合并规则**：保留原始消息边界和 `entryId` 归属，不跨消息合并。
-- [ ] **Context Stack**：右侧工作台展示手动打开文件、最近 tool call 文件、当前会话引用文件。
+- [x] **Context Stack**：右侧工作台展示手动打开文件、最近 tool call 文件、当前会话引用文件。
 - [ ] **消息到文件单向跳转**：点击消息高亮相关文件。
 - [ ] **文件错误态**：明确展示 cwd 外、已删除、不可读、二进制不支持。
 
