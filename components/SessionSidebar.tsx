@@ -36,6 +36,25 @@ function formatRelativeTime(dateStr: string): string {
   return date.toLocaleDateString();
 }
 
+type SessionMeta = {
+  orphaned?: boolean;
+  isOrphaned?: boolean;
+  hasCompaction?: boolean;
+  hasCompactions?: boolean;
+  compacted?: boolean;
+  isStreaming?: boolean;
+  streaming?: boolean;
+  liveStreaming?: boolean;
+  live?: boolean;
+  isLive?: boolean;
+  agentState?: { isStreaming?: boolean };
+};
+
+function hasAnyFlag(session: SessionInfo, keys: (keyof SessionMeta)[]): boolean {
+  const meta = session as SessionInfo & SessionMeta;
+  return keys.some((key) => meta[key] === true);
+}
+
 /** Return the 5 most recently active cwds across all sessions */
 function getRecentCwds(sessions: SessionInfo[]): string[] {
   const latestByCwd = new Map<string, string>(); // cwd -> most recent modified
@@ -609,7 +628,7 @@ export function SessionSidebar({
         <HeaderBtn
           onClick={handleNewSession}
           disabled={!selCwd}
-          title={selCwd ? "New session" : "Select a project first"}
+          title={selCwd ? "New .jsonl session file" : "Select a project first"}
         >
           <IconPlus />
         </HeaderBtn>
@@ -711,7 +730,7 @@ function CwdGroupSection({
         style={{
           display: "flex",
           alignItems: "stretch",
-          minHeight: 50,
+          minHeight: 56,
           background: isActive
             ? "color-mix(in oklab, var(--accent), transparent 94%)"
             : hovered
@@ -728,7 +747,7 @@ function CwdGroupSection({
           style={{
             flex: 1,
             minWidth: 0,
-            padding: "8px 0 8px 12px",
+            padding: "10px 0 10px 14px",
             background: "none",
             border: "none",
             cursor: "pointer",
@@ -737,7 +756,7 @@ function CwdGroupSection({
           }}
         >
           {/* Project name row */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
             <IconFolder active={isActive} />
             <span
               style={{
@@ -748,7 +767,7 @@ function CwdGroupSection({
                 whiteSpace: "nowrap",
                 fontSize: 13,
                 fontWeight: isActive ? 600 : 500,
-                lineHeight: "19px",
+                lineHeight: "20px",
               }}
             >
               {getCwdLabel(group.cwd)}
@@ -758,15 +777,15 @@ function CwdGroupSection({
           {/* Path */}
           <div
             style={{
-              marginTop: 1,
+              marginTop: 3,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
               color: "var(--text-dim)",
-              fontSize: 10.5,
+              fontSize: 11,
               fontFamily: "var(--font-mono)",
-              lineHeight: "15px",
-              opacity: 0.65,
+              lineHeight: "16px",
+              opacity: 0.7,
             }}
           >
             {group.cwd}
@@ -775,12 +794,13 @@ function CwdGroupSection({
           {/* Metadata row */}
           <div
             style={{
-              marginTop: 3,
+              marginTop: 5,
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: 10,
               color: "var(--text-dim)",
               fontSize: 11.5,
+              lineHeight: "16px",
             }}
           >
             <span>
@@ -803,8 +823,8 @@ function CwdGroupSection({
             display: "flex",
             alignItems: "flex-start",
             justifyContent: "center",
-            width: 30,
-            paddingTop: 14,
+            width: 32,
+            paddingTop: 16,
             flexShrink: 0,
             background: "none",
             border: "none",
@@ -820,7 +840,7 @@ function CwdGroupSection({
 
       {/* Session tree */}
       {!isCollapsed && (
-        <div style={{ padding: "4px 0 8px 12px" }}>
+        <div style={{ padding: "6px 0 0 14px" }}>
           {empty ? (
             <div
               style={{
@@ -906,6 +926,7 @@ function SessionTreeItem({
         depth={depth}
         hasChildren={hasChildren}
         branchCount={branchCount}
+        liveStreamingFallback={node.session.id === selectedSessionId && branchSwitchDisabled}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((v) => !v)}
       />
@@ -972,13 +993,17 @@ function BranchLeafItem({
           if (!disabled) onSelect?.(displayNode.entry.id);
         }}
         disabled={disabled}
-        title={disabled ? "Branch switching is disabled while streaming" : label}
+        title={
+          disabled
+            ? "Branch path switching is disabled while streaming"
+            : `Switch branch path inside this .jsonl: ${label}`
+        }
         style={{
           display: "flex",
           alignItems: "center",
           gap: 6,
           width: `calc(100% - ${indent}px)`,
-          height: 24,
+          height: 26,
           padding: "0 8px 0 0",
           marginLeft: indent,
           background: isActive ? "color-mix(in oklab, var(--accent), transparent 92%)" : "none",
@@ -1012,7 +1037,7 @@ function BranchLeafItem({
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
             fontSize: 11.5,
-            lineHeight: "18px",
+            lineHeight: "20px",
           }}
         >
           {label}
@@ -1042,6 +1067,7 @@ function SessionItem({
   depth = 0,
   hasChildren = false,
   branchCount = 0,
+  liveStreamingFallback = false,
   collapsed = false,
   onToggleCollapse,
 }: {
@@ -1053,10 +1079,12 @@ function SessionItem({
   depth?: number;
   hasChildren?: boolean;
   branchCount?: number;
+  liveStreamingFallback?: boolean;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [actionsFocused, setActionsFocused] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -1065,6 +1093,13 @@ function SessionItem({
 
   const title = session.name || session.firstMessage.slice(0, 50) || session.id.slice(0, 12);
   const isFork = Boolean(session.parentSessionId) || depth > 0;
+  const isOrphaned = hasAnyFlag(session, ["orphaned", "isOrphaned"]);
+  const hasCompaction = hasAnyFlag(session, ["hasCompaction", "hasCompactions", "compacted"]);
+  const agentState = (session as SessionInfo & SessionMeta).agentState;
+  const isLiveStreaming =
+    liveStreamingFallback ||
+    agentState?.isStreaming === true ||
+    hasAnyFlag(session, ["isStreaming", "streaming", "liveStreaming", "live", "isLive"]);
 
   const startRename = useCallback(
     (e: React.MouseEvent) => {
@@ -1117,7 +1152,7 @@ function SessionItem({
     setConfirmDelete(false);
   }, []);
 
-  const rowH = 46;
+  const rowH = 48;
 
   // Depth thread color — fades with depth, forms vertical line when same-depth items stack
   const depthColor =
@@ -1128,34 +1163,42 @@ function SessionItem({
         : "color-mix(in oklab, var(--accent), transparent 95%)";
 
   const borderColor = confirmDelete ? "var(--danger)" : isSelected ? "var(--accent)" : depthColor;
+  const showRowActions = hovered || actionsFocused;
 
   return (
     <div
       onClick={confirmDelete || renaming ? undefined : onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onFocusCapture={() => setActionsFocused(true)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setActionsFocused(false);
+        }
+      }}
       style={{
+        position: "relative",
         height: rowH,
         display: "flex",
         alignItems: "center",
         marginLeft: depth * 14,
-        paddingLeft: 6,
-        paddingRight: 6,
+        paddingLeft: 8,
+        paddingRight: 8,
         cursor: confirmDelete || renaming ? "default" : "pointer",
         background: confirmDelete
           ? "color-mix(in oklab, var(--danger), transparent 93%)"
           : isSelected
             ? "color-mix(in oklab, var(--accent), transparent 93%)"
             : hovered
-              ? "var(--bg-hover)"
+              ? "var(--bg-selected)"
               : "transparent",
         borderLeft: `2px solid ${borderColor}`,
         borderRadius: "0 5px 5px 0",
-        transition: "background 0.1s, border-color 0.15s",
+        transition: "background 0.15s, border-color 0.15s",
         opacity: deleting ? 0.4 : 1,
-        gap: 5,
+        gap: 8,
         overflow: "hidden",
-        marginBottom: 1,
+        marginBottom: 2,
       }}
     >
       {confirmDelete ? (
@@ -1217,7 +1260,7 @@ function SessionItem({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{
-                fontSize: 13.5,
+                fontSize: 13,
                 fontWeight: isSelected ? 500 : 400,
                 lineHeight: "18px",
                 overflow: "hidden",
@@ -1234,35 +1277,38 @@ function SessionItem({
                 marginTop: 1,
                 display: "flex",
                 alignItems: "center",
-                gap: 6,
+                gap: 8,
                 minWidth: 0,
                 overflow: "hidden",
                 whiteSpace: "nowrap",
                 color: "var(--text-dim)",
                 fontSize: 11.5,
+                lineHeight: "16px",
               }}
             >
               {/* Session type badge */}
               {isFork && (
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    height: 16,
-                    padding: "0 5px",
-                    borderRadius: 3,
-                    background: "var(--bg-hover)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text-dim)",
-                    fontSize: 10.5,
-                    fontFamily: "var(--font-mono)",
-                    lineHeight: "16px",
-                    flexShrink: 0,
-                    opacity: 0.85,
-                  }}
-                >
+                <SessionMetaBadge title="Fork: separate .jsonl session file" tone="accent">
                   fork
-                </span>
+                </SessionMetaBadge>
+              )}
+              {isOrphaned && (
+                <SessionMetaBadge
+                  title="Orphaned: parent .jsonl session file is missing"
+                  tone="danger"
+                >
+                  orphan
+                </SessionMetaBadge>
+              )}
+              {hasCompaction && (
+                <SessionMetaBadge title="Has compaction entries in this .jsonl session" tone="warn">
+                  compact
+                </SessionMetaBadge>
+              )}
+              {isLiveStreaming && (
+                <SessionMetaBadge title="Live streaming is active in this session" tone="success">
+                  live
+                </SessionMetaBadge>
               )}
               <span title={session.modified} style={{ flexShrink: 0 }}>
                 {formatRelativeTime(session.modified)}
@@ -1271,8 +1317,11 @@ function SessionItem({
                 {session.messageCount} msg{session.messageCount !== 1 ? "s" : ""}
               </span>
               {branchCount > 0 && (
-                <span style={{ flexShrink: 0 }}>
-                  {branchCount} branch{branchCount !== 1 ? "es" : ""}
+                <span
+                  title="Branch paths inside this .jsonl session file"
+                  style={{ flexShrink: 0 }}
+                >
+                  {branchCount} branch path{branchCount !== 1 ? "s" : ""}
                 </span>
               )}
             </div>
@@ -1285,7 +1334,7 @@ function SessionItem({
                 e.stopPropagation();
                 onToggleCollapse?.();
               }}
-              title={collapsed ? "Expand forks" : "Collapse forks"}
+              title={collapsed ? "Expand fork .jsonl files" : "Collapse fork .jsonl files"}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1310,10 +1359,19 @@ function SessionItem({
           <div
             style={{
               display: "flex",
-              gap: 2,
-              flexShrink: 0,
-              opacity: hovered ? 1 : 0,
-              transition: "opacity 0.12s",
+              gap: 5,
+              position: "absolute",
+              right: 8,
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 2,
+              padding: 3,
+              borderRadius: 8,
+              background: "color-mix(in oklab, var(--bg-panel), transparent 4%)",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.10), 0 0 0 1px var(--border)",
+              opacity: showRowActions ? 1 : 0,
+              pointerEvents: showRowActions ? "auto" : "none",
+              transition: "opacity 0.15s",
             }}
           >
             <button
@@ -1355,6 +1413,48 @@ function SessionItem({
 }
 
 // ─── Shared button styles ───
+function SessionMetaBadge({
+  children,
+  title,
+  tone = "muted",
+}: {
+  children: React.ReactNode;
+  title: string;
+  tone?: "muted" | "accent" | "warn" | "danger" | "success";
+}) {
+  const toneVar = tone === "muted" ? null : `var(--${tone})`;
+  return (
+    <span
+      title={title}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        height: 17,
+        maxWidth: 72,
+        padding: "0 5px",
+        borderRadius: 3,
+        background: toneVar
+          ? `color-mix(in oklab, ${toneVar}, transparent 88%)`
+          : "var(--bg-hover)",
+        border: `1px solid ${
+          toneVar ? `color-mix(in oklab, ${toneVar}, transparent 68%)` : "var(--border)"
+        }`,
+        color: toneVar ?? "var(--text-dim)",
+        fontSize: 11,
+        fontFamily: "var(--font-mono)",
+        lineHeight: "17px",
+        flexShrink: 0,
+        opacity: 0.9,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 const btnIcon: React.CSSProperties = {
   display: "flex",
   alignItems: "center",

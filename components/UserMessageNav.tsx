@@ -1,7 +1,5 @@
 "use client";
 
-import type { CSSProperties } from "react";
-
 interface UserAnchor {
   id: string;
   index: number;
@@ -32,7 +30,7 @@ export function UserMessageNav({
   return (
     <nav
       className="hidden xl:flex"
-      aria-label="User message navigator"
+      aria-label="User messages in current branch path"
       onMouseEnter={() => onPanelOpenChange(true)}
       onMouseLeave={() => onPanelOpenChange(false)}
       onFocus={() => onPanelOpenChange(true)}
@@ -76,7 +74,7 @@ export function UserMessageNav({
             <button
               key={anchor.id}
               type="button"
-              aria-label={`Jump to prompt ${anchor.index}: ${anchor.label}`}
+              aria-label={`Jump to user message ${anchor.index}: ${anchor.label}`}
               aria-current={active ? "location" : undefined}
               onClick={() => onScrollTo(anchor.id)}
               style={{
@@ -157,7 +155,7 @@ export function UserMessageNav({
                   key={anchor.id}
                   type="button"
                   title={anchor.title && anchor.title !== anchor.label ? anchor.title : undefined}
-                  aria-label={`Jump to prompt ${anchor.index}: ${anchor.label}`}
+                  aria-label={`Jump to user message ${anchor.index}: ${anchor.label}`}
                   aria-current={active ? "location" : undefined}
                   onClick={() => onScrollTo(anchor.id)}
                   style={{

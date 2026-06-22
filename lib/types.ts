@@ -42,6 +42,7 @@ export interface ToolCallContent {
   toolName: string;
   input: Record<string, unknown>;
   _sourceTs?: number; // original message timestamp when merged from another message
+  _entryId?: string;
 }
 
 export type AssistantContentBlock = TextContent | ImageContent | ThinkingContent | ToolCallContent;
@@ -84,6 +85,9 @@ export interface ToolResultMessage {
   content: (TextContent | ImageContent)[];
   isError?: boolean;
   timestamp?: number;
+  _entryId?: string;
+  _anchorTitle?: string;
+  _isCurrentPath?: boolean;
 }
 
 export interface CustomMessage {
@@ -184,6 +188,19 @@ export interface SessionInfo {
   messageCount: number;
   firstMessage: string;
   parentSessionId?: string; // set if this session was forked from another
+  model?: { provider: string; modelId: string } | null;
+  orphaned?: boolean;
+  hasCompaction?: boolean;
+  agentState?: SessionNodeAgentState;
+}
+
+export interface SessionNodeAgentState {
+  exists: boolean;
+  running: boolean;
+  isStreaming: boolean;
+  isCompacting: boolean;
+  thinkingLevel?: string;
+  lastUpdated?: string;
 }
 
 export interface SessionContext {
@@ -199,8 +216,20 @@ export interface RpcSessionState {
   thinkingLevel: string;
   isStreaming: boolean;
   isCompacting: boolean;
+  autoCompactionEnabled?: boolean;
+  autoRetryEnabled?: boolean;
+  exists?: boolean;
+  running?: boolean;
+  lastUpdated?: string;
   sessionFile?: string;
   sessionId: string;
   sessionName?: string;
   messageCount: number;
+  pendingMessageCount?: number;
+  systemPrompt?: string;
+  contextUsage?: {
+    percent: number | null;
+    contextWindow: number;
+    tokens: number | null;
+  } | null;
 }

@@ -47,8 +47,6 @@ interface Props {
   onCwdSelect?: (cwd: string) => void;
   onCwdDefault?: () => void;
   toolPreset?: "none" | "default" | "full";
-  streamingTokens?: number;
-  streamingTps?: number | null;
   agentStatus?: string;
 }
 
@@ -98,8 +96,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
     onCwdSelect,
     onCwdDefault,
     toolPreset = "default",
-    streamingTokens,
-    streamingTps,
     agentStatus,
   }: Props,
   ref,
@@ -576,6 +572,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
       ? modelOptions[0].name
       : null;
 
+  const showStatusLine = !!agentStatus;
+
   // Close dropdowns on outside click
   useEffect(() => {
     if (!showCommands) return;
@@ -726,8 +724,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
           </div>
         )}
 
-        {/* Streaming status line — only rendered during active conversation */}
-        {isStreaming && (
+        {/* Agent status line */}
+        {showStatusLine && (
           <div
             style={{
               display: "flex",
@@ -775,67 +773,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                 >
                   {agentStatus}
                 </span>
-              </span>
-            )}
-            {isStreaming &&
-              (() => {
-                const hasTps = streamingTps != null && streamingTps > 0;
-                const tier = hasTps
-                  ? streamingTps >= 50
-                    ? "high"
-                    : streamingTps >= 20
-                      ? "mid"
-                      : "low"
-                  : "low";
-                return (
-                  <span
-                    style={{
-                      padding: "1px 6px",
-                      borderRadius: 4,
-                      background: `var(--ui-tps-${tier}-bg)`,
-                      color: `var(--ui-tps-${tier}-fg)`,
-                      fontSize: 12,
-                      fontWeight: 500,
-                      lineHeight: "18px",
-                      minWidth: 58,
-                      textAlign: "center",
-                      flexShrink: 0,
-                      opacity: hasTps ? 1 : 0,
-                      fontVariantNumeric: "tabular-nums",
-                      transition: "opacity 180ms ease, background 220ms ease, color 220ms ease",
-                    }}
-                  >
-                    {hasTps ? streamingTps.toFixed(1) : "0.0"} t/s
-                  </span>
-                );
-              })()}
-            {isStreaming && (
-              <span
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 3,
-                  minWidth: 52,
-                  flexShrink: 0,
-                  opacity: streamingTokens !== undefined && streamingTokens > 0 ? 1 : 0,
-                  fontVariantNumeric: "tabular-nums",
-                  transition: "opacity 180ms ease",
-                }}
-              >
-                <svg
-                  width="11"
-                  height="11"
-                  viewBox="0 0 10 10"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="5" y1="1.5" x2="5" y2="8.5" />
-                  <polyline points="2 6 5 8.5 8 6" />
-                </svg>
-                {streamingTokens ?? 0}
               </span>
             )}
           </div>

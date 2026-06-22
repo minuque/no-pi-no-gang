@@ -6,13 +6,7 @@ import { type AgentPhase, useAgentSession } from "@/hooks/useAgentSession";
 import { useChatScroll } from "@/hooks/useChatScroll";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import { useTheme } from "@/hooks/useTheme";
-import type {
-  AgentMessage,
-  SessionInfo,
-  SessionTreeNode,
-  ToolCallContent,
-  ToolResultMessage,
-} from "@/lib/types";
+import type { AgentMessage, SessionInfo, SessionTreeNode, ToolResultMessage } from "@/lib/types";
 
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { MessageView } from "./MessageView";
@@ -66,6 +60,23 @@ function phaseLabel(phase: AgentPhase): string {
   }
   if (phase?.kind === "waiting_model") return "Waiting for model...";
   return "Thinking...";
+}
+
+function buildActivePathIds(
+  tree: SessionTreeNode[] | undefined,
+  targetId: string | null,
+): Set<string> {
+  if (!tree || !targetId) return new Set();
+  function find(nodes: SessionTreeNode[], path: string[]): string[] | null {
+    for (const node of nodes) {
+      const next = [...path, node.entry.id];
+      if (node.entry.id === targetId) return next;
+      const found = find(node.children, next);
+      if (found) return found;
+    }
+    return null;
+  }
+  return new Set(find(tree, []) ?? []);
 }
 
 const TYPEWRITER_PHRASES = [
@@ -187,6 +198,8 @@ export function ChatWindow({
     displayModel: displayModelValue,
     sessionStats,
     agentPhase,
+    eventStatus,
+    sessionStatus,
     activeLeafId,
     isNew,
     handleSend,
@@ -323,67 +336,22 @@ export function ChatWindow({
     }
     return find(tree);
   }, [data?.tree, activeLeafId]);
+  const activePathIds = useMemo(
+    () => buildActivePathIds(data?.tree, activeLeafId),
+    [data?.tree, activeLeafId],
+  );
 
-  // Streaming metrics — token count + TPS
-  const streamStartRef = useRef<number | null>(null);
-  const [streamingTokens, setStreamingTokens] = useState<number>(0);
-  const [streamingTps, setStreamingTps] = useState<number | null>(null);
-  const lastStreamMetricsRef = useRef({ tokens: 0, tps: 0 });
-  const streamStateRef = useRef(streamState);
-  streamStateRef.current = streamState;
-
-  useEffect(() => {
-    if (!agentRunning) {
-      streamStartRef.current = null;
-      lastStreamMetricsRef.current = { tokens: 0, tps: 0 };
-      setStreamingTokens(0);
-      setStreamingTps(null);
-      return;
+  const sseStatus = useMemo(() => {
+    if (sessionStatus.destroyed) return { label: "会话已销毁", tone: "danger" as const };
+    if (eventStatus === "reconnecting") return { label: "reconnecting", tone: "warn" as const };
+    if (sessionStatus.readonly || eventStatus === "readonly") {
+      return { label: "readonly", tone: "muted" as const };
     }
-    const tick = () => {
-      const msg = streamStateRef.current.streamingMessage;
-      if (!msg) return;
-      const content = msg.content;
-      if (!content) return;
-      let chars = 0;
-      if (typeof content === "string") {
-        chars = content.length;
-      } else if (Array.isArray(content)) {
-        for (const b of content) {
-          if (b.type === "text") chars += (b as { text?: string }).text?.length ?? 0;
-          else if (b.type === "thinking")
-            chars += (b as { thinking?: string }).thinking?.length ?? 0;
-          else if (b.type === "toolCall")
-            chars += JSON.stringify((b as { input?: unknown }).input ?? {}).length;
-        }
-      }
-      const est = Math.round(chars / 4);
-      setStreamingTokens(est);
-      const now = Date.now();
-      if (streamStartRef.current === null) streamStartRef.current = now;
-      const elapsed = (now - streamStartRef.current) / 1000;
-      if (
-        est === 0 ||
-        Math.abs(est - lastStreamMetricsRef.current.tokens) >= 4 ||
-        lastStreamMetricsRef.current.tokens === 0
-      ) {
-        lastStreamMetricsRef.current.tokens = est;
-        setStreamingTokens(est);
-      }
-      if (elapsed > 0.8) {
-        const tps = Math.round((est / elapsed) * 10) / 10;
-        if (
-          lastStreamMetricsRef.current.tps === 0 ||
-          Math.abs(tps - lastStreamMetricsRef.current.tps) >= 0.4
-        ) {
-          lastStreamMetricsRef.current.tps = tps;
-          setStreamingTps(tps);
-        }
-      }
-    };
-    const id = setInterval(tick, 600);
-    return () => clearInterval(id);
-  }, [agentRunning]);
+    if (eventStatus === "connecting") return { label: "connecting", tone: "muted" as const };
+    if (eventStatus === "connected") return { label: "connected", tone: "success" as const };
+    if (sessionStatus.exists) return { label: "idle", tone: "muted" as const };
+    return null;
+  }, [eventStatus, sessionStatus]);
 
   // ── Native scroll controller (replaces Virtuoso) ──
   const {
@@ -397,13 +365,31 @@ export function ChatWindow({
   // Pre-compute tool result lookup (needed by all message renders)
   const toolResultsMap = useMemo(() => {
     const map = new Map<string, ToolResultMessage>();
-    for (const msg of messages) {
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i];
       if (msg.role === "toolResult") {
-        map.set((msg as ToolResultMessage).toolCallId, msg as ToolResultMessage);
+        const entryId = entryIds[i];
+        const isCurrentPath = entryId
+          ? activePathIds.size === 0 || activePathIds.has(entryId)
+          : false;
+        const anchorTitle = [
+          entryId ? `entry ${entryId}` : null,
+          activeLeafId ? `leaf ${activeLeafId}` : null,
+          activeBranch ? `branch ${activeBranch}` : "branch main",
+          `current path: ${isCurrentPath ? "yes" : "no"}`,
+        ]
+          .filter(Boolean)
+          .join("\n");
+        map.set((msg as ToolResultMessage).toolCallId, {
+          ...(msg as ToolResultMessage),
+          _entryId: entryId,
+          _anchorTitle: anchorTitle,
+          _isCurrentPath: isCurrentPath,
+        });
       }
     }
     return map;
-  }, [messages]);
+  }, [messages, entryIds, activePathIds, activeLeafId, activeBranch]);
 
   const renderedMessages = useMemo(() => {
     const items: Array<{
@@ -415,27 +401,6 @@ export function ChatWindow({
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i];
       if (msg.role === "toolResult") continue;
-
-      if (msg.role === "assistant") {
-        const content = msg.content;
-        const isToolCallOnly =
-          Array.isArray(content) &&
-          content.length > 0 &&
-          content.every((b): b is ToolCallContent => b.type === "toolCall");
-
-        if (isToolCallOnly) {
-          const last = items[items.length - 1];
-          if (last?.msg.role === "assistant") {
-            const tagged = content.map((b) => ({ ...b, _sourceTs: msg.timestamp }));
-            last.msg = {
-              ...last.msg,
-              content: [...last.msg.content, ...tagged],
-            };
-            continue;
-          }
-        }
-      }
-
       items.push({ msg, entryId: entryIds[i], originalIndex: i });
     }
 
@@ -565,9 +530,15 @@ export function ChatWindow({
       onCwdSelect={onCwdSelect}
       onCwdDefault={onCwdDefault}
       toolPreset={toolPreset}
-      streamingTokens={streamingTokens}
-      streamingTps={streamingTps}
-      agentStatus={agentRunning ? phaseLabel(agentPhase) : undefined}
+      agentStatus={
+        sessionStatus.destroyed
+          ? "会话已销毁"
+          : sessionStatus.isCompacting
+            ? "Compacting..."
+            : agentRunning
+              ? phaseLabel(agentPhase)
+              : undefined
+      }
     />
   );
 
@@ -587,6 +558,55 @@ export function ChatWindow({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
+      {sseStatus && (
+        <div
+          title={`SSE eventStatus=${eventStatus} exists=${sessionStatus.exists} readonly=${sessionStatus.readonly} running=${sessionStatus.running} destroyed=${sessionStatus.destroyed}`}
+          style={{
+            position: "absolute",
+            top: 10,
+            left: 12,
+            zIndex: 15,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            height: 22,
+            padding: "0 8px",
+            borderRadius: 4,
+            background:
+              sseStatus.tone === "danger"
+                ? "color-mix(in oklab, var(--danger), transparent 88%)"
+                : sseStatus.tone === "warn"
+                  ? "color-mix(in oklab, var(--warn), transparent 88%)"
+                  : sseStatus.tone === "success"
+                    ? "color-mix(in oklab, var(--success), transparent 90%)"
+                    : "var(--bg-hover)",
+            border: "1px solid var(--border)",
+            color:
+              sseStatus.tone === "danger"
+                ? "var(--danger)"
+                : sseStatus.tone === "warn"
+                  ? "var(--warn)"
+                  : sseStatus.tone === "success"
+                    ? "var(--success)"
+                    : "var(--text-muted)",
+            fontSize: 12,
+            fontFamily: "var(--font-mono)",
+            lineHeight: "22px",
+            pointerEvents: "auto",
+          }}
+        >
+          <span
+            aria-hidden
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: "currentColor",
+            }}
+          />
+          {sseStatus.label}
+        </div>
+      )}
       {isDragOver && (
         <div
           className="pointer-events-none absolute inset-0 z-50 flex animate-[drop-zone-in_0.15s_ease_both] items-center justify-center backdrop-blur-[1px]"
@@ -741,7 +761,7 @@ export function ChatWindow({
               ref={setScrollContainerRef}
               className="h-full overflow-y-auto [scrollbar-width:none]"
             >
-              <div ref={scrollContentRef} style={{ paddingTop: 16 }}>
+              <div ref={scrollContentRef} style={{ paddingTop: sseStatus ? 40 : 16 }}>
                 {/* Completed messages */}
                 {renderedMessages.items.map(({ msg, entryId, originalIndex }, idx) => {
                   const prevItem = idx > 0 ? renderedMessages.items[idx - 1] : undefined;
@@ -772,10 +792,14 @@ export function ChatWindow({
                     msg.role === "assistant" &&
                     idx === renderedMessages.lastAssistantIdx &&
                     !streamState.isStreaming;
+                  const isCurrentPath = entryId
+                    ? activePathIds.size === 0 || activePathIds.has(entryId)
+                    : false;
                   const anchorTitle = [
                     entryId ? `entry ${entryId}` : null,
                     activeLeafId ? `leaf ${activeLeafId}` : null,
                     activeBranch ? `branch ${activeBranch}` : "branch main",
+                    `current path: ${isCurrentPath ? "yes" : "no"}`,
                   ]
                     .filter(Boolean)
                     .join("\n");
@@ -795,7 +819,7 @@ export function ChatWindow({
                       }
                       className="relative mx-auto max-w-[1148px] px-4"
                     >
-                      {entryId && msg.role === "assistant" && (
+                      {entryId && (
                         <span
                           title={anchorTitle}
                           style={{
@@ -810,8 +834,11 @@ export function ChatWindow({
                             height: 20,
                             borderRadius: 9999,
                             background: "var(--surface)",
-                            border: "1px solid var(--border)",
+                            border: isCurrentPath
+                              ? "1px solid var(--accent-border)"
+                              : "1px solid var(--border)",
                             pointerEvents: "auto",
+                            opacity: isCurrentPath ? 1 : 0.68,
                           }}
                         >
                           <img

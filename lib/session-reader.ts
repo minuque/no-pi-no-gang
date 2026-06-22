@@ -22,6 +22,8 @@ export async function listAllSessions(): Promise<SessionInfo[]> {
   return piSessions.map((s) => {
     // Populate path cache so resolveSessionPath works without a full scan
     cache.set(s.id, s.path);
+    const { model, hasCompaction } = readSessionMetadata(s.path);
+    const parentSessionId = s.parentSessionPath ? pathToId.get(s.parentSessionPath) : undefined;
     return {
       path: s.path,
       id: s.id,
@@ -31,9 +33,56 @@ export async function listAllSessions(): Promise<SessionInfo[]> {
       modified: s.modified instanceof Date ? s.modified.toISOString() : String(s.modified),
       messageCount: s.messageCount,
       firstMessage: s.firstMessage || "(no messages)",
-      parentSessionId: s.parentSessionPath ? pathToId.get(s.parentSessionPath) : undefined,
+      parentSessionId,
+      model,
+      orphaned: Boolean(s.parentSessionPath && !parentSessionId),
+      hasCompaction,
     };
   });
+}
+
+export function readSessionMetadata(
+  filePath: string,
+): Pick<SessionInfo, "model" | "hasCompaction"> {
+  try {
+    const sm = SessionManager.open(filePath);
+    return getSessionMetadata(sm.getEntries() as SessionEntry[], sm.getLeafId());
+  } catch {
+    return { model: null, hasCompaction: false };
+  }
+}
+
+export function getSessionMetadata(
+  entries: SessionEntry[],
+  leafId?: string | null,
+): Pick<SessionInfo, "model" | "hasCompaction"> {
+  const byId = new Map<string, SessionEntry>();
+  for (const entry of entries) byId.set(entry.id, entry);
+
+  let targetLeaf: SessionEntry | undefined;
+  if (leafId) targetLeaf = byId.get(leafId);
+  if (!targetLeaf) targetLeaf = entries[entries.length - 1];
+
+  let model: SessionInfo["model"] = null;
+  let hasCompaction = false;
+  let cur: SessionEntry | undefined = targetLeaf;
+  const path: SessionEntry[] = [];
+  while (cur) {
+    path.unshift(cur);
+    cur = cur.parentId ? byId.get(cur.parentId) : undefined;
+  }
+
+  for (const entry of path) {
+    if (entry.type === "model_change") {
+      model = { provider: entry.provider, modelId: entry.modelId };
+    } else if (entry.type === "message" && entry.message.role === "assistant") {
+      model = { provider: entry.message.provider, modelId: entry.message.model };
+    } else if (entry.type === "compaction") {
+      hasCompaction = true;
+    }
+  }
+
+  return { model, hasCompaction };
 }
 
 // ============================================================================

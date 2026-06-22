@@ -19,6 +19,7 @@ import type {
 export interface SessionData {
   sessionId: string;
   filePath: string;
+  info?: SessionInfo | null;
   tree: SessionTreeNode[];
   leafId: string | null;
   context: {
@@ -113,7 +114,25 @@ export type AgentPhase =
   | { kind: "running_command"; command: string }
   | null;
 
-export type AgentEventStatus = "idle" | "connecting" | "connected" | "reconnecting";
+export type AgentEventStatus =
+  | "idle"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "readonly"
+  | "destroyed";
+
+export interface AgentSessionStatus {
+  exists: boolean;
+  running: boolean;
+  isStreaming: boolean;
+  isCompacting: boolean;
+  thinkingLevel: ThinkingLevelOption;
+  eventStatus: AgentEventStatus;
+  readonly: boolean;
+  destroyed: boolean;
+  lastUpdated: string | null;
+}
 
 export interface UseAgentSessionOptions {
   session: SessionInfo | null;
@@ -207,6 +226,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [compactError, setCompactError] = useState<string | null>(null);
   const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
   const [eventStatus, setEventStatus] = useState<AgentEventStatus>("idle");
+  const [sessionExists, setSessionExists] = useState(session !== null);
+  const [sessionDestroyed, setSessionDestroyed] = useState(false);
+  const [agentStateRunning, setAgentStateRunning] = useState(false);
+  const [agentStateStreaming, setAgentStateStreaming] = useState(false);
+  const [agentStateCompacting, setAgentStateCompacting] = useState(false);
+  const [agentLastUpdated, setAgentLastUpdated] = useState<string | null>(null);
   const [commands, setCommands] = useState<SlashCommandItem[]>([]);
 
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -260,6 +285,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         // Discard stale responses — a newer send/command has started
         if (loadGenRef.current !== gen) return null;
         if (res.status === 404) {
+          setSessionExists(false);
+          setSessionDestroyed(true);
+          setAgentStateRunning(false);
+          setAgentStateStreaming(false);
+          setAgentStateCompacting(false);
+          setAgentLastUpdated(new Date().toISOString());
+          setEventStatus("destroyed");
           if (showLoading) {
             setData(null);
             setActiveLeafId(null);
@@ -275,6 +307,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             state?: {
               isStreaming?: boolean;
               isCompacting?: boolean;
+              exists?: boolean;
+              running?: boolean;
+              lastUpdated?: string;
               contextUsage?: {
                 percent: number | null;
                 contextWindow: number;
@@ -287,6 +322,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         };
         // Re-check generation before every state mutation
         if (loadGenRef.current !== gen) return null;
+        setSessionExists(true);
+        setSessionDestroyed(false);
         setData(d);
         setActiveLeafId(d.leafId);
         const mergedMessages = mergeToolCallMessages(d.context.messages);
@@ -309,6 +346,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           setContextUsage(
             deriveContextUsage(mergedMessages, d.context.model, modelListRef.current),
           );
+        }
+        if (d.agentState) {
+          setAgentStateRunning(d.agentState.state?.running ?? d.agentState.running);
+          setAgentStateStreaming(d.agentState.state?.isStreaming ?? false);
+          setAgentStateCompacting(d.agentState.state?.isCompacting ?? false);
+          setAgentLastUpdated(d.agentState.state?.lastUpdated ?? null);
         }
         return d.agentState ?? null;
       } catch (e) {
@@ -391,16 +434,45 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       }
     };
     es.onerror = () => {
-      if (eventSourceRef.current === es && agentRunningRef.current) {
-        setEventStatus("reconnecting");
-        es.close();
-        eventSourceRef.current = null;
-        setTimeout(() => {
-          if (agentRunningRef.current) connectEvents(sid);
-        }, 1000);
-      } else if (eventSourceRef.current === es) {
-        setEventStatus("idle");
-      }
+      if (eventSourceRef.current !== es) return;
+      es.close();
+      eventSourceRef.current = null;
+      fetch(`/api/sessions/${encodeURIComponent(sid)}`, { cache: "no-store" })
+        .then((res) => {
+          if (res.status === 404) {
+            setSessionExists(false);
+            setSessionDestroyed(true);
+            setAgentRunning(false);
+            setAgentPhase(null);
+            setAgentStateRunning(false);
+            setAgentStateStreaming(false);
+            setAgentStateCompacting(false);
+            setAgentLastUpdated(new Date().toISOString());
+            dispatch({ type: "end" });
+            setEventStatus("destroyed");
+            return;
+          }
+          setSessionExists(true);
+          setSessionDestroyed(false);
+          if (agentRunningRef.current) {
+            setEventStatus("reconnecting");
+            setTimeout(() => {
+              if (agentRunningRef.current) connectEvents(sid);
+            }, 1000);
+          } else {
+            setEventStatus("readonly");
+          }
+        })
+        .catch(() => {
+          if (agentRunningRef.current) {
+            setEventStatus("reconnecting");
+            setTimeout(() => {
+              if (agentRunningRef.current) connectEvents(sid);
+            }, 1000);
+          } else {
+            setEventStatus("readonly");
+          }
+        });
     };
   }, []);
 
@@ -421,24 +493,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   };
 
   const mergeToolCallMessages = (msgs: AgentMessage[]): AgentMessage[] => {
-    const result: AgentMessage[] = [];
-    for (const msg of msgs) {
-      if (!isToolCallOnly(msg)) {
-        result.push(msg);
-        continue;
-      }
-      const last = result[result.length - 1];
-      if (last?.role === "assistant") {
-        const tagged = msg.content.map((b) => ({ ...b, _sourceTs: msg.timestamp }));
-        result[result.length - 1] = {
-          ...last,
-          content: [...last.content, ...tagged],
-        };
-      } else {
-        result.push(msg);
-      }
-    }
-    return result;
+    return msgs.map((msg) =>
+      isToolCallOnly(msg)
+        ? { ...msg, content: msg.content.map((b) => ({ ...b, _sourceTs: msg.timestamp })) }
+        : msg,
+    );
   };
 
   const handleAgentEvent = useCallback(
@@ -446,6 +505,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       switch (event.type) {
         case "agent_start":
           setAgentRunning(true);
+          setAgentStateRunning(true);
+          setAgentStateStreaming(true);
+          setAgentLastUpdated(new Date().toISOString());
           setAgentPhase((prev) => {
             if (prev?.kind === "running_skill") return prev;
             return { kind: "waiting_model" };
@@ -454,6 +516,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           break;
         case "agent_end":
           setAgentRunning(false);
+          setAgentStateRunning(false);
+          setAgentStateStreaming(false);
+          setAgentStateCompacting(false);
+          setAgentLastUpdated(new Date().toISOString());
           setAgentPhase(null);
           setEventStatus("idle");
           setRetryInfo(null);
@@ -546,11 +612,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         case "auto_compaction_start":
         case "compaction_start":
           setIsCompacting(true);
+          setAgentStateCompacting(true);
+          setAgentLastUpdated(new Date().toISOString());
           setCompactError(null);
           break;
         case "auto_compaction_end":
         case "compaction_end":
           setIsCompacting(false);
+          setAgentStateCompacting(false);
+          setAgentLastUpdated(new Date().toISOString());
           if (event.errorMessage) {
             setCompactError(event.errorMessage as string);
           } else if (!event.aborted) {
@@ -617,6 +687,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       };
       setMessages((prev) => [...prev, userMsg]);
       setAgentRunning(true);
+      setAgentStateRunning(true);
+      setAgentStateStreaming(true);
       setAgentPhase(
         commandInfo?.source === "extension"
           ? { kind: "running_command", command: commandName }
@@ -644,6 +716,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         };
         setMessages((prev) => [...prev, assistantMsg]);
         setAgentRunning(false);
+        setAgentStateRunning(false);
+        setAgentStateStreaming(false);
         setAgentPhase(null);
         dispatch({ type: "end" });
         return;
@@ -684,6 +758,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           if (!res.ok) throw new Error(await responseError(res));
           const result = (await res.json()) as { sessionId: string };
           sessionIdRef.current = result.sessionId;
+          setSessionExists(true);
+          setSessionDestroyed(false);
           connectEvents(result.sessionId);
           onSessionCreated?.({
             id: result.sessionId,
@@ -696,6 +772,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             firstMessage: message,
           });
         } else if (session) {
+          setSessionExists(true);
+          setSessionDestroyed(false);
           connectEvents(session.id);
           await sendAgentCommand(session.id, {
             type: "command",
@@ -706,6 +784,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         }
         if (commandInfo?.source === "extension") {
           setAgentRunning(false);
+          setAgentStateRunning(false);
+          setAgentStateStreaming(false);
           setAgentPhase(null);
           dispatch({ type: "end" });
         }
@@ -713,6 +793,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         console.error("Failed to send command:", e);
         toast.error(e instanceof Error ? e.message : String(e));
         setAgentRunning(false);
+        setAgentStateRunning(false);
+        setAgentStateStreaming(false);
         setAgentPhase(null);
         dispatch({ type: "end" });
       }
@@ -768,6 +850,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       };
       setMessages((prev) => [...prev, userMsg]);
       setAgentRunning(true);
+      setAgentStateRunning(true);
+      setAgentStateStreaming(true);
       setAgentPhase({ kind: "waiting_model" });
       dispatch({ type: "start" });
 
@@ -808,6 +892,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           const result = (await res.json()) as { sessionId: string };
           const realId = result.sessionId;
           sessionIdRef.current = realId;
+          setSessionExists(true);
+          setSessionDestroyed(false);
           connectEvents(realId);
           onSessionCreated?.({
             id: realId,
@@ -820,6 +906,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             firstMessage: message,
           });
         } else if (session) {
+          setSessionExists(true);
+          setSessionDestroyed(false);
           connectEvents(session.id);
           await sendAgentCommand(session.id, {
             type: "prompt",
@@ -831,6 +919,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         console.error("Failed to send message:", e);
         toast.error(e instanceof Error ? e.message : String(e));
         setAgentRunning(false);
+        setAgentStateRunning(false);
+        setAgentStateStreaming(false);
         setAgentPhase(null);
         dispatch({ type: "end" });
       }
@@ -1114,6 +1204,25 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (cwd) fetchCommands(cwd);
   }, [isNew, newSessionCwd, session?.cwd, fetchCommands]);
 
+  const sessionStatus: AgentSessionStatus = {
+    exists: sessionExists,
+    running: agentRunning || agentStateRunning,
+    isStreaming: streamState.isStreaming || agentStateStreaming,
+    isCompacting: isCompacting || agentStateCompacting,
+    thinkingLevel,
+    eventStatus,
+    readonly:
+      !!session &&
+      sessionExists &&
+      !sessionDestroyed &&
+      !agentRunning &&
+      eventStatus !== "connecting" &&
+      eventStatus !== "connected" &&
+      eventStatus !== "reconnecting",
+    destroyed: sessionDestroyed,
+    lastUpdated: agentLastUpdated ?? data?.info?.modified ?? session?.modified ?? null,
+  };
+
   return {
     // State
     data,
@@ -1144,6 +1253,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     sessionStats,
     agentPhase,
     eventStatus,
+    sessionStatus,
     isNew,
     // Refs
     sessionIdRef,

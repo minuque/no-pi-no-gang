@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { encodeFilePathForApi, getRelativeFilePath, joinFilePath } from "@/lib/file-paths";
+import { formatSize } from "@/lib/file-preview";
 
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
 import { FolderIcon, getFileIcon } from "./FileIcons";
@@ -60,6 +61,7 @@ function TreeNode({
   onAddToChat,
   onContextMenu,
   refreshKey,
+  selectedFilePath,
 }: {
   node: FileNode;
   depth: number;
@@ -70,8 +72,10 @@ function TreeNode({
   onAddToChat: (relativePath: string) => void;
   onContextMenu: (e: React.MouseEvent, node: FileNode) => void;
   refreshKey?: number;
+  selectedFilePath: string | null;
 }) {
   const open = expandedPaths.has(node.fullPath);
+  const selected = selectedFilePath === node.fullPath;
   const [children, setChildren] = useState<FileNode[]>(node.children ?? []);
   const [loaded, setLoaded] = useState(node.loaded ?? false);
   const [loading, setLoading] = useState(false);
@@ -138,16 +142,16 @@ function TreeNode({
           position: "relative",
           display: "flex",
           alignItems: "center",
-          gap: 4,
-          paddingLeft: 8 + depth * 14,
-          paddingRight: 8,
-          height: 24,
+          gap: 10,
+          paddingLeft: 18 + depth * 16,
+          paddingRight: 16,
+          height: 34,
           cursor: "pointer",
-          background: hovered ? "var(--bg-hover)" : "transparent",
-          borderRadius: 4,
+          background: selected ? "var(--bg-selected)" : hovered ? "var(--bg-hover)" : "transparent",
+          borderRadius: 6,
           userSelect: "none",
           contentVisibility: "auto",
-          containIntrinsicSize: "auto 24px",
+          containIntrinsicSize: "auto 34px",
         }}
       >
         {node.isDir && (
@@ -163,6 +167,7 @@ function TreeNode({
             style={{
               flexShrink: 0,
               transform: open ? "rotate(90deg)" : "none",
+              opacity: 0.55,
             }}
           >
             <polyline points="3 2 7 5 3 8" />
@@ -175,7 +180,8 @@ function TreeNode({
         <span
           style={{
             fontSize: 13,
-            color: "var(--text)",
+            color: selected ? "var(--text)" : "var(--text-muted)",
+            fontWeight: node.isDir ? 650 : 500,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
@@ -198,6 +204,21 @@ function TreeNode({
             <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
           </svg>
         )}
+        {!node.isDir && (
+          <span
+            style={{
+              width: 46,
+              flexShrink: 0,
+              overflow: "hidden",
+              textAlign: "right",
+              color: "var(--text-dim)",
+              fontSize: 12,
+              fontFamily: "var(--font-mono)",
+            }}
+          >
+            {formatSize(node.size)}
+          </span>
+        )}
       </div>
       {node.isDir && open && (
         <div>
@@ -213,6 +234,7 @@ function TreeNode({
               onAddToChat={onAddToChat}
               onContextMenu={onContextMenu}
               refreshKey={refreshKey}
+              selectedFilePath={selectedFilePath}
             />
           ))}
           {children.length === 0 && loaded && (
@@ -239,6 +261,7 @@ function TreeNode({
 
 interface Props {
   cwd: string;
+  selectedFilePath?: string | null;
   onSelectFile: (filePath: string) => void;
   onAddToChat: (relativePath: string) => void;
   refreshKey?: number;
@@ -264,7 +287,13 @@ function saveExpanded(cwd: string, set: Set<string>): void {
   }
 }
 
-export function WorkspaceTree({ cwd, onSelectFile, onAddToChat, refreshKey }: Props) {
+export function WorkspaceTree({
+  cwd,
+  selectedFilePath = null,
+  onSelectFile,
+  onAddToChat,
+  refreshKey,
+}: Props) {
   const [roots, setRoots] = useState<FileNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -461,9 +490,9 @@ export function WorkspaceTree({ cwd, onSelectFile, onAddToChat, refreshKey }: Pr
             padding: "0 8px",
             fontSize: 12,
             color: "var(--text)",
-            background: "var(--bg-hover)",
+            background: "var(--bg-panel)",
             border: "1px solid var(--border)",
-            borderRadius: 4,
+            borderRadius: 6,
             outline: "none",
             boxSizing: "border-box",
           }}
@@ -477,7 +506,7 @@ export function WorkspaceTree({ cwd, onSelectFile, onAddToChat, refreshKey }: Pr
       </div>
 
       {/* Tree or search results */}
-      <div style={{ flex: 1, overflow: "auto", padding: "2px 4px" }}>
+      <div style={{ flex: 1, overflow: "auto", padding: "2px 10px 12px" }}>
         {flatEntries ? (
           // Search results (flat list)
           <div>
@@ -505,12 +534,12 @@ export function WorkspaceTree({ cwd, onSelectFile, onAddToChat, refreshKey }: Pr
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 4,
-                  paddingLeft: 12,
-                  paddingRight: 8,
-                  height: 24,
+                  gap: 10,
+                  paddingLeft: 8,
+                  paddingRight: 6,
+                  height: 34,
                   cursor: "pointer",
-                  borderRadius: 4,
+                  borderRadius: 6,
                   fontSize: 12,
                   color: "var(--text-dim)",
                   userSelect: "none",
@@ -528,7 +557,8 @@ export function WorkspaceTree({ cwd, onSelectFile, onAddToChat, refreshKey }: Pr
                 <span
                   style={{
                     fontSize: 13,
-                    color: "var(--text)",
+                    color: "var(--text-muted)",
+                    fontWeight: node.isDir ? 650 : 500,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
@@ -537,6 +567,21 @@ export function WorkspaceTree({ cwd, onSelectFile, onAddToChat, refreshKey }: Pr
                 >
                   {path}
                 </span>
+                {!node.isDir && (
+                  <span
+                    style={{
+                      width: 46,
+                      flexShrink: 0,
+                      overflow: "hidden",
+                      textAlign: "right",
+                      color: "var(--text-dim)",
+                      fontSize: 12,
+                      fontFamily: "var(--font-mono)",
+                    }}
+                  >
+                    {formatSize(node.size)}
+                  </span>
+                )}
               </div>
             ))}
             {flatEntries.length === 0 && (
@@ -567,6 +612,7 @@ export function WorkspaceTree({ cwd, onSelectFile, onAddToChat, refreshKey }: Pr
                 onAddToChat={onAddToChat}
                 onContextMenu={handleContextMenu}
                 refreshKey={refreshKey}
+                selectedFilePath={selectedFilePath}
               />
             ))}
             {roots.length === 0 && (

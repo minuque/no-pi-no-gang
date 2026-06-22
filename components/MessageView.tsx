@@ -75,6 +75,169 @@ function copyText(text: string): Promise<void> {
   }
 }
 
+type ContextStackSource = "tool" | "reference";
+
+interface ContextStackItem {
+  path: string;
+  label: string;
+  source: ContextStackSource;
+  entryId?: string;
+  ts: number;
+}
+
+interface StructuredToolError {
+  title: string;
+  message: string;
+  code?: string;
+  detail?: string;
+}
+
+const CONTEXT_STACK_STORAGE_KEY = "pi-context-stack-v1";
+const FILE_REF_RE =
+  /(?:[a-zA-Z]:[\\/][^\s"'`<>|]+|\.{0,2}[\\/][^\s"'`<>|]+|[\w@.-]+(?:[\\/][\w@ .-]+)+\.[A-Za-z0-9]{1,8})/g;
+
+function sanitizeFileRef(value: string): string {
+  return value.replace(/[),.;\]]+$/g, "").replace(/[:#]\d+(?::\d+)?$/g, "");
+}
+
+function extractFileRefs(text: string): string[] {
+  const matches = text.match(FILE_REF_RE) ?? [];
+  return Array.from(new Set(matches.map(sanitizeFileRef).filter((p) => p.length > 1))).slice(0, 8);
+}
+
+function collectStrings(value: unknown, out: string[] = []): string[] {
+  if (typeof value === "string") {
+    out.push(value);
+  } else if (Array.isArray(value)) {
+    for (const item of value) collectStrings(item, out);
+  } else if (value && typeof value === "object") {
+    for (const item of Object.values(value)) collectStrings(item, out);
+  }
+  return out;
+}
+
+function getToolFilePath(block: ToolCallContent): string | null {
+  const input = block.input;
+  const preferredKeys = ["file_path", "path", "cwd", "dir", "directory", "target_file"];
+  for (const key of preferredKeys) {
+    const value = input[key];
+    if (typeof value === "string" && extractFileRefs(value).length > 0)
+      return sanitizeFileRef(value);
+  }
+  for (const value of collectStrings(input)) {
+    const refs = extractFileRefs(value);
+    if (refs.length > 0) return refs[0];
+  }
+  return null;
+}
+
+function publishContextStackItems(items: ContextStackItem[]): void {
+  if (typeof window === "undefined" || items.length === 0) return;
+  try {
+    const existing = JSON.parse(
+      window.localStorage.getItem(CONTEXT_STACK_STORAGE_KEY) ?? "[]",
+    ) as ContextStackItem[];
+    const byKey = new Map<string, ContextStackItem>();
+    for (const item of [...items, ...existing]) {
+      byKey.set(`${item.source}:${item.path}`, item);
+    }
+    const next = Array.from(byKey.values())
+      .sort((a, b) => b.ts - a.ts)
+      .slice(0, 40);
+    window.localStorage.setItem(CONTEXT_STACK_STORAGE_KEY, JSON.stringify(next));
+    window.dispatchEvent(new Event("pi-context-stack-change"));
+  } catch {}
+}
+
+function collectContextStackItems(message: AgentMessage, entryId?: string): ContextStackItem[] {
+  const ts = Date.now();
+  const items: ContextStackItem[] = [];
+  const addRef = (path: string, source: ContextStackSource, label: string) => {
+    items.push({ path, source, label, entryId, ts });
+  };
+
+  if (message.role === "assistant") {
+    for (const block of message.content ?? []) {
+      if (block.type === "toolCall") {
+        const path = getToolFilePath(block as ToolCallContent);
+        if (path) addRef(path, "tool", (block as ToolCallContent).toolName || "tool call");
+        for (const value of collectStrings((block as ToolCallContent).input)) {
+          for (const ref of extractFileRefs(value)) addRef(ref, "tool", "tool call");
+        }
+      } else if (block.type === "text") {
+        for (const ref of extractFileRefs((block as TextContent).text)) {
+          addRef(ref, "reference", "message reference");
+        }
+      }
+    }
+  } else if (message.role === "user" || message.role === "toolResult") {
+    const content = message.content;
+    const text =
+      typeof content === "string"
+        ? content
+        : content
+            .filter((b): b is TextContent => b.type === "text")
+            .map((b) => b.text)
+            .join("\n");
+    for (const ref of extractFileRefs(text)) addRef(ref, "reference", "message reference");
+  }
+
+  return items;
+}
+
+function openWorkspaceFile(path: string): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("pi-open-workspace-file", { detail: { path } }));
+}
+
+function objectString(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (value === undefined || value === null) return undefined;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function parseJsonObject(text: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(text);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function getStructuredToolError(result?: ToolResultMessage): StructuredToolError | null {
+  if (!result?.isError) return null;
+  const text = getToolResultText(result)?.trim() ?? "";
+  const data = parseJsonObject(text);
+  const source = data ?? (result as unknown as Record<string, unknown>);
+  const rawError = source.error;
+  const errorObj =
+    rawError && typeof rawError === "object" && !Array.isArray(rawError)
+      ? (rawError as Record<string, unknown>)
+      : source;
+  const message =
+    objectString(errorObj.message) ??
+    objectString(errorObj.error) ??
+    objectString(errorObj.reason) ??
+    text.split(/\r?\n/).find(Boolean) ??
+    "Tool call failed";
+  return {
+    title: objectString(errorObj.name) ?? objectString(errorObj.type) ?? "Tool call failed",
+    message,
+    code: objectString(errorObj.code) ?? objectString(errorObj.status),
+    detail:
+      objectString(errorObj.stack) ??
+      objectString(errorObj.detail) ??
+      objectString(errorObj.details),
+  };
+}
+
 type ToolCallState = "running" | "error" | "done" | "pending";
 
 function getToolResultText(result?: ToolResultMessage): string | null {
@@ -104,6 +267,8 @@ function getToolStateColor(state: ToolCallState): string {
 }
 
 function getToolResultPreview(result?: ToolResultMessage): string {
+  const error = getStructuredToolError(result);
+  if (error) return [error.code, error.message].filter(Boolean).join(" ").slice(0, 120);
   const text = getToolResultText(result);
   if (text === null || isEmptyToolResult(text)) return "";
   return text.trim().replace(/\s+/g, " ").slice(0, 120);
@@ -148,6 +313,10 @@ export function MessageView({
   onRetry,
   onEditResend,
 }: Props) {
+  useEffect(() => {
+    publishContextStackItems(collectContextStackItems(message, entryId));
+  }, [message, entryId]);
+
   if (message.role === "user") {
     return (
       <UserMessageView
@@ -206,6 +375,7 @@ function UserMessageView({
   onEditResend?: (content: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [actionsFocused, setActionsFocused] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
@@ -227,6 +397,7 @@ function UserMessageView({
   const time = formatTime(message.timestamp);
   const canFork = !!entryId && !!onFork;
   const canNavigate = !!prevAssistantEntryId && !!onNavigate;
+  const actionsVisible = hovered || actionsFocused || copied || forking;
 
   const copyContent = () => {
     copyText(content).then(() => {
@@ -425,6 +596,12 @@ function UserMessageView({
       {/* Bottom row: action buttons + timestamp */}
       {(time || canFork || canNavigate || true) && (
         <div
+          onFocusCapture={() => setActionsFocused(true)}
+          onBlurCapture={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              setActionsFocused(false);
+            }
+          }}
           style={{
             display: "flex",
             alignItems: "center",
@@ -437,6 +614,8 @@ function UserMessageView({
             style={{
               display: "flex",
               gap: 3,
+              opacity: actionsVisible ? 1 : 0,
+              pointerEvents: actionsVisible ? "auto" : "none",
               transition: "opacity 0.12s",
             }}
           >
@@ -501,7 +680,9 @@ function UserMessageView({
               fontSize: 12,
               fontWeight: 400,
               whiteSpace: "nowrap",
-              transition: "color 0.12s",
+              opacity: actionsVisible ? 1 : 0,
+              pointerEvents: actionsVisible ? "auto" : "none",
+              transition: "opacity 0.12s, color 0.12s",
             }}
             onMouseEnter={(e) => {
               if (!copied) e.currentTarget.style.color = "var(--accent)";
@@ -545,6 +726,9 @@ function UserMessageView({
               style={{
                 display: "flex",
                 gap: 3,
+                opacity: actionsVisible ? 1 : 0,
+                pointerEvents: actionsVisible ? "auto" : "none",
+                transition: "opacity 0.12s",
               }}
             >
               {canNavigate && (
@@ -686,11 +870,13 @@ function AssistantMessageView({
   const time = showTimestamp ? formatTime(message.timestamp) : null;
   const blocks = message.content ?? [];
   const [hovered, setHovered] = useState(false);
+  const [actionsFocused, setActionsFocused] = useState(false);
   const [copied, setCopied] = useState(false);
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
   const canFork = !!entryId && !!onFork && !isStreaming;
   const canNavigate = !!entryId && !!onNavigate && !isStreaming;
+  const actionsVisible = hovered || actionsFocused || copied || forking;
 
   // Streaming-based timing for thinking blocks
   const blockStartTimesRef = useRef<Map<number, number>>(new Map());
@@ -788,6 +974,7 @@ function AssistantMessageView({
           blocks={blocks}
           toolResults={toolResults}
           isStreaming={isStreaming}
+          entryId={entryId}
           streamingDurations={streamingDurations}
           thinkingDurationFromFile={thinkingDurationFromFile}
           toolCallDurations={toolCallDurations}
@@ -795,6 +982,12 @@ function AssistantMessageView({
       </div>
 
       <div
+        onFocusCapture={() => setActionsFocused(true)}
+        onBlurCapture={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+            setActionsFocused(false);
+          }
+        }}
         style={{
           display: "flex",
           alignItems: "center",
@@ -820,6 +1013,8 @@ function AssistantMessageView({
               fontSize: 12,
               fontWeight: 400,
               whiteSpace: "nowrap",
+              opacity: actionsVisible ? 1 : 0,
+              pointerEvents: actionsVisible ? "auto" : "none",
               transition: "opacity 0.12s, color 0.12s",
             }}
             onMouseEnter={(e) => {
@@ -863,6 +1058,8 @@ function AssistantMessageView({
               fontSize: 12,
               fontWeight: 400,
               whiteSpace: "nowrap",
+              opacity: actionsVisible ? 1 : 0,
+              pointerEvents: actionsVisible ? "auto" : "none",
               transition: "opacity 0.12s, color 0.12s",
             }}
             onMouseEnter={(e) => {
@@ -923,6 +1120,8 @@ function AssistantMessageView({
               fontSize: 12,
               fontWeight: 400,
               whiteSpace: "nowrap",
+              opacity: actionsVisible ? 1 : 0,
+              pointerEvents: actionsVisible ? "auto" : "none",
               transition: "opacity 0.12s, color 0.12s",
             }}
             onMouseEnter={(e) => {
@@ -969,6 +1168,8 @@ function AssistantMessageView({
               fontSize: 12,
               fontWeight: 400,
               whiteSpace: "nowrap",
+              opacity: actionsVisible ? 1 : 0,
+              pointerEvents: actionsVisible ? "auto" : "none",
               transition: "opacity 0.12s, color 0.12s",
             }}
             onMouseEnter={(e) => {
@@ -1008,6 +1209,7 @@ function BlockView({
   blocks,
   toolResults,
   isStreaming,
+  entryId,
   streamingDurations,
   thinkingDurationFromFile,
   toolCallDurations,
@@ -1015,6 +1217,7 @@ function BlockView({
   blocks: AssistantContentBlock[];
   toolResults?: Map<string, ToolResultMessage>;
   isStreaming?: boolean;
+  entryId?: string;
   streamingDurations: Map<number, number>;
   thinkingDurationFromFile?: number;
   toolCallDurations: Map<string, number>;
@@ -1030,6 +1233,7 @@ function BlockView({
         blocks={toolCallRun.map((tc) => tc.block)}
         toolResults={toolResults}
         isStreaming={isStreaming}
+        entryId={entryId}
         toolCallDurations={toolCallDurations}
       />,
     );
@@ -1280,6 +1484,7 @@ function ToolCallBlock({
   result,
   isRunning,
   duration,
+  entryId,
   isFirst,
   isLast,
 }: {
@@ -1287,6 +1492,7 @@ function ToolCallBlock({
   result?: ToolResultMessage;
   isRunning?: boolean;
   duration?: number;
+  entryId?: string;
   isFirst?: boolean;
   isLast?: boolean;
 }) {
@@ -1297,6 +1503,9 @@ function ToolCallBlock({
   const isError = result?.isError ?? false;
   const state = getToolState(result, isRunning);
   const resultPreview = getToolResultPreview(result);
+  const toolFilePath = getToolFilePath(block);
+  const errorInfo = getStructuredToolError(result);
+  const toolAnchorTitle = entryId ? `entry ${entryId}\ncurrent path` : undefined;
 
   return (
     <div style={{ position: "relative", paddingLeft: 18, paddingBottom: isLast ? 0 : 2 }}>
@@ -1371,6 +1580,25 @@ function ToolCallBlock({
         <span style={{ color: getToolStateColor(state), fontWeight: 600, flexShrink: 0 }}>
           {block.toolName}
         </span>
+        {entryId && (
+          <span
+            title={toolAnchorTitle}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 15,
+              height: 15,
+              borderRadius: 999,
+              border: "1px solid var(--accent-border)",
+              background: "var(--bg)",
+              flexShrink: 0,
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/favicon.ico" alt="" style={{ width: 10, height: 10, display: "block" }} />
+          </span>
+        )}
         <span
           style={{
             color: "var(--text-dim)",
@@ -1397,6 +1625,57 @@ function ToolCallBlock({
         >
           {resultPreview || " "}
         </span>
+        {toolFilePath && (
+          <span
+            role="button"
+            tabIndex={0}
+            title={`Open ${toolFilePath}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              openWorkspaceFile(toolFilePath);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                openWorkspaceFile(toolFilePath);
+              }
+            }}
+            style={{
+              color: "var(--text-dim)",
+              flexShrink: 0,
+              padding: "1px 4px",
+              borderRadius: 4,
+              border: "1px solid var(--border)",
+              fontFamily: "inherit",
+              fontSize: 11,
+            }}
+          >
+            Open
+          </span>
+        )}
+        {result?._entryId && (
+          <span
+            title={result._anchorTitle ?? `entry ${result._entryId}`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 15,
+              height: 15,
+              borderRadius: 999,
+              border: result._isCurrentPath
+                ? "1px solid var(--accent-border)"
+                : "1px solid var(--border)",
+              background: "var(--bg)",
+              opacity: result._isCurrentPath ? 1 : 0.7,
+              flexShrink: 0,
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/favicon.ico" alt="" style={{ width: 10, height: 10, display: "block" }} />
+          </span>
+        )}
         <span
           style={{
             width: 30,
@@ -1458,6 +1737,8 @@ function ToolCallBlock({
             {inputStr}
           </pre>
 
+          {errorInfo && <StructuredToolErrorBox error={errorInfo} />}
+
           {result && (
             <PairedResult text={resultText ?? ""} isEmpty={resultIsEmpty} isError={isError} />
           )}
@@ -1471,11 +1752,13 @@ function ToolCallsGroup({
   blocks,
   toolResults,
   isStreaming,
+  entryId,
   toolCallDurations,
 }: {
   blocks: ToolCallContent[];
   toolResults?: Map<string, ToolResultMessage>;
   isStreaming?: boolean;
+  entryId?: string;
   toolCallDurations?: Map<string, number>;
 }) {
   const [showAll, setShowAll] = useState(false);
@@ -1581,6 +1864,7 @@ function ToolCallsGroup({
               result={result}
               isRunning={isStreaming && !result}
               duration={toolCallDurations?.get(block.toolCallId)}
+              entryId={entryId}
               isFirst={i === 0}
               isLast={i === visibleBlocks.length - 1 && hiddenCount === 0}
             />
@@ -1615,6 +1899,41 @@ function ToolCallsGroup({
         >
           Show {hiddenCount} more
         </button>
+      )}
+    </div>
+  );
+}
+
+function StructuredToolErrorBox({ error }: { error: StructuredToolError }) {
+  return (
+    <div
+      style={{
+        borderTop: "1px solid var(--border)",
+        background: "var(--bg)",
+        padding: "8px 10px",
+        color: "var(--danger)",
+        fontSize: 12,
+        lineHeight: 1.5,
+      }}
+    >
+      <div style={{ fontWeight: 600 }}>
+        {error.title}
+        {error.code ? ` (${error.code})` : ""}
+      </div>
+      <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{error.message}</div>
+      {error.detail && (
+        <pre
+          style={{
+            margin: "6px 0 0",
+            color: "var(--text-dim)",
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-all",
+            maxHeight: 160,
+            overflow: "auto",
+          }}
+        >
+          {error.detail}
+        </pre>
       )}
     </div>
   );

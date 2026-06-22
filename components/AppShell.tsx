@@ -1074,7 +1074,8 @@ export function AppShell() {
           onLostPointerCapture={handleRightDragEnd}
         />
 
-        {/* Right panel: workspace — always mounted, width animated via CSS */}
+        {/* Right panel: width snaps instantly (no CSS transition) to avoid text reflow drift;
+             visual smoothness via opacity fade */}
         <div
           ref={rightPanelRef}
           className={`right-panel-container${workspacePanelOpen ? " right-panel-open" : " right-panel-closed"}`}
@@ -1085,6 +1086,8 @@ export function AppShell() {
             width: workspacePanelOpen ? rightPanelWidth : 0,
             minWidth: workspacePanelOpen ? rightPanelWidth : 0,
             overflow: "hidden",
+            opacity: workspacePanelOpen ? 1 : 0,
+            transition: "opacity 0.15s ease",
           }}
         >
           <WorkspacePanel

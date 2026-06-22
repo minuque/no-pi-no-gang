@@ -5,6 +5,8 @@ interface IconProps {
 }
 
 const DIM = "var(--text-dim)";
+const FILE = "color-mix(in srgb, var(--text-dim) 78%, transparent)";
+const FOLDER = "#a8843a";
 
 // ── Folder ────────────────────────────────────────────────────────────────
 
@@ -12,13 +14,13 @@ export function FolderIcon({ size = 14, open = false }: IconProps & { open?: boo
   if (open) {
     return (
       <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
-        <path d="M1 4.5A1 1 0 0 1 2 3.5H5.5L7 5h7.5v1H1V4.5Z" fill={DIM} />
+        <path d="M1 4.5A1 1 0 0 1 2 3.5H5.5L7 5h7.5v1H1V4.5Z" fill={FOLDER} />
         <path
           d="M1 6h14.5L14 13H2L1 6Z"
-          stroke={DIM}
+          stroke={FOLDER}
           strokeWidth="1"
-          fill={DIM}
-          fillOpacity="0.12"
+          fill={FOLDER}
+          fillOpacity="0.36"
         />
       </svg>
     );
@@ -27,10 +29,10 @@ export function FolderIcon({ size = 14, open = false }: IconProps & { open?: boo
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
       <path
         d="M1 4.5A1 1 0 0 1 2 3.5H5.5L7 5H14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4.5Z"
-        stroke={DIM}
+        stroke={FOLDER}
         strokeWidth="1"
-        fill={DIM}
-        fillOpacity="0.1"
+        fill={FOLDER}
+        fillOpacity="0.58"
       />
     </svg>
   );
@@ -41,8 +43,8 @@ export function FolderIcon({ size = 14, open = false }: IconProps & { open?: boo
 export function GenericFileIcon({ size = 14 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
-      <path d="M3 2h7l3 3v9H3V2Z" stroke={DIM} strokeWidth="1" fill={DIM} fillOpacity="0.08" />
-      <path d="M10 2v3h3" stroke={DIM} strokeWidth="1" fill="none" strokeLinejoin="round" />
+      <path d="M3 2h7l3 3v9H3V2Z" stroke={FILE} strokeWidth="1" fill={FILE} fillOpacity="0.16" />
+      <path d="M10 2v3h3" stroke={FILE} strokeWidth="1" fill="none" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -56,13 +58,13 @@ function LabelFileIcon({ label, size = 14 }: { label: string; size?: number }) {
     <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
       <path
         d="M2.5 1h6l3 3v9h-9V1Z"
-        stroke={DIM}
+        stroke={FILE}
         strokeWidth="0.9"
-        fill={DIM}
-        fillOpacity="0.07"
+        fill={FILE}
+        fillOpacity="0.16"
         strokeLinejoin="round"
       />
-      <path d="M8.5 1v3h3" stroke={DIM} strokeWidth="0.9" fill="none" strokeLinejoin="round" />
+      <path d="M8.5 1v3h3" stroke={FILE} strokeWidth="0.9" fill="none" strokeLinejoin="round" />
       <text
         x="7"
         y="9.5"

@@ -106,6 +106,7 @@ function TreeNodeView({
     <div>
       {/* This node row */}
       <div
+        title={`Switch branch path inside this .jsonl: ${label}`}
         style={{
           display: "flex",
           alignItems: "center",
@@ -312,9 +313,9 @@ export function BranchNavigator({
   );
 
   const noBranchReason = !hasSession
-    ? "No active session"
+    ? "No active .jsonl session"
     : !hasBranch(tree)
-      ? "This session has no branches"
+      ? "This .jsonl session has no branch paths"
       : null;
 
   // Find first meaningful node (skip pure linear prefix)
@@ -367,6 +368,7 @@ export function BranchNavigator({
         <button
           ref={btnRef}
           onClick={() => (onToggle ? onToggle() : setOpenInternal((v) => !v))}
+          title="Branch paths: switch paths inside the same .jsonl session file"
           style={{
             display: "flex",
             alignItems: "center",
@@ -391,7 +393,7 @@ export function BranchNavigator({
           }}
         >
           {branchIcon}
-          <span>Branches</span>
+          <span>Branch paths</span>
         </button>
         {panelMounted && dropdownPos && (
           <div
@@ -455,6 +457,7 @@ export function BranchNavigator({
       {/* Header toggle */}
       <button
         onClick={() => setOpenInternal((v) => !v)}
+        title="Branch paths: switch paths inside the same .jsonl session file"
         style={{
           display: "flex",
           alignItems: "center",
@@ -470,7 +473,7 @@ export function BranchNavigator({
         }}
       >
         {branchIcon}
-        <span style={{ color: "var(--text-muted)" }}>Branches</span>
+        <span style={{ color: "var(--text-muted)" }}>Branch paths</span>
         {chevron}
       </button>
 
@@ -517,7 +520,7 @@ export function BranchNavigator({
                 fontStyle: "italic",
               }}
             >
-              {noBranchReason ?? "This session has no branches"}
+              {noBranchReason ?? "This .jsonl session has no branch paths"}
             </div>
           )}
         </div>

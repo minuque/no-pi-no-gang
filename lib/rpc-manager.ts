@@ -3,6 +3,7 @@ import { SessionManager, createAgentSession } from "@earendil-works/pi-coding-ag
 import { dedupeSlashCommands, getProjectResourceLoaderOptions } from "./pi-resources";
 import type { AgentSessionLike, SlashCommandInfoLike, ToolInfo } from "./pi-types";
 import { cacheSessionPath } from "./session-reader";
+import type { RpcSessionState, SessionInfo, SessionNodeAgentState } from "./types";
 
 // ============================================================================
 // Types
@@ -45,6 +46,7 @@ export class AgentSessionWrapper {
   private unsubscribe: (() => void) | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private onDestroyCallback: (() => void) | null = null;
+  private lastUpdatedAt = Date.now();
   private _alive = true;
 
   constructor(public readonly inner: AgentSessionLike) {}
@@ -64,6 +66,7 @@ export class AgentSessionWrapper {
   start(): void {
     this.unsubscribe = this.inner.subscribe((event: AgentEvent) => {
       this.resetIdleTimer();
+      this.lastUpdatedAt = Date.now();
       for (const l of this.listeners) l(event);
     });
     this.resetIdleTimer();
@@ -88,6 +91,7 @@ export class AgentSessionWrapper {
 
   async send(command: Record<string, unknown>): Promise<unknown> {
     this.resetIdleTimer();
+    this.lastUpdatedAt = Date.now();
     const type = command.type as string;
 
     switch (type) {
@@ -110,28 +114,7 @@ export class AgentSessionWrapper {
         return null;
 
       case "get_state": {
-        const model = this.inner.model;
-        const contextUsage = this.inner.getContextUsage();
-        return {
-          sessionId: this.inner.sessionId,
-          sessionFile: this.inner.sessionFile ?? "",
-          isStreaming: this.inner.isStreaming,
-          isCompacting: this.inner.isCompacting,
-          autoCompactionEnabled: this.inner.autoCompactionEnabled,
-          autoRetryEnabled: this.inner.autoRetryEnabled,
-          model: model ? { id: model.id, provider: model.provider } : undefined,
-          messageCount: 0,
-          pendingMessageCount: 0,
-          contextUsage: contextUsage
-            ? {
-                percent: contextUsage.percent,
-                contextWindow: contextUsage.contextWindow,
-                tokens: contextUsage.tokens,
-              }
-            : null,
-          systemPrompt: this.inner.agent.state?.systemPrompt ?? "",
-          thinkingLevel: this.inner.agent.state?.thinkingLevel ?? "off",
-        };
+        return this.getSnapshotState();
       }
 
       case "set_model": {
@@ -308,9 +291,41 @@ export class AgentSessionWrapper {
   destroy(): void {
     if (!this._alive) return;
     this._alive = false;
+    this.lastUpdatedAt = Date.now();
     if (this.idleTimer) clearTimeout(this.idleTimer);
     this.unsubscribe?.();
     this.onDestroyCallback?.();
+  }
+
+  getSnapshotState(): RpcSessionState & {
+    autoCompactionEnabled?: boolean;
+    autoRetryEnabled?: boolean;
+  } {
+    const model = this.inner.model;
+    const contextUsage = this.inner.getContextUsage();
+    return {
+      exists: this._alive,
+      running: this._alive,
+      sessionId: this.inner.sessionId,
+      sessionFile: this.inner.sessionFile ?? "",
+      isStreaming: this.inner.isStreaming,
+      isCompacting: this.inner.isCompacting,
+      autoCompactionEnabled: this.inner.autoCompactionEnabled,
+      autoRetryEnabled: this.inner.autoRetryEnabled,
+      model: model ? { id: model.id, provider: model.provider } : undefined,
+      messageCount: 0,
+      pendingMessageCount: 0,
+      systemPrompt: this.inner.agent.state?.systemPrompt ?? "",
+      thinkingLevel: this.inner.agent.state?.thinkingLevel ?? "off",
+      lastUpdated: new Date(this.lastUpdatedAt).toISOString(),
+      contextUsage: contextUsage
+        ? {
+            percent: contextUsage.percent,
+            contextWindow: contextUsage.contextWindow,
+            tokens: contextUsage.tokens,
+          }
+        : null,
+    };
   }
 }
 
@@ -343,6 +358,38 @@ function getLocks(): Map<string, Promise<{ session: AgentSessionWrapper; realSes
 
 export function getRpcSession(sessionId: string): AgentSessionWrapper | undefined {
   return getRegistry().get(sessionId);
+}
+
+export function getRpcSessionNodeState(sessionId: string): SessionNodeAgentState {
+  const session = getRpcSession(sessionId);
+  if (!session?.isAlive()) {
+    return {
+      exists: false,
+      running: false,
+      isStreaming: false,
+      isCompacting: false,
+    };
+  }
+
+  const state = session.getSnapshotState();
+  return {
+    exists: true,
+    running: true,
+    isStreaming: state.isStreaming,
+    isCompacting: state.isCompacting,
+    thinkingLevel: state.thinkingLevel,
+    lastUpdated: state.lastUpdated,
+  };
+}
+
+export function mergeSessionNodeState<T extends SessionInfo>(
+  session: T,
+  agentState = getRpcSessionNodeState(session.id),
+): T {
+  return {
+    ...session,
+    agentState,
+  };
 }
 
 /**

@@ -12,6 +12,43 @@ interface Props {
   onNavigateToDir: (dirPath: string) => void;
 }
 
+type PreviewErrorKind = "outside-cwd" | "deleted" | "unreadable" | "binary";
+
+interface FileMeta {
+  size: number | null;
+  language?: string;
+  mime?: string;
+}
+
+const UNSUPPORTED_BINARY_EXTS = new Set([
+  "7z",
+  "bin",
+  "class",
+  "dll",
+  "dmg",
+  "exe",
+  "jar",
+  "o",
+  "obj",
+  "rar",
+  "so",
+  "tar",
+  "wasm",
+  "zip",
+]);
+
+function getFileExt(filePath: string): string {
+  const name = getFileName(filePath).toLowerCase();
+  const idx = name.lastIndexOf(".");
+  return idx >= 0 ? name.slice(idx + 1) : "";
+}
+
+function isInsideCwd(filePath: string, cwd: string): boolean {
+  const normalizedFile = normalizeFilePathSlashes(filePath).replace(/\/+$/, "").toLowerCase();
+  const normalizedCwd = normalizeFilePathSlashes(cwd).replace(/\/+$/, "").toLowerCase();
+  return normalizedFile === normalizedCwd || normalizedFile.startsWith(normalizedCwd + "/");
+}
+
 function getPathSegments(
   filePath: string,
   cwd: string,
@@ -42,18 +79,45 @@ function getPathSegments(
   return segments;
 }
 
-async function fetchMeta(filePath: string): Promise<number | null> {
+async function fetchMeta(filePath: string): Promise<FileMeta> {
   try {
     const encoded = encodeFilePathForApi(filePath);
     const res = await fetch(`/api/files/${encoded}?type=meta`);
+    if (res.status === 404) return { size: null, language: "deleted" };
+    if (!res.ok) return { size: null, language: "unreadable" };
     const data = await res.json();
-    return typeof data.size === "number" ? data.size : null;
+    return {
+      size: typeof data.size === "number" ? data.size : null,
+      language: typeof data.language === "string" ? data.language : undefined,
+      mime: typeof data.mime === "string" ? data.mime : undefined,
+    };
   } catch {
-    return null;
+    return { size: null, language: "unreadable" };
   }
 }
 
 export default function WorkspacePreview({ filePath, cwd, onNavigateToDir }: Props) {
+  const [meta, setMeta] = useState<FileMeta | null>(null);
+  const [loadingMeta, setLoadingMeta] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setMeta(null);
+    if (!filePath || !isInsideCwd(filePath, cwd)) {
+      setLoadingMeta(false);
+      return;
+    }
+    setLoadingMeta(true);
+    fetchMeta(filePath).then((next) => {
+      if (cancelled) return;
+      setMeta(next);
+      setLoadingMeta(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [filePath, cwd]);
+
   if (!filePath) {
     return (
       <div
@@ -73,6 +137,15 @@ export default function WorkspacePreview({ filePath, cwd, onNavigateToDir }: Pro
   }
 
   const segments = getPathSegments(filePath, cwd);
+  const errorKind: PreviewErrorKind | null = !isInsideCwd(filePath, cwd)
+    ? "outside-cwd"
+    : meta?.language === "deleted"
+      ? "deleted"
+      : meta?.language === "unreadable"
+        ? "unreadable"
+        : UNSUPPORTED_BINARY_EXTS.has(getFileExt(filePath))
+          ? "binary"
+          : null;
 
   return (
     <div
@@ -142,7 +215,77 @@ export default function WorkspacePreview({ filePath, cwd, onNavigateToDir }: Pro
 
       {/* Content area */}
       <div style={{ flex: 1, overflow: "auto" }}>
-        <FilePreviewContent filePath={filePath} cwd={cwd} />
+        {loadingMeta ? (
+          <PreviewStatus message="Loading..." />
+        ) : errorKind ? (
+          <PreviewError kind={errorKind} filePath={filePath} cwd={cwd} />
+        ) : (
+          <FilePreviewContent filePath={filePath} cwd={cwd} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PreviewStatus({ message }: { message: string }) {
+  return (
+    <div
+      style={{
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "var(--text-muted)",
+        fontSize: 13,
+      }}
+    >
+      {message}
+    </div>
+  );
+}
+
+function PreviewError({
+  kind,
+  filePath,
+  cwd,
+}: {
+  kind: PreviewErrorKind;
+  filePath: string;
+  cwd: string;
+}) {
+  const title =
+    kind === "outside-cwd"
+      ? "File is outside cwd"
+      : kind === "deleted"
+        ? "File was deleted"
+        : kind === "binary"
+          ? "Binary preview is not supported"
+          : "File is not readable";
+  const detail =
+    kind === "outside-cwd"
+      ? `cwd: ${cwd}`
+      : kind === "deleted"
+        ? "Refresh the file tree or choose another file."
+        : kind === "binary"
+          ? "Use an external viewer for this file type."
+          : "The file could not be read by the preview API.";
+
+  return (
+    <div
+      style={{
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+        color: "var(--text-muted)",
+        fontSize: 13,
+      }}
+    >
+      <div style={{ maxWidth: 520 }}>
+        <div style={{ color: "var(--danger)", fontWeight: 600, marginBottom: 6 }}>{title}</div>
+        <div style={{ wordBreak: "break-all", marginBottom: 6 }}>{filePath}</div>
+        <div style={{ color: "var(--text-dim)" }}>{detail}</div>
       </div>
     </div>
   );
@@ -159,7 +302,7 @@ function FileSizeFetcher({ filePath }: { filePath: string }) {
   useEffect(() => {
     let cancelled = false;
     fetchMeta(filePath).then((s) => {
-      if (!cancelled && s !== null) setSize(s);
+      if (!cancelled && s.size !== null) setSize(s.size);
     });
     return () => {
       cancelled = true;

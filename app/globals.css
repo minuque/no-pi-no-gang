@@ -936,7 +936,7 @@ html.theme-switching [style*="border"] {
   }
 }
 
-/* Desktop sidebar: animate width */
+/* Desktop sidebar: fast snap to minimize text reflow drift in chat */
 @media (min-width: 641px) {
   .sidebar-overlay-backdrop {
     display: none !important;
@@ -945,8 +945,8 @@ html.theme-switching [style*="border"] {
     position: relative;
     overflow: hidden;
     transition:
-      width 0.2s ease,
-      min-width 0.2s ease;
+      width 0.1s ease,
+      min-width 0.1s ease;
   }
   .sidebar-container.sidebar-closed {
     width: 0;
@@ -960,14 +960,12 @@ html.theme-switching [style*="border"] {
   }
 }
 
-/* Right panel: animate width */
+/* Right panel: width snaps instantly to avoid text reflow drift;
+   visual smoothness comes from opacity fade on the inline style */
 @media (min-width: 641px) {
   .right-panel-container {
     position: relative;
     overflow: hidden;
-    transition:
-      width 0.2s ease,
-      min-width 0.2s ease;
     flex-shrink: 0;
   }
   .right-panel-container.right-panel-closed {

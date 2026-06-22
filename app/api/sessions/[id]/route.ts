@@ -4,13 +4,15 @@ import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from "fs";
 import { join } from "path";
 
-import { getRpcSession } from "@/lib/rpc-manager";
+import { getRpcSession, getRpcSessionNodeState } from "@/lib/rpc-manager";
 import {
   buildSessionContext,
+  getSessionMetadata,
   invalidateSessionPathCache,
   listAllSessions,
   resolveSessionPath,
 } from "@/lib/session-reader";
+import type { RpcSessionState, SessionEntry, SessionInfo } from "@/lib/types";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -21,10 +23,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     const sm = SessionManager.open(filePath);
-    const entries = sm.getEntries() as never;
+    const entries = sm.getEntries() as SessionEntry[];
     const tree = sm.getTree();
     const leafId = sm.getLeafId();
     const context = buildSessionContext(entries, leafId);
+    const metadata = getSessionMetadata(entries, leafId);
 
     const header = sm.getHeader();
     let modified = header?.timestamp ?? new Date().toISOString();
@@ -34,8 +37,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       /* use header timestamp */
     }
     const allSessions = await listAllSessions();
-    const parentSessionId = allSessions.find((s) => s.id === id)?.parentSessionId;
-    const info = header
+    const listedInfo = allSessions.find((s) => s.id === id);
+    const parentSessionId = listedInfo?.parentSessionId;
+    const info: SessionInfo | null = header
       ? {
           path: filePath,
           id: header.id,
@@ -60,25 +64,36 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
               })()
             : "(no messages)",
           parentSessionId,
+          model: metadata.model,
+          orphaned: listedInfo?.orphaned ?? false,
+          hasCompaction: metadata.hasCompaction,
         }
       : null;
 
     const url = new URL(req.url);
-    let agentState: { running: boolean; state?: unknown } | undefined;
+    const includeState = url.searchParams.has("includeState");
+    let agentState: { running: boolean; state?: RpcSessionState } | undefined;
     if (url.searchParams.has("includeState")) {
       const rpc = getRpcSession(id);
       if (rpc?.isAlive()) {
-        const state = await rpc.send({ type: "get_state" });
+        const state = (await rpc.send({ type: "get_state" })) as RpcSessionState;
         agentState = { running: true, state };
       } else {
         agentState = { running: false };
       }
     }
+    const infoWithState =
+      includeState && info
+        ? {
+            ...info,
+            agentState: getRpcSessionNodeState(id),
+          }
+        : info;
 
     return NextResponse.json({
       sessionId: id,
       filePath,
-      info,
+      info: infoWithState,
       tree,
       leafId,
       context,
