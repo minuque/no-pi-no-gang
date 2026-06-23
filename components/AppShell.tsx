@@ -10,7 +10,7 @@ import "nprogress/nprogress.css";
 import { Toaster } from "sonner";
 
 import { useTheme } from "@/hooks/useTheme";
-import type { SessionInfo, SessionTreeNode } from "@/lib/types";
+import type { EntryTreeNode, SessionInfo } from "@/lib/types";
 
 import type { ChatInputHandle } from "./ChatInput";
 import { SessionSidebar } from "./SessionSidebar";
@@ -84,14 +84,14 @@ export function AppShell() {
   const topBarRef = useRef<HTMLDivElement>(null);
 
   // Branch navigator state — populated by ChatWindow via onBranchDataChange
-  const [branchTree, setBranchTree] = useState<SessionTreeNode[]>([]);
+  const [branchTree, setBranchTree] = useState<EntryTreeNode[]>([]);
   const [branchActiveLeafId, setBranchActiveLeafId] = useState<string | null>(null);
   const [branchSwitchDisabled, setBranchSwitchDisabled] = useState(false);
   const branchLeafChangeFnRef = useRef<((leafId: string | null) => void) | null>(null);
 
   const handleBranchDataChange = useCallback(
     (
-      tree: SessionTreeNode[],
+      tree: EntryTreeNode[],
       activeLeafId: string | null,
       onLeafChange: (leafId: string | null) => void,
     ) => {
@@ -111,7 +111,14 @@ export function AppShell() {
   }, []);
 
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
+  const [systemModalOpen, setSystemModalOpen] = useState(false);
   const systemBtnRef = useRef<HTMLButtonElement>(null);
+
+  // SSE status from ChatWindow → displayed in top bar
+  const [sseStatus, setSseStatus] = useState<{
+    label: string;
+    tone: "muted" | "success" | "warn" | "danger";
+  } | null>(null);
 
   const handleSystemPromptChange = useCallback((prompt: string | null) => {
     setSystemPrompt(prompt);
@@ -159,30 +166,6 @@ export function AppShell() {
       NProgress.done();
     }
   }, []);
-
-  // Single active panel — only one dropdown open at a time
-  const [activeTopPanel, setActiveTopPanel] = useState<"system" | null>(null);
-  const [topPanelPos, setTopPanelPos] = useState<{
-    top: number;
-    left: number;
-    width: number;
-  } | null>(null);
-
-  const toggleTopPanel = useCallback((panel: "system") => {
-    setActiveTopPanel((cur) => (cur === panel ? null : panel));
-  }, []);
-
-  useEffect(() => {
-    if (!activeTopPanel || !topBarRef.current) return;
-    const update = () => {
-      const rect = topBarRef.current!.getBoundingClientRect();
-      setTopPanelPos({ top: rect.bottom, left: rect.left, width: rect.width });
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(topBarRef.current);
-    return () => ro.disconnect();
-  }, [activeTopPanel]);
 
   // Sidebar drag-to-resize
   useEffect(() => {
@@ -329,7 +312,7 @@ export function AppShell() {
       setBranchTree([]);
       setBranchActiveLeafId(null);
       setSystemPrompt(null);
-      setActiveTopPanel(null);
+
       // Clean up the URL
       router.replace("/", { scroll: false });
     }
@@ -358,7 +341,7 @@ export function AppShell() {
       setBranchTree([]);
       setBranchActiveLeafId(null);
       setSystemPrompt(null);
-      setActiveTopPanel(null);
+
       router.replace("/", { scroll: false });
     },
     [router],
@@ -408,7 +391,7 @@ export function AppShell() {
       setBranchTree([]);
       setBranchActiveLeafId(null);
       setSystemPrompt(null);
-      setActiveTopPanel(null);
+
       router.replace("/", { scroll: false });
     },
     [router],
@@ -465,7 +448,7 @@ export function AppShell() {
         setBranchTree([]);
         setBranchActiveLeafId(null);
         setSystemPrompt(null);
-        setActiveTopPanel(null);
+
         router.replace("/", { scroll: false });
       }
     },
@@ -763,7 +746,6 @@ export function AppShell() {
                 padding: 0,
                 background: "none",
                 border: "none",
-                borderRight: "1px solid var(--border)",
                 color: "var(--text-muted)",
                 cursor: "pointer",
                 flexShrink: 0,
@@ -778,8 +760,8 @@ export function AppShell() {
             >
               {sidebarOpen ? (
                 <svg
-                  width="16"
-                  height="16"
+                  width="14"
+                  height="14"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -792,8 +774,8 @@ export function AppShell() {
                 </svg>
               ) : (
                 <svg
-                  width="18"
-                  height="18"
+                  width="14"
+                  height="14"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -810,22 +792,17 @@ export function AppShell() {
               <div style={{ display: "flex", alignItems: "stretch", height: "100%" }}>
                 <button
                   ref={systemBtnRef}
-                  onClick={() => toggleTopPanel("system")}
+                  onClick={() => setSystemModalOpen(true)}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
                     height: "100%",
                     padding: "0 12px",
-                    background: activeTopPanel === "system" ? "var(--bg-selected)" : "none",
+                    background: "none",
                     border: "none",
-                    borderRight: "1px solid var(--border)",
-                    borderTop:
-                      activeTopPanel === "system"
-                        ? "2px solid var(--accent)"
-                        : "2px solid transparent",
                     cursor: "pointer",
-                    color: activeTopPanel === "system" ? "var(--text)" : "var(--text-muted)",
+                    color: "var(--text-muted)",
                     fontSize: 12,
                     whiteSpace: "nowrap",
                     transition: "color 0.1s, background 0.1s",
@@ -834,13 +811,12 @@ export function AppShell() {
                     e.currentTarget.style.color = "var(--text)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.color =
-                      activeTopPanel === "system" ? "var(--text)" : "var(--text-muted)";
+                    e.currentTarget.style.color = "var(--text-muted)";
                   }}
                 >
                   <svg
-                    width="12"
-                    height="12"
+                    width="14"
+                    height="14"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -861,9 +837,55 @@ export function AppShell() {
                 </button>
               </div>
             )}
-            {/* Right-side toolbar */}
+            {/* Right-side toolbar — SSE status + actions */}
             {showChat && (
-              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center" }}>
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 2 }}>
+                {/* SSE status — inline in top bar */}
+                {sseStatus && (
+                  <div
+                    title={`SSE: ${sseStatus.label}`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      height: 22,
+                      padding: "0 8px",
+                      borderRadius: 4,
+                      background:
+                        sseStatus.tone === "danger"
+                          ? "color-mix(in oklab, var(--danger), transparent 88%)"
+                          : sseStatus.tone === "warn"
+                            ? "color-mix(in oklab, var(--warn), transparent 88%)"
+                            : sseStatus.tone === "success"
+                              ? "color-mix(in oklab, var(--success), transparent 90%)"
+                              : "var(--bg-hover)",
+                      border: "1px solid var(--border)",
+                      color:
+                        sseStatus.tone === "danger"
+                          ? "var(--danger)"
+                          : sseStatus.tone === "warn"
+                            ? "var(--warn)"
+                            : sseStatus.tone === "success"
+                              ? "var(--success)"
+                              : "var(--text-muted)",
+                      fontSize: 11.5,
+                      fontFamily: "var(--font-mono)",
+                      lineHeight: "22px",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: "currentColor",
+                        flexShrink: 0,
+                      }}
+                    />
+                    {sseStatus.label}
+                  </div>
+                )}
                 <button
                   onClick={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
@@ -895,8 +917,8 @@ export function AppShell() {
                 >
                   {isDark ? (
                     <svg
-                      width="16"
-                      height="16"
+                      width="14"
+                      height="14"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -916,8 +938,8 @@ export function AppShell() {
                     </svg>
                   ) : (
                     <svg
-                      width="16"
-                      height="16"
+                      width="14"
+                      height="14"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -942,7 +964,6 @@ export function AppShell() {
                     padding: 0,
                     background: "none",
                     border: "none",
-                    borderLeft: "1px solid var(--border)",
                     color: workspacePanelOpen ? "var(--text)" : "var(--text-muted)",
                     cursor: "pointer",
                     flexShrink: 0,
@@ -958,8 +979,8 @@ export function AppShell() {
                   }}
                 >
                   <svg
-                    width="16"
-                    height="16"
+                    width="14"
+                    height="14"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -971,66 +992,6 @@ export function AppShell() {
                     <line x1="15" y1="3" x2="15" y2="21" />
                   </svg>
                 </button>
-              </div>
-            )}
-            {/* Top panel dropdown/* Top panel dropdown — shared, only one active at a time */}
-            {activeTopPanel && topPanelPos && (
-              <div
-                style={{
-                  position: "fixed",
-                  top: topPanelPos.top,
-                  left: topPanelPos.left,
-                  width: topPanelPos.width,
-                  zIndex: 500,
-                }}
-              >
-                {activeTopPanel === "system" && (
-                  <div
-                    style={{
-                      background: "var(--bg-panel)",
-                      borderBottom: "1px solid var(--border)",
-                    }}
-                  >
-                    {systemPrompt ? (
-                      <div
-                        style={{
-                          maxHeight: "min(600px, 75vh)",
-                          overflowY: "auto",
-                          padding: "12px 16px",
-                          color: "var(--text-muted)",
-                          fontSize: 12,
-                          lineHeight: 1.6,
-                          whiteSpace: "pre-wrap",
-                          fontFamily: "var(--font-mono)",
-                        }}
-                      >
-                        {systemPrompt}
-                      </div>
-                    ) : systemPrompt === "" ? (
-                      <div
-                        style={{
-                          padding: "10px 16px",
-                          fontSize: 12,
-                          color: "var(--text-muted)",
-                          fontStyle: "italic",
-                        }}
-                      >
-                        System prompt is empty (tools are disabled)
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          padding: "10px 16px",
-                          fontSize: 12,
-                          color: "var(--text-muted)",
-                          fontStyle: "italic",
-                        }}
-                      >
-                        Send a message to load the system prompt
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -1052,6 +1013,7 @@ export function AppShell() {
               onSessionStatsChange={handleSessionStatsChange}
               onContextUsageChange={handleContextUsageChange}
               onLoadingChange={handleChatLoadingChange}
+              onSseStatusChange={setSseStatus}
               recentCwds={recentCwds}
               homeDir={homeDir}
               onCwdSelect={handleCwdChange}
@@ -1111,6 +1073,219 @@ export function AppShell() {
           cwd={(activeCwd ?? selectedSession?.cwd ?? newSessionCwd)!}
           onClose={() => setSkillsConfigOpen(false)}
         />
+      )}
+      {/* System prompt modal */}
+      {systemModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {/* Backdrop */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0,0,0,0.45)",
+              backdropFilter: "blur(2px)",
+            }}
+            onClick={() => setSystemModalOpen(false)}
+          />
+          {/* Modal panel */}
+          <div
+            style={{
+              position: "relative",
+              width: "min(720px, 90vw)",
+              maxHeight: "min(600px, 80vh)",
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border)",
+              borderRadius: 10,
+              boxShadow: "0 16px 48px rgba(0,0,0,0.35)",
+              animation: "fade-in-up 0.2s ease both",
+            }}
+          >
+            {/* Title bar */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "10px 14px",
+                borderBottom: "1px solid var(--border)",
+                flexShrink: 0,
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={systemPrompt ? "var(--accent)" : "var(--text-dim)"}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{ flexShrink: 0 }}
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="8" y1="13" x2="16" y2="13" />
+                <line x1="8" y1="17" x2="13" y2="17" />
+              </svg>
+              <span
+                style={{
+                  flex: 1,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "var(--text)",
+                }}
+              >
+                System Prompt
+              </span>
+              <button
+                onClick={() => setSystemModalOpen(false)}
+                title="Close"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 26,
+                  height: 26,
+                  padding: 0,
+                  background: "none",
+                  border: "none",
+                  borderRadius: 5,
+                  color: "var(--text-dim)",
+                  cursor: "pointer",
+                  transition: "background 0.1s, color 0.1s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--bg-hover)";
+                  e.currentTarget.style.color = "var(--text)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "none";
+                  e.currentTarget.style.color = "var(--text-dim)";
+                }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            {/* Content */}
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: "14px 16px",
+              }}
+            >
+              {systemPrompt ? (
+                <pre
+                  style={{
+                    margin: 0,
+                    color: "var(--text-muted)",
+                    fontSize: 12.5,
+                    lineHeight: 1.65,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    fontFamily: "var(--font-mono)",
+                  }}
+                >
+                  {systemPrompt}
+                </pre>
+              ) : systemPrompt === "" ? (
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "var(--text-muted)",
+                    fontStyle: "italic",
+                  }}
+                >
+                  System prompt is empty (tools are disabled)
+                </div>
+              ) : (
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "var(--text-muted)",
+                    fontStyle: "italic",
+                  }}
+                >
+                  Send a message to load the system prompt
+                </div>
+              )}
+            </div>
+            {/* Footer */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                gap: 8,
+                padding: "8px 14px",
+                borderTop: "1px solid var(--border)",
+                flexShrink: 0,
+              }}
+            >
+              {systemPrompt && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "var(--text-dim)",
+                    fontFamily: "var(--font-mono)",
+                    marginRight: "auto",
+                  }}
+                >
+                  {systemPrompt.split(/\n/).length} line
+                  {systemPrompt.split(/\n/).length !== 1 ? "s" : ""} ·{" "}
+                  {systemPrompt.length.toLocaleString()} chars
+                </span>
+              )}
+              <button
+                onClick={() => setSystemModalOpen(false)}
+                style={{
+                  height: 28,
+                  padding: "0 14px",
+                  background: "var(--bg-hover)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 5,
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  transition: "background 0.1s, color 0.1s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--bg-selected)";
+                  e.currentTarget.style.color = "var(--text)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "var(--bg-hover)";
+                  e.currentTarget.style.color = "var(--text-muted)";
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       <Toaster
         position="top-center"

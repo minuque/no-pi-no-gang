@@ -11,8 +11,8 @@ import type { SlashCommandItem } from "@/lib/pi-resources";
 import type {
   AgentMessage,
   AssistantMessage,
+  EntryTreeNode,
   SessionInfo,
-  SessionTreeNode,
   ToolCallContent,
 } from "@/lib/types";
 
@@ -20,7 +20,7 @@ export interface SessionData {
   sessionId: string;
   filePath: string;
   info?: SessionInfo | null;
-  tree: SessionTreeNode[];
+  tree: EntryTreeNode[];
   leafId: string | null;
   context: {
     messages: AgentMessage[];
@@ -143,7 +143,7 @@ export interface UseAgentSessionOptions {
   modelsRefreshKey?: number;
   chatInputRef?: React.RefObject<ChatInputHandle | null>;
   onBranchDataChange?: (
-    tree: SessionTreeNode[],
+    tree: EntryTreeNode[],
     activeLeafId: string | null,
     onLeafChange: (leafId: string | null) => void,
   ) => void;

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useTheme } from "@/hooks/useTheme";
-import type { SessionTreeNode as BranchTreeNode, SessionEntry, SessionInfo } from "@/lib/types";
+import type { EntryTreeNode as BranchTreeNode, SessionEntry, SessionInfo } from "@/lib/types";
 
 interface Props {
   selectedSessionId: string | null;
@@ -79,17 +79,17 @@ function getCwdLabel(cwd: string): string {
 interface CwdSessionGroup {
   cwd: string;
   sessions: SessionInfo[];
-  tree: SessionSessionTreeNode[];
+  tree: ForkTreeNode[];
   modified: string;
 }
 
-interface SessionSessionTreeNode {
+interface ForkTreeNode {
   session: SessionInfo;
-  children: SessionSessionTreeNode[];
+  children: ForkTreeNode[];
 }
 
-function buildSessionTree(sessions: SessionInfo[]): SessionSessionTreeNode[] {
-  const byId = new Map<string, SessionSessionTreeNode>();
+function buildSessionTree(sessions: SessionInfo[]): ForkTreeNode[] {
+  const byId = new Map<string, ForkTreeNode>();
   for (const s of sessions) {
     byId.set(s.id, { session: s, children: [] });
   }
@@ -113,7 +113,7 @@ function buildSessionTree(sessions: SessionInfo[]): SessionSessionTreeNode[] {
     return null;
   }
 
-  const roots: SessionSessionTreeNode[] = [];
+  const roots: ForkTreeNode[] = [];
   for (const node of byId.values()) {
     const ancestor = resolveAncestor(node.session.id);
     if (ancestor) {
@@ -124,7 +124,7 @@ function buildSessionTree(sessions: SessionInfo[]): SessionSessionTreeNode[] {
   }
 
   // Sort each level by modified desc
-  const sort = (nodes: SessionSessionTreeNode[]) => {
+  const sort = (nodes: ForkTreeNode[]) => {
     nodes.sort((a, b) => b.session.modified.localeCompare(a.session.modified));
     nodes.forEach((n) => sort(n.children));
   };
@@ -199,7 +199,7 @@ function getBranchLabel(entry: SessionEntry): string {
   return entry.type;
 }
 
-function containsSession(nodes: SessionSessionTreeNode[], sessionId: string | null): boolean {
+function containsSession(nodes: ForkTreeNode[], sessionId: string | null): boolean {
   if (!sessionId) return false;
   for (const node of nodes) {
     if (node.session.id === sessionId) return true;
@@ -228,6 +228,12 @@ function buildCwdSessionGroups(sessions: SessionInfo[]): CwdSessionGroup[] {
       ),
     }))
     .sort((a, b) => b.modified.localeCompare(a.modified));
+}
+
+function matchesSessionSearch(session: SessionInfo, query: string): boolean {
+  return [session.name ?? "", session.firstMessage ?? "", session.id].some((value) =>
+    value.toLowerCase().includes(query),
+  );
 }
 
 function PiAgentTitle() {
@@ -459,6 +465,7 @@ export function SessionSidebar({
   const [error, setError] = useState<string | null>(null);
   const [sessionRefreshDone, setSessionRefreshDone] = useState(false);
   const [expandedCwds, setExpandedCwds] = useState<Set<string>>(() => new Set());
+  const [searchQuery, setSearchQuery] = useState("");
   const sessionRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadSessions = useCallback(async (showLoading = false) => {
@@ -575,6 +582,30 @@ export function SessionSidebar({
     return groups;
   }, [allSessions, selCwd]);
 
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const isSearching = normalizedSearchQuery.length > 0;
+
+  const visibleCwdGroups = useMemo(() => {
+    if (!isSearching) return cwdGroups;
+    return cwdGroups
+      .map((group) => {
+        const cwdMatches = [getCwdLabel(group.cwd), group.cwd].some((value) =>
+          value.toLowerCase().includes(normalizedSearchQuery),
+        );
+        const sessions = cwdMatches
+          ? group.sessions
+          : group.sessions.filter((session) =>
+              matchesSessionSearch(session, normalizedSearchQuery),
+            );
+        return {
+          ...group,
+          sessions,
+          tree: buildSessionTree(sessions),
+        };
+      })
+      .filter((group) => group.sessions.length > 0);
+  }, [cwdGroups, isSearching, normalizedSearchQuery]);
+
   useEffect(() => {
     if (!selectedSessionId) return;
     const selectedGroup = cwdGroups.find((group) => containsSession(group.tree, selectedSessionId));
@@ -611,20 +642,100 @@ export function SessionSidebar({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-      {/* Header */}
+      {/* Header — logo + search + actions in one row */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           height: 44,
-          padding: "0 10px",
+          padding: "0 8px 0 10px",
           borderBottom: "1px solid var(--border)",
           flexShrink: 0,
-          gap: 10,
+          gap: 6,
         }}
       >
         <PiAgentTitle />
-        <div style={{ flex: 1 }} />
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            height: 28,
+            padding: "0 8px",
+            background: "var(--bg)",
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            transition: "border-color 0.15s, background 0.15s",
+          }}
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--text-dim)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ flexShrink: 0, opacity: 0.5 }}
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search"
+            aria-label="Search sessions"
+            style={{
+              flex: 1,
+              minWidth: 0,
+              height: 26,
+              padding: 0,
+              border: "none",
+              outline: "none",
+              background: "none",
+              color: "var(--text)",
+              fontSize: 12,
+              fontFamily: "inherit",
+            }}
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              title="Clear search"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 16,
+                height: 16,
+                padding: 0,
+                background: "none",
+                border: "none",
+                color: "var(--text-dim)",
+                cursor: "pointer",
+                flexShrink: 0,
+                opacity: 0.5,
+              }}
+            >
+              <svg
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
+        </div>
         <HeaderBtn
           onClick={handleNewSession}
           disabled={!selCwd}
@@ -663,13 +774,22 @@ export function SessionSidebar({
             No sessions
           </div>
         )}
-        {cwdGroups.map((group) => (
+        {!loading &&
+          !error &&
+          isSearching &&
+          cwdGroups.length > 0 &&
+          visibleCwdGroups.length === 0 && (
+            <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 12 }}>
+              No matching sessions
+            </div>
+          )}
+        {visibleCwdGroups.map((group) => (
           <CwdGroupSection
             key={group.cwd}
             group={group}
             selectedSessionId={selectedSessionId}
             isActive={group.cwd === selCwd}
-            isCollapsed={!expandedCwds.has(group.cwd)}
+            isCollapsed={!isSearching && !expandedCwds.has(group.cwd)}
             onSelectCwd={handleSelectCwd}
             onToggleCwd={handleToggleCwd}
             onSelectSession={onSelectSession}
@@ -888,7 +1008,7 @@ function SessionTreeItem({
   branchSwitchDisabled,
   depth,
 }: {
-  node: SessionSessionTreeNode;
+  node: ForkTreeNode;
   selectedSessionId: string | null;
   onSelectSession: (s: SessionInfo) => void;
   onRenamed?: () => void;

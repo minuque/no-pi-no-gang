@@ -49,6 +49,12 @@
 - [x] **Context Stack**：右侧工作台展示手动打开文件、最近 tool call 文件、当前会话引用文件。
 - [ ] **消息到文件单向跳转**：点击消息高亮相关文件。
 - [ ] **文件错误态**：明确展示 cwd 外、已删除、不可读、二进制不支持。
+- [ ] **Fork 按钮位置修正**：Fork 只在 user 消息上可操作，AssistantMessageView 不应暴露 Fork 入口（pi 设计一致）。✅ 已移除 AssistantMessageView 的 Fork 按钮，待验证。
+- [ ] **类型重命名**：`SessionTreeNode` → `EntryTreeNode`（文件内 entry 树），`SessionSessionTreeNode` → `ForkTreeNode`（跨文件 Fork 谱系）。✅ 已全局替换，待类型检查通过。
+- [ ] **术语收敛 — CONTEXT.md**：已建立领域词汇表，后续讨论需对齐。⚠️ 待 review。
+
+### Should (新增)
+- [ ] **ADR: 三类事实源模型** — 会话事实源 / 运行事实源 / 业务事实源的三层设计需记录为 ADR（难逆转 + 缺乏上下文会困惑 + 有真实权衡）。登记讨论：产品定位和架构进一步讨论时一并决议。
 
 ### Done / 保持
 

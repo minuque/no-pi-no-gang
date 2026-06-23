@@ -6,7 +6,7 @@ import { type AgentPhase, useAgentSession } from "@/hooks/useAgentSession";
 import { useChatScroll } from "@/hooks/useChatScroll";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import { useTheme } from "@/hooks/useTheme";
-import type { AgentMessage, SessionInfo, SessionTreeNode, ToolResultMessage } from "@/lib/types";
+import type { AgentMessage, EntryTreeNode, SessionInfo, ToolResultMessage } from "@/lib/types";
 
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { MessageView } from "./MessageView";
@@ -22,7 +22,7 @@ interface Props {
   modelsRefreshKey?: number;
   chatInputRef?: React.RefObject<ChatInputHandle | null>;
   onBranchDataChange?: (
-    tree: SessionTreeNode[],
+    tree: EntryTreeNode[],
     activeLeafId: string | null,
     onLeafChange: (leafId: string | null) => void,
   ) => void;
@@ -38,6 +38,9 @@ interface Props {
     usage: { percent: number | null; contextWindow: number; tokens: number | null } | null,
   ) => void;
   onLoadingChange?: (loading: boolean) => void;
+  onSseStatusChange?: (
+    status: { label: string; tone: "muted" | "success" | "warn" | "danger" } | null,
+  ) => void;
   recentCwds?: string[];
   homeDir?: string;
   onCwdSelect?: (cwd: string) => void;
@@ -63,11 +66,11 @@ function phaseLabel(phase: AgentPhase): string {
 }
 
 function buildActivePathIds(
-  tree: SessionTreeNode[] | undefined,
+  tree: EntryTreeNode[] | undefined,
   targetId: string | null,
 ): Set<string> {
   if (!tree || !targetId) return new Set();
-  function find(nodes: SessionTreeNode[], path: string[]): string[] | null {
+  function find(nodes: EntryTreeNode[], path: string[]): string[] | null {
     for (const node of nodes) {
       const next = [...path, node.entry.id];
       if (node.entry.id === targetId) return next;
@@ -123,6 +126,16 @@ function getUserMessageTitle(message: AgentMessage): string | undefined {
   return getMessageText(message).replace(/\s+/g, " ").trim() || undefined;
 }
 
+function formatTurnElapsed(seconds: number): string {
+  if (seconds < 1) return "<1s";
+  if (seconds < 60) return `${Math.round(seconds)}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  if (mins < 60) return `${mins}m ${secs}s`;
+  const hrs = Math.floor(mins / 60);
+  return `${hrs}h ${mins % 60}m`;
+}
+
 function Typewriter({ phrases }: { phrases: string[] }) {
   const [phraseIdx, setPhraseIdx] = useState(() => Math.floor(Math.random() * phrases.length));
   const [text, setText] = useState("");
@@ -171,6 +184,7 @@ export function ChatWindow({
   onSessionStatsChange,
   onContextUsageChange,
   onLoadingChange,
+  onSseStatusChange,
   recentCwds,
   homeDir = "",
   onCwdSelect,
@@ -326,7 +340,7 @@ export function ChatWindow({
   const activeBranch = useMemo(() => {
     const tree = data?.tree;
     if (!tree || !activeLeafId) return undefined;
-    function find(nodes: SessionTreeNode[]): string | undefined {
+    function find(nodes: EntryTreeNode[]): string | undefined {
       for (const node of nodes) {
         if (node.entry.id === activeLeafId) return node.label;
         const found = find(node.children);
@@ -353,6 +367,17 @@ export function ChatWindow({
     return null;
   }, [eventStatus, sessionStatus]);
 
+  // Push SSE status upward to AppShell top bar
+  useEffect(() => {
+    onSseStatusChange?.(sseStatus);
+  }, [sseStatus, onSseStatusChange]);
+  useEffect(
+    () => () => {
+      onSseStatusChange?.(null);
+    },
+    [onSseStatusChange],
+  );
+
   // ── Native scroll controller (replaces Virtuoso) ──
   const {
     containerRef: scrollContainerRef,
@@ -372,18 +397,9 @@ export function ChatWindow({
         const isCurrentPath = entryId
           ? activePathIds.size === 0 || activePathIds.has(entryId)
           : false;
-        const anchorTitle = [
-          entryId ? `entry ${entryId}` : null,
-          activeLeafId ? `leaf ${activeLeafId}` : null,
-          activeBranch ? `branch ${activeBranch}` : "branch main",
-          `current path: ${isCurrentPath ? "yes" : "no"}`,
-        ]
-          .filter(Boolean)
-          .join("\n");
         map.set((msg as ToolResultMessage).toolCallId, {
           ...(msg as ToolResultMessage),
           _entryId: entryId,
-          _anchorTitle: anchorTitle,
           _isCurrentPath: isCurrentPath,
         });
       }
@@ -414,6 +430,23 @@ export function ChatWindow({
 
     return { items, lastAssistantIdx };
   }, [messages, entryIds]);
+
+  // Pre-compute turn dividers: elapsed time before each user message (except first)
+  const turnDividers = useMemo(() => {
+    const dividers = new Map<number, string>(); // itemIndex → elapsed string
+    let prevTs: number | undefined;
+    for (let i = 0; i < renderedMessages.items.length; i++) {
+      const { msg } = renderedMessages.items[i];
+      if (msg.role === "user" && msg.timestamp) {
+        if (prevTs !== undefined) {
+          const elapsed = (msg.timestamp - prevTs) / 1000;
+          dividers.set(i, formatTurnElapsed(elapsed));
+        }
+        prevTs = msg.timestamp;
+      }
+    }
+    return dividers;
+  }, [renderedMessages]);
 
   const userMessageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [activeUserAnchorId, setActiveUserAnchorId] = useState<string | null>(null);
@@ -558,55 +591,6 @@ export function ChatWindow({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {sseStatus && (
-        <div
-          title={`SSE eventStatus=${eventStatus} exists=${sessionStatus.exists} readonly=${sessionStatus.readonly} running=${sessionStatus.running} destroyed=${sessionStatus.destroyed}`}
-          style={{
-            position: "absolute",
-            top: 10,
-            left: 12,
-            zIndex: 15,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            height: 22,
-            padding: "0 8px",
-            borderRadius: 4,
-            background:
-              sseStatus.tone === "danger"
-                ? "color-mix(in oklab, var(--danger), transparent 88%)"
-                : sseStatus.tone === "warn"
-                  ? "color-mix(in oklab, var(--warn), transparent 88%)"
-                  : sseStatus.tone === "success"
-                    ? "color-mix(in oklab, var(--success), transparent 90%)"
-                    : "var(--bg-hover)",
-            border: "1px solid var(--border)",
-            color:
-              sseStatus.tone === "danger"
-                ? "var(--danger)"
-                : sseStatus.tone === "warn"
-                  ? "var(--warn)"
-                  : sseStatus.tone === "success"
-                    ? "var(--success)"
-                    : "var(--text-muted)",
-            fontSize: 12,
-            fontFamily: "var(--font-mono)",
-            lineHeight: "22px",
-            pointerEvents: "auto",
-          }}
-        >
-          <span
-            aria-hidden
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: "currentColor",
-            }}
-          />
-          {sseStatus.label}
-        </div>
-      )}
       {isDragOver && (
         <div
           className="pointer-events-none absolute inset-0 z-50 flex animate-[drop-zone-in_0.15s_ease_both] items-center justify-center backdrop-blur-[1px]"
@@ -761,7 +745,7 @@ export function ChatWindow({
               ref={setScrollContainerRef}
               className="h-full overflow-y-auto [scrollbar-width:none]"
             >
-              <div ref={scrollContentRef} style={{ paddingTop: sseStatus ? 40 : 16 }}>
+              <div ref={scrollContentRef} style={{ paddingTop: 16 }}>
                 {/* Completed messages */}
                 {renderedMessages.items.map(({ msg, entryId, originalIndex }, idx) => {
                   const prevItem = idx > 0 ? renderedMessages.items[idx - 1] : undefined;
@@ -795,22 +779,16 @@ export function ChatWindow({
                   const isCurrentPath = entryId
                     ? activePathIds.size === 0 || activePathIds.has(entryId)
                     : false;
-                  const anchorTitle = [
-                    entryId ? `entry ${entryId}` : null,
-                    activeLeafId ? `leaf ${activeLeafId}` : null,
-                    activeBranch ? `branch ${activeBranch}` : "branch main",
-                    `current path: ${isCurrentPath ? "yes" : "no"}`,
-                  ]
-                    .filter(Boolean)
-                    .join("\n");
 
                   const messageAnchorId = entryId ?? `message-${originalIndex}`;
+                  const isUserMessage = msg.role === "user";
+                  const turnElapsed = turnDividers.get(idx);
 
                   return (
                     <div
                       key={entryId ?? originalIndex}
                       ref={
-                        msg.role === "user"
+                        isUserMessage
                           ? (node) => {
                               if (node) userMessageRefs.current.set(messageAnchorId, node);
                               else userMessageRefs.current.delete(messageAnchorId);
@@ -819,34 +797,43 @@ export function ChatWindow({
                       }
                       className="relative mx-auto max-w-[1148px] px-4"
                     >
-                      {entryId && (
-                        <span
-                          title={anchorTitle}
+                      {/* Turn divider — before user messages (except first) */}
+                      {isUserMessage && turnElapsed && (
+                        <div
                           style={{
-                            position: "absolute",
-                            left: 0,
-                            top: 2,
-                            transform: "translateX(-50%)",
-                            display: "inline-flex",
+                            display: "flex",
                             alignItems: "center",
-                            justifyContent: "center",
-                            width: 20,
-                            height: 20,
-                            borderRadius: 9999,
-                            background: "var(--surface)",
-                            border: isCurrentPath
-                              ? "1px solid var(--accent-border)"
-                              : "1px solid var(--border)",
-                            pointerEvents: "auto",
-                            opacity: isCurrentPath ? 1 : 0.68,
+                            gap: 10,
+                            marginBottom: 10,
+                            paddingTop: 4,
                           }}
                         >
-                          <img
-                            src="/favicon.ico"
-                            alt=""
-                            style={{ width: 13, height: 13, display: "block" }}
+                          <div
+                            style={{
+                              flex: 1,
+                              height: 1,
+                              background: "var(--border)",
+                            }}
                           />
-                        </span>
+                          <span
+                            style={{
+                              fontFamily: "var(--font-mono)",
+                              fontSize: 11,
+                              color: "var(--text-dim)",
+                              whiteSpace: "nowrap",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {turnElapsed}
+                          </span>
+                          <div
+                            style={{
+                              flex: 1,
+                              height: 1,
+                              background: "var(--border)",
+                            }}
+                          />
+                        </div>
                       )}
                       <MessageView
                         message={msg}

@@ -451,6 +451,7 @@ export function WorkspacePanel({ cwd, onClose, onAddToChat }: Props) {
                 filePath={selectedFilePath}
                 cwd={cwd}
                 onNavigateToDir={closePreview}
+                onOpenFile={openPreview}
               />
             </div>
           </div>

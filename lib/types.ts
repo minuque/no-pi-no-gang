@@ -86,7 +86,6 @@ export interface ToolResultMessage {
   isError?: boolean;
   timestamp?: number;
   _entryId?: string;
-  _anchorTitle?: string;
   _isCurrentPath?: boolean;
 }
 
@@ -172,9 +171,9 @@ export type SessionEntry =
 
 export type FileEntry = SessionHeader | SessionEntry;
 
-export interface SessionTreeNode {
+export interface EntryTreeNode {
   entry: SessionEntry;
-  children: SessionTreeNode[];
+  children: EntryTreeNode[];
   label?: string;
 }
 

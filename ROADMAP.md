@@ -355,7 +355,7 @@ flowchart LR
     %% 会话列表
     A["SessionSidebar"] -->|"GET /api/sessions"| B["listAllSessions()"]
     B -->|"扫描"| C["~/.pi/agent/sessions/*.jsonl"]
-    C --> D["返回 SessionTreeNode[]"]
+    C --> D["返回 ForkTreeNode[]"]
 
     %% 上下文加载
     E["BranchNavigator"] -->|"GET /api/sessions/[id]/context"| F["buildSessionContext()"]
@@ -394,7 +394,7 @@ flowchart LR
         A["BranchNavigator"] -->|"POST /api/agent/[id]"| B["getRpcSession()"]
         B --> C["AgentSession.fork()"]
         C --> D["新 .jsonl 文件"]
-        D --> E["更新 SessionTreeNode 树"]
+        D --> E["更新 ForkTreeNode 树"]
     end
 
     subgraph Nav["会话内导航 — 同一文件 navigate_tree"]

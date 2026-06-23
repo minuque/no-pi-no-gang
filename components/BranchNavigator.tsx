@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { SessionEntry, SessionTreeNode } from "@/lib/types";
+import type { EntryTreeNode, SessionEntry } from "@/lib/types";
 
 interface Props {
-  tree: SessionTreeNode[];
+  tree: EntryTreeNode[];
   activeLeafId: string | null;
   onLeafChange: (leafId: string | null) => void;
   /** When true, renders as a compact inline button for embedding in a top bar */
@@ -21,9 +21,9 @@ interface Props {
 }
 
 // Find the set of entry IDs on the path from root to activeLeafId
-function buildActivePath(nodes: SessionTreeNode[], targetId: string | null): Set<string> {
+function buildActivePath(nodes: EntryTreeNode[], targetId: string | null): Set<string> {
   if (!targetId) return new Set();
-  function search(nodes: SessionTreeNode[], path: string[]): string[] | null {
+  function search(nodes: EntryTreeNode[], path: string[]): string[] | null {
     for (const node of nodes) {
       const next = [...path, node.entry.id];
       if (node.entry.id === targetId) return next;
@@ -37,7 +37,7 @@ function buildActivePath(nodes: SessionTreeNode[], targetId: string | null): Set
 
 // Compress a linear chain into the first branching/leaf node.
 // Returns the representative node to display, plus a count of skipped nodes.
-function compress(node: SessionTreeNode): { node: SessionTreeNode; skipped: number } {
+function compress(node: EntryTreeNode): { node: EntryTreeNode; skipped: number } {
   let current = node;
   let skipped = 0;
   while (current.children.length === 1) {
@@ -68,7 +68,7 @@ function getLabel(entry: SessionEntry): string {
 }
 
 // Does the tree have any branching at all?
-function hasBranch(nodes: SessionTreeNode[]): boolean {
+function hasBranch(nodes: EntryTreeNode[]): boolean {
   for (const node of nodes) {
     if (node.children.length > 1) return true;
     if (hasBranch(node.children)) return true;
@@ -77,7 +77,7 @@ function hasBranch(nodes: SessionTreeNode[]): boolean {
 }
 
 interface TreeNodeProps {
-  node: SessionTreeNode;
+  node: EntryTreeNode;
   activePathIds: Set<string>;
   depth: number;
   isLast: boolean;

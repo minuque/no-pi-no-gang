@@ -229,6 +229,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
     }
   }, [value, attachedImages, isStreaming, onSend, clearImages]);
 
+  const canSend = !isStreaming && (value.trim().length > 0 || attachedImages.length > 0);
+
   // ── CWD picker helpers ──
   const shortenCwd = (cwd: string): string => {
     const path = homeDir && cwd.startsWith(homeDir) ? "~" + cwd.slice(homeDir.length) : cwd;
@@ -784,11 +786,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
             {
               position: "relative",
               display: "flex",
-              gap: 8,
-              alignItems: "center",
+              flexDirection: "column",
+              gap: 12,
               background: isDragOver
                 ? "color-mix(in oklab, var(--accent), transparent 92%)"
-                : "var(--bg)",
+                : "var(--ui-input-bg, var(--bg))",
               border: `1px solid ${
                 isDragOver
                   ? "var(--accent)"
@@ -798,13 +800,13 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                       ? "var(--accent-focus)"
                       : "color-mix(in srgb, var(--border) 70%, transparent)"
               }`,
-              borderRadius: 14,
-              padding: "10px 10px 10px 14px",
+              borderRadius: 18,
+              padding: "14px 14px 12px",
               boxShadow: isStreaming
                 ? "var(--ui-input-streaming-ring), 0 1px 2px rgba(0,0,0,0.25), 0 8px 24px -12px rgba(0,0,0,0.35)"
                 : focused
                   ? "var(--ui-input-focus-ring), 0 1px 2px rgba(0,0,0,0.25), 0 8px 24px -12px rgba(0,0,0,0.35)"
-                  : "0 1px 2px rgba(0,0,0,0.18), 0 8px 24px -12px rgba(0,0,0,0.25)",
+                  : "0 1px 2px rgba(0,0,0,0.18), 0 14px 38px -24px rgba(0,0,0,0.45)",
               transition: "border-color 0.15s, background 0.15s, box-shadow 0.2s",
             } as React.CSSProperties
           }
@@ -812,7 +814,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div style={{ flex: 1, position: "relative", display: "flex" }}>
+          <div style={{ width: "100%", position: "relative", display: "flex" }}>
             <textarea
               ref={textareaRef}
               value={value}
@@ -838,72 +840,16 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                 outline: "none",
                 resize: "none",
                 color: "var(--text)",
-                fontSize: 14,
-                lineHeight: 1.6,
+                fontSize: 15,
+                lineHeight: 1.55,
                 fontFamily: "inherit",
-                minHeight: 24,
+                minHeight: 40,
                 maxHeight: 200,
                 overflow: "auto",
-                paddingRight: 24,
+                padding: "0 2px 0 0",
               }}
             />
-            {/* ↵ icon — visual hint that Enter sends */}
-            {!isStreaming && (
-              <span
-                style={{
-                  position: "absolute",
-                  right: 6,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--text-dim)",
-                  fontSize: 14,
-                  pointerEvents: "none",
-                  fontFamily: "var(--font-mono)",
-                  lineHeight: 1,
-                  opacity: 0.5,
-                }}
-              >
-                ↵
-              </span>
-            )}
           </div>
-
-          {isStreaming && (
-            <button
-              onClick={onAbort}
-              title="停止 Agent"
-              style={{
-                flexShrink: 0,
-                alignSelf: "flex-end",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "7px 14px",
-                background: "color-mix(in oklab, var(--danger), transparent 90%)",
-                border: "1px solid color-mix(in oklab, var(--danger), transparent 65%)",
-                borderRadius: 8,
-                color: "var(--danger)",
-                cursor: "pointer",
-                fontSize: 13,
-                fontWeight: 600,
-                letterSpacing: "-0.01em",
-                transition: "background 0.12s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background =
-                  "color-mix(in oklab, var(--danger), transparent 82%)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background =
-                  "color-mix(in oklab, var(--danger), transparent 90%)";
-              }}
-            >
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                <rect x="1.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor" />
-              </svg>
-              Stop
-            </button>
-          )}
 
           {showCommands && commandFiltered.length > 0 && (
             <div
@@ -994,434 +940,117 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
               ))}
             </div>
           )}
-        </div>
-
-        {/* Bottom bar: left | spacer | right */}
-        <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
-          {/* LEFT: attach | project | branch */}
-          <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 6 }}>
-            {/* ➕ Attach button — simplified + icon */}
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isStreaming}
-              title="Attach image"
+          {/* Bottom bar: left | spacer | right */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              width: "100%",
+              minWidth: 0,
+              flexWrap: "wrap",
+            }}
+          >
+            {/* LEFT: attach | project | branch */}
+            <div
               style={{
-                display: "inline-flex",
+                flex: "0 1 auto",
+                minWidth: 0,
+                display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-                width: 28,
-                height: 28,
-                background: attachedImages.length
-                  ? "color-mix(in oklab, var(--accent), transparent 92%)"
-                  : "none",
-                border: `1px solid ${attachedImages.length ? "var(--accent)" : "var(--border)"}`,
-                borderRadius: 9999,
-                color: attachedImages.length ? "var(--accent)" : "var(--text-muted)",
-                cursor: isStreaming ? "not-allowed" : "pointer",
-                opacity: isStreaming ? 0.5 : 1,
-                transition: "background 0.12s, color 0.12s",
-              }}
-              onMouseEnter={(e) => {
-                if (isStreaming) return;
-                e.currentTarget.style.background = "var(--bg-hover)";
-                e.currentTarget.style.color = "var(--text)";
-              }}
-              onMouseLeave={(e) => {
-                if (isStreaming) return;
-                e.currentTarget.style.background = attachedImages.length
-                  ? "color-mix(in oklab, var(--accent), transparent 92%)"
-                  : "none";
-                e.currentTarget.style.color = attachedImages.length
-                  ? "var(--accent)"
-                  : "var(--text-muted)";
+                gap: 8,
+                overflow: "visible",
               }}
             >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              >
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </button>
-
-            {/* 📂 Project pill + CWD picker dropdown */}
-            <div ref={cwdDropdownRef} style={{ position: "relative" }}>
+              {/* ➕ Attach button — simplified + icon */}
               <button
-                onClick={() => {
-                  if (!isStreaming) setCwdDropdownOpen((v) => !v);
-                }}
+                onClick={() => fileInputRef.current?.click()}
                 disabled={isStreaming}
-                title="Switch project directory"
+                title="Attach image"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 4,
-                  padding: "4px 10px",
+                  justifyContent: "center",
+                  width: 28,
                   height: 28,
-                  background: cwdDropdownOpen ? "var(--bg-hover)" : "none",
-                  border: "1px solid var(--border)",
+                  background: attachedImages.length
+                    ? "color-mix(in oklab, var(--accent), transparent 90%)"
+                    : "none",
+                  border: "none",
                   borderRadius: 9999,
-                  color: cwdDropdownOpen ? "var(--text)" : "var(--text-muted)",
+                  color: attachedImages.length ? "var(--accent)" : "var(--text-muted)",
                   cursor: isStreaming ? "not-allowed" : "pointer",
-                  fontSize: 12,
-                  fontFamily: "var(--font-body)",
-                  whiteSpace: "nowrap",
                   opacity: isStreaming ? 0.5 : 1,
                   transition: "background 0.12s, color 0.12s",
                 }}
                 onMouseEnter={(e) => {
                   if (isStreaming) return;
-                  e.currentTarget.style.background = "var(--bg-hover)";
+                  e.currentTarget.style.background = attachedImages.length
+                    ? "color-mix(in oklab, var(--accent), transparent 82%)"
+                    : "color-mix(in srgb, var(--text-muted) 14%, transparent)";
                   e.currentTarget.style.color = "var(--text)";
                 }}
                 onMouseLeave={(e) => {
                   if (isStreaming) return;
-                  e.currentTarget.style.background = cwdDropdownOpen ? "var(--bg-hover)" : "none";
-                  e.currentTarget.style.color = "var(--text-muted)";
+                  e.currentTarget.style.background = attachedImages.length
+                    ? "color-mix(in oklab, var(--accent), transparent 90%)"
+                    : "none";
+                  e.currentTarget.style.color = attachedImages.length
+                    ? "var(--accent)"
+                    : "var(--text-muted)";
                 }}
               >
                 <svg
-                  width="13"
-                  height="13"
+                  width="14"
+                  height="14"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth="1.8"
+                  strokeWidth="2.5"
                   strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ flexShrink: 0 }}
                 >
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
-                {currentProject || "no-pi-no-gang"}
               </button>
 
-              {cwdDropdownOpen && (
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: "calc(100% + 6px)",
-                    left: 0,
-                    zIndex: 100,
-                    background: "var(--bg)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                    boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
-                    overflow: "hidden",
-                    minWidth: 260,
-                    maxWidth: 380,
-                  }}
-                >
-                  {(recentCwds ?? []).map((cwd) => (
-                    <button
-                      key={cwd}
-                      onClick={() => {
-                        void selectRecentCwd(cwd);
-                      }}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 7,
-                        width: "100%",
-                        padding: "8px 10px",
-                        background: "none",
-                        border: "none",
-                        borderBottom: "1px solid var(--border)",
-                        color: "var(--text-muted)",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        fontSize: 12,
-                        fontFamily: "var(--font-mono)",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                      title={cwd}
-                    >
-                      <svg
-                        width="10"
-                        height="10"
-                        viewBox="0 0 10 10"
-                        fill="none"
-                        stroke="var(--text-dim)"
-                        strokeWidth="1.1"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        style={{ flexShrink: 0 }}
-                      >
-                        <path d="M1 3A1 1 0 0 1 2 2H4L5 3.5H8.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-7A.5.5 0 0 1 1 8V3Z" />
-                      </svg>
-                      <span
-                        style={{
-                          flex: 1,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {shortenCwd(cwd)}
-                      </span>
-                    </button>
-                  ))}
-
-                  {/* Default cwd shortcut */}
-                  {!cwdCustomOpen && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCwdDefault();
-                      }}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 7,
-                        width: "100%",
-                        padding: "8px 10px",
-                        background: "none",
-                        border: "none",
-                        borderTop:
-                          (recentCwds ?? []).length > 0 ? "1px solid var(--border)" : "none",
-                        color: "var(--text-muted)",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        fontSize: 12,
-                      }}
-                    >
-                      <svg
-                        width="10"
-                        height="10"
-                        viewBox="0 0 10 10"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.1"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        style={{ flexShrink: 0 }}
-                      >
-                        <path d="M1 3A1 1 0 0 1 2 2H4L5 3.5H8.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-7A.5.5 0 0 1 1 8V3Z" />
-                      </svg>
-                      <span>Use default directory</span>
-                    </button>
-                  )}
-
-                  {/* Custom path entry */}
-                  {!cwdCustomOpen ? (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCwdCustomOpen(true);
-                        setCwdCustomError(null);
-                        setTimeout(() => cwdInputRef.current?.focus(), 0);
-                      }}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 7,
-                        width: "100%",
-                        padding: "8px 10px",
-                        background: "none",
-                        border: "none",
-                        color: "var(--text-muted)",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        fontSize: 12,
-                      }}
-                    >
-                      <svg
-                        width="10"
-                        height="10"
-                        viewBox="0 0 10 10"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.1"
-                        strokeLinecap="round"
-                        style={{ flexShrink: 0 }}
-                      >
-                        <line x1="5" y1="1" x2="5" y2="9" />
-                        <line x1="1" y1="5" x2="9" y2="5" />
-                      </svg>
-                      <span>Custom path…</span>
-                    </button>
-                  ) : (
-                    <div
-                      style={{
-                        padding: "6px 8px",
-                        borderTop: (recentCwds ?? []).length > 0 ? "none" : undefined,
-                      }}
-                    >
-                      <input
-                        ref={cwdInputRef}
-                        value={cwdCustomValue}
-                        onChange={(e) => {
-                          setCwdCustomValue(e.target.value);
-                          setCwdCustomError(null);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            void commitCwdPath();
-                          }
-                          if (e.key === "Escape") {
-                            setCwdCustomOpen(false);
-                            setCwdCustomValue("");
-                            setCwdCustomError(null);
-                          }
-                        }}
-                        placeholder="/path/to/project"
-                        style={{
-                          width: "100%",
-                          fontSize: 12,
-                          fontFamily: "var(--font-mono)",
-                          padding: "5px 8px",
-                          border: "1px solid var(--accent)",
-                          borderRadius: 5,
-                          outline: "none",
-                          background: "var(--bg)",
-                          color: "var(--text)",
-                          boxSizing: "border-box",
-                        }}
-                      />
-                      {cwdCustomError && (
-                        <div
-                          style={{
-                            marginTop: 5,
-                            color: "var(--danger)",
-                            fontSize: 12,
-                            lineHeight: 1.35,
-                            overflowWrap: "anywhere",
-                          }}
-                        >
-                          {cwdCustomError}
-                        </div>
-                      )}
-                      <div style={{ display: "flex", gap: 5, marginTop: 5 }}>
-                        <button
-                          onClick={() => void commitCwdPath()}
-                          disabled={cwdCustomValidating || !cwdCustomValue.trim()}
-                          style={{
-                            flex: 1,
-                            padding: "4px 0",
-                            background: "var(--accent-hover)",
-                            border: "none",
-                            borderRadius: 5,
-                            color: "var(--accent-on)",
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor:
-                              cwdCustomValidating || !cwdCustomValue.trim()
-                                ? "not-allowed"
-                                : "pointer",
-                            opacity: cwdCustomValidating || !cwdCustomValue.trim() ? 0.65 : 1,
-                          }}
-                        >
-                          {cwdCustomValidating ? "Checking…" : "Open"}
-                        </button>
-                        <button
-                          onClick={() => {
-                            setCwdCustomOpen(false);
-                            setCwdCustomValue("");
-                            setCwdCustomError(null);
-                          }}
-                          style={{
-                            flex: 1,
-                            padding: "4px 0",
-                            background: "var(--bg-hover)",
-                            border: "1px solid var(--border)",
-                            borderRadius: 5,
-                            color: "var(--text-muted)",
-                            fontSize: 12,
-                            cursor: "pointer",
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {toolPreset === "none" && (
-              <span
-                title="Tools are disabled for the next request"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  padding: "4px 10px",
-                  height: 28,
-                  background: "color-mix(in oklab, var(--warn), transparent 92%)",
-                  border: "1px solid color-mix(in oklab, var(--warn), transparent 72%)",
-                  borderRadius: 9999,
-                  color: "var(--warn)",
-                  fontSize: 12,
-                  fontFamily: "var(--font-body)",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{ flexShrink: 0 }}
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-                </svg>
-                No tools
-              </span>
-            )}
-          </div>
-
-          {/* spacer */}
-          <div style={{ flex: 1 }} />
-
-          {/* RIGHT: model + thinking level + status ring */}
-          <div style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 6 }}>
-            {/* Model selector — pill style, always visible */}
-            {modelOptions.length > 0 && currentName && onModelChange && (
-              <div ref={dropdownRef} style={{ position: "relative" }}>
+              {/* 📂 Project pill + CWD picker dropdown */}
+              <div ref={cwdDropdownRef} style={{ position: "relative" }}>
                 <button
-                  onClick={() => setModelDropdownOpen((v) => !v)}
+                  onClick={() => {
+                    if (!isStreaming) setCwdDropdownOpen((v) => !v);
+                  }}
                   disabled={isStreaming}
+                  title="Switch project directory"
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
                     gap: 4,
                     padding: "4px 10px",
                     height: 28,
-                    maxWidth: 260,
-                    overflow: "hidden",
-                    background: modelDropdownOpen ? "var(--bg-hover)" : "none",
-                    border: "1px solid var(--border)",
+                    background: cwdDropdownOpen
+                      ? "color-mix(in srgb, var(--text-muted) 14%, transparent)"
+                      : "none",
+                    border: "none",
                     borderRadius: 9999,
-                    color: "var(--text-muted)",
+                    color: cwdDropdownOpen ? "var(--text)" : "var(--text-muted)",
                     cursor: isStreaming ? "not-allowed" : "pointer",
                     fontSize: 12,
+                    fontFamily: "var(--font-body)",
+                    whiteSpace: "nowrap",
                     opacity: isStreaming ? 0.5 : 1,
                     transition: "background 0.12s, color 0.12s",
-                    fontFamily: "var(--font-body)",
                   }}
                   onMouseEnter={(e) => {
                     if (isStreaming) return;
-                    e.currentTarget.style.background = "var(--bg-hover)";
+                    e.currentTarget.style.background =
+                      "color-mix(in srgb, var(--text-muted) 14%, transparent)";
                     e.currentTarget.style.color = "var(--text)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = modelDropdownOpen
-                      ? "var(--bg-hover)"
+                    if (isStreaming) return;
+                    e.currentTarget.style.background = cwdDropdownOpen
+                      ? "color-mix(in srgb, var(--text-muted) 14%, transparent)"
                       : "none";
                     e.currentTarget.style.color = "var(--text-muted)";
                   }}
@@ -1437,40 +1066,13 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     strokeLinejoin="round"
                     style={{ flexShrink: 0 }}
                   >
-                    <rect x="4" y="4" width="16" height="16" rx="2" />
-                    <rect x="9" y="9" width="6" height="6" />
-                    <line x1="9" y1="1" x2="9" y2="4" />
-                    <line x1="15" y1="1" x2="15" y2="4" />
-                    <line x1="9" y1="20" x2="9" y2="23" />
-                    <line x1="15" y1="20" x2="15" y2="23" />
-                    <line x1="20" y1="9" x2="23" y2="9" />
-                    <line x1="20" y1="14" x2="23" y2="14" />
-                    <line x1="1" y1="9" x2="4" y2="9" />
-                    <line x1="1" y1="14" x2="4" y2="14" />
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                   </svg>
-                  <span
-                    style={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      minWidth: 0,
-                    }}
-                  >
-                    {currentName}
-                  </span>
-                  {contextUsage?.contextWindow != null && (
-                    <span style={{ color: "var(--text-dim)", whiteSpace: "nowrap" }}>
-                      (
-                      {contextUsage.contextWindow >= 1_000_000
-                        ? `${(contextUsage.contextWindow / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`
-                        : `${Math.round(contextUsage.contextWindow / 1000)}k`}
-                      )
-                    </span>
-                  )}
+                  {currentProject || "no-pi-no-gang"}
                 </button>
-                {modelDropdownOpen && (
+
+                {cwdDropdownOpen && (
                   <div
-                    ref={modelDropdownPanelRef}
                     style={{
                       position: "absolute",
                       bottom: "calc(100% + 6px)",
@@ -1481,263 +1083,253 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                       borderRadius: 8,
                       boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
                       overflow: "hidden",
-                      width: "max-content",
-                      minWidth: 180,
-                      maxHeight: 360,
-                      overflowY: "auto",
+                      minWidth: 260,
+                      maxWidth: 380,
                     }}
                   >
-                    {modelsByProvider.map((group, gi) => (
-                      <div key={group.provider}>
-                        {modelsByProvider.length > 1 && (
-                          <div
-                            style={{
-                              padding: "6px 12px 4px",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "var(--text-dim)",
-                              textTransform: "uppercase",
-                              letterSpacing: "0.07em",
-                              borderTop: gi > 0 ? "1px solid var(--border)" : "none",
-                            }}
-                          >
-                            {group.provider}
-                          </div>
-                        )}
-                        {group.options.map((opt) => {
-                          const isActive =
-                            opt.modelId === model?.modelId && opt.provider === model?.provider;
-                          return (
-                            <button
-                              key={`${opt.provider}:${opt.modelId}`}
-                              onClick={() => {
-                                setModelDropdownOpen(false);
-                                if (!isActive) onModelChange(opt.provider, opt.modelId);
-                              }}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                                width: "100%",
-                                padding: "7px 12px",
-                                background: isActive ? "var(--bg-selected)" : "none",
-                                border: "none",
-                                color: isActive ? "var(--text)" : "var(--text-muted)",
-                                cursor: "pointer",
-                                fontSize: 12,
-                                textAlign: "left",
-                                fontWeight: isActive ? 600 : 400,
-                                whiteSpace: "nowrap",
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!isActive) e.currentTarget.style.background = "var(--bg-hover)";
-                              }}
-                              onMouseLeave={(e) => {
-                                if (!isActive) e.currentTarget.style.background = "none";
-                              }}
-                            >
-                              {isActive ? (
-                                <svg
-                                  width="10"
-                                  height="10"
-                                  viewBox="0 0 10 10"
-                                  fill="none"
-                                  stroke="var(--accent)"
-                                  strokeWidth="2"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  style={{ flexShrink: 0 }}
-                                >
-                                  <polyline points="1.5 5 4 7.5 8.5 2.5" />
-                                </svg>
-                              ) : (
-                                <span style={{ width: 10, flexShrink: 0 }} />
-                              )}
-                              {opt.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {!isStreaming && onThinkingLevelChange && (
-              <div ref={thinkingDropdownRef} style={{ position: "relative" }}>
-                <button
-                  onClick={() => !isStreaming && setThinkingDropdownOpen((v) => !v)}
-                  disabled={isStreaming}
-                  title="切换推理强度"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 4,
-                    padding: "4px 10px",
-                    height: 28,
-                    background: thinkingDropdownOpen ? "var(--bg-hover)" : "none",
-                    border: "1px solid var(--border)",
-                    borderRadius: 9999,
-                    color: "var(--text-muted)",
-                    cursor: isStreaming ? "not-allowed" : "pointer",
-                    fontSize: 12,
-                    opacity: isStreaming ? 0.5 : 1,
-                    transition: "background 0.12s, color 0.12s",
-                    fontFamily: "var(--font-body)",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (isStreaming) return;
-                    e.currentTarget.style.background = "var(--bg-hover)";
-                    e.currentTarget.style.color = "var(--text)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = thinkingDropdownOpen
-                      ? "var(--bg-hover)"
-                      : "none";
-                    e.currentTarget.style.color = "var(--text-muted)";
-                  }}
-                >
-                  <svg
-                    width="13"
-                    height="13"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    style={{ flexShrink: 0 }}
-                  >
-                    <path d="M9.5 2A5.5 5.5 0 0 0 4 7.5c0 1.7.78 3.21 2 4.21V14a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-2.29c1.22-1 2-2.51 2-4.21A5.5 5.5 0 0 0 9.5 2z" />
-                    <line x1="7" y1="18" x2="12" y2="18" />
-                    <line x1="8" y1="21" x2="11" y2="21" />
-                  </svg>
-                  <span>
-                    {(() => {
-                      const lvl = thinkingLevel ?? "auto";
-                      if (lvl === "auto" || !thinkingLevelMap) return lvl;
-                      const mapped = thinkingLevelMap[lvl];
-                      return mapped != null ? mapped : lvl;
-                    })()}
-                  </span>
-                </button>
-                {thinkingDropdownOpen && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: "calc(100% + 6px)",
-                      right: 0,
-                      zIndex: 100,
-                      background: "var(--bg)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 8,
-                      boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
-                      overflow: "hidden",
-                      minWidth: 180,
-                    }}
-                  >
-                    {THINKING_LEVELS.filter((lvl) => {
-                      if (!availableThinkingLevels) return true;
-                      if (lvl === "auto") return true;
-                      return availableThinkingLevels.includes(lvl);
-                    }).map((lvl) => {
-                      const isActive = (thinkingLevel ?? "auto") === lvl;
-                      const desc = THINKING_LEVEL_DESC[lvl];
-                      const mappedVal =
-                        lvl !== "auto" && thinkingLevelMap ? thinkingLevelMap[lvl] : undefined;
-                      const displayLabel = mappedVal != null && mappedVal !== lvl ? mappedVal : lvl;
-                      const showOriginal = mappedVal != null && mappedVal !== lvl;
-                      return (
-                        <button
-                          key={lvl}
-                          onClick={() => {
-                            setThinkingDropdownOpen(false);
-                            if (!isActive) onThinkingLevelChange(lvl);
-                          }}
+                    {(recentCwds ?? []).map((cwd) => (
+                      <button
+                        key={cwd}
+                        onClick={() => {
+                          void selectRecentCwd(cwd);
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 7,
+                          width: "100%",
+                          padding: "8px 10px",
+                          background: "none",
+                          border: "none",
+                          borderBottom: "1px solid var(--border)",
+                          color: "var(--text-muted)",
+                          cursor: "pointer",
+                          textAlign: "left",
+                          fontSize: 12,
+                          fontFamily: "var(--font-mono)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                        title={cwd}
+                      >
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 10 10"
+                          fill="none"
+                          stroke="var(--text-dim)"
+                          strokeWidth="1.1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          style={{ flexShrink: 0 }}
+                        >
+                          <path d="M1 3A1 1 0 0 1 2 2H4L5 3.5H8.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-7A.5.5 0 0 1 1 8V3Z" />
+                        </svg>
+                        <span
                           style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            width: "100%",
-                            padding: "7px 12px",
-                            background: isActive ? "var(--bg-selected)" : "none",
-                            border: "none",
-                            color: isActive ? "var(--text)" : "var(--text-muted)",
-                            cursor: "pointer",
-                            fontSize: 12,
-                            textAlign: "left",
-                            fontWeight: isActive ? 600 : 400,
+                            flex: 1,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
                           }}
-                          onMouseEnter={(e) => {
-                            if (!isActive) e.currentTarget.style.background = "var(--bg-hover)";
-                          }}
-                          onMouseLeave={(e) => {
-                            if (!isActive) e.currentTarget.style.background = "none";
-                          }}
                         >
-                          {isActive ? (
-                            <svg
-                              width="10"
-                              height="10"
-                              viewBox="0 0 10 10"
-                              fill="none"
-                              stroke="var(--accent)"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              style={{ flexShrink: 0 }}
-                            >
-                              <polyline points="1.5 5 4 7.5 8.5 2.5" />
-                            </svg>
-                          ) : (
-                            <span style={{ width: 10, flexShrink: 0 }} />
-                          )}
-                          <span style={{ flex: 1 }}>
-                            {displayLabel}
-                            {showOriginal && (
-                              <span
-                                style={{
-                                  fontSize: 12,
-                                  color: "var(--text-dim)",
-                                  fontFamily: "var(--font-mono)",
-                                  marginLeft: 5,
-                                }}
-                              >
-                                ({lvl})
-                              </span>
-                            )}
-                          </span>
-                          <span style={{ fontSize: 12, color: "var(--text-dim)", marginLeft: 8 }}>
-                            {desc}
-                          </span>
-                        </button>
-                      );
-                    })}
+                          {shortenCwd(cwd)}
+                        </span>
+                      </button>
+                    ))}
+
+                    {/* Default cwd shortcut */}
+                    {!cwdCustomOpen && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCwdDefault();
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 7,
+                          width: "100%",
+                          padding: "8px 10px",
+                          background: "none",
+                          border: "none",
+                          borderTop:
+                            (recentCwds ?? []).length > 0 ? "1px solid var(--border)" : "none",
+                          color: "var(--text-muted)",
+                          cursor: "pointer",
+                          textAlign: "left",
+                          fontSize: 12,
+                        }}
+                      >
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 10 10"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.1"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          style={{ flexShrink: 0 }}
+                        >
+                          <path d="M1 3A1 1 0 0 1 2 2H4L5 3.5H8.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-7A.5.5 0 0 1 1 8V3Z" />
+                        </svg>
+                        <span>Use default directory</span>
+                      </button>
+                    )}
+
+                    {/* Custom path entry */}
+                    {!cwdCustomOpen ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCwdCustomOpen(true);
+                          setCwdCustomError(null);
+                          setTimeout(() => cwdInputRef.current?.focus(), 0);
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 7,
+                          width: "100%",
+                          padding: "8px 10px",
+                          background: "none",
+                          border: "none",
+                          color: "var(--text-muted)",
+                          cursor: "pointer",
+                          textAlign: "left",
+                          fontSize: 12,
+                        }}
+                      >
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 10 10"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.1"
+                          strokeLinecap="round"
+                          style={{ flexShrink: 0 }}
+                        >
+                          <line x1="5" y1="1" x2="5" y2="9" />
+                          <line x1="1" y1="5" x2="9" y2="5" />
+                        </svg>
+                        <span>Custom path…</span>
+                      </button>
+                    ) : (
+                      <div
+                        style={{
+                          padding: "6px 8px",
+                          borderTop: (recentCwds ?? []).length > 0 ? "none" : undefined,
+                        }}
+                      >
+                        <input
+                          ref={cwdInputRef}
+                          value={cwdCustomValue}
+                          onChange={(e) => {
+                            setCwdCustomValue(e.target.value);
+                            setCwdCustomError(null);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              void commitCwdPath();
+                            }
+                            if (e.key === "Escape") {
+                              setCwdCustomOpen(false);
+                              setCwdCustomValue("");
+                              setCwdCustomError(null);
+                            }
+                          }}
+                          placeholder="/path/to/project"
+                          style={{
+                            width: "100%",
+                            fontSize: 12,
+                            fontFamily: "var(--font-mono)",
+                            padding: "5px 8px",
+                            border: "1px solid var(--accent)",
+                            borderRadius: 5,
+                            outline: "none",
+                            background: "var(--bg)",
+                            color: "var(--text)",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                        {cwdCustomError && (
+                          <div
+                            style={{
+                              marginTop: 5,
+                              color: "var(--danger)",
+                              fontSize: 12,
+                              lineHeight: 1.35,
+                              overflowWrap: "anywhere",
+                            }}
+                          >
+                            {cwdCustomError}
+                          </div>
+                        )}
+                        <div style={{ display: "flex", gap: 5, marginTop: 5 }}>
+                          <button
+                            onClick={() => void commitCwdPath()}
+                            disabled={cwdCustomValidating || !cwdCustomValue.trim()}
+                            style={{
+                              flex: 1,
+                              padding: "4px 0",
+                              background: "var(--accent-hover)",
+                              border: "none",
+                              borderRadius: 5,
+                              color: "var(--accent-on)",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor:
+                                cwdCustomValidating || !cwdCustomValue.trim()
+                                  ? "not-allowed"
+                                  : "pointer",
+                              opacity: cwdCustomValidating || !cwdCustomValue.trim() ? 0.65 : 1,
+                            }}
+                          >
+                            {cwdCustomValidating ? "Checking…" : "Open"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setCwdCustomOpen(false);
+                              setCwdCustomValue("");
+                              setCwdCustomError(null);
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: "4px 0",
+                              background: "var(--bg-hover)",
+                              border: "1px solid var(--border)",
+                              borderRadius: 5,
+                              color: "var(--text-muted)",
+                              fontSize: 12,
+                              cursor: "pointer",
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
 
-            {/* Context % pill */}
-            {contextUsage != null && (
-              <div
-                style={{ position: "relative", display: "flex" }}
-                onMouseEnter={() => setContextTooltipOpen(true)}
-                onMouseLeave={() => setContextTooltipOpen(false)}
-              >
+              {toolPreset === "none" && (
                 <span
+                  title="Tools are disabled for the next request"
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
                     gap: 4,
                     padding: "4px 10px",
                     height: 28,
-                    background: "none",
-                    border: "1px solid var(--border)",
+                    background: "color-mix(in oklab, var(--warn), transparent 92%)",
+                    border: "1px solid color-mix(in oklab, var(--warn), transparent 72%)",
                     borderRadius: 9999,
-                    color: "var(--text-muted)",
-                    cursor: "default",
+                    color: "var(--warn)",
                     fontSize: 12,
                     fontFamily: "var(--font-body)",
                     whiteSpace: "nowrap",
@@ -1755,104 +1347,584 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     style={{ flexShrink: 0 }}
                   >
                     <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 16 14" />
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
                   </svg>
-                  {contextUsage.percent != null ? Math.round(contextUsage.percent) + "%" : "—"}
+                  No tools
                 </span>
-                <div
-                  style={{
-                    position: "absolute",
-                    bottom: "calc(100% + 8px)",
-                    right: 0,
-                    background: "var(--bg)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                    padding: "10px 14px",
-                    fontSize: 12,
-                    color: "var(--text)",
-                    whiteSpace: "nowrap",
-                    pointerEvents: "none",
-                    opacity: contextTooltipOpen ? 1 : 0,
-                    transition: "opacity 0.15s",
-                    zIndex: 100,
-                    boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                    minWidth: 200,
-                  }}
-                >
-                  <div
+              )}
+            </div>
+
+            {/* spacer */}
+            <div style={{ flex: 1, minWidth: 12 }} />
+
+            {/* RIGHT: context + model + thinking level + send/stop */}
+            <div
+              style={{
+                flex: "0 1 auto",
+                minWidth: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                gap: 8,
+                overflow: "visible",
+              }}
+            >
+              {/* Model selector — pill style, always visible */}
+              {modelOptions.length > 0 && currentName && onModelChange && (
+                <div ref={dropdownRef} style={{ position: "relative" }}>
+                  <button
+                    onClick={() => setModelDropdownOpen((v) => !v)}
+                    disabled={isStreaming}
                     style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "baseline",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      padding: "4px 10px",
+                      height: 28,
+                      maxWidth: 260,
+                      overflow: "hidden",
+                      background: modelDropdownOpen
+                        ? "color-mix(in srgb, var(--text-muted) 14%, transparent)"
+                        : "none",
+                      border: "none",
+                      borderRadius: 9999,
+                      color: "var(--text-muted)",
+                      cursor: isStreaming ? "not-allowed" : "pointer",
+                      fontSize: 12,
+                      opacity: isStreaming ? 0.5 : 1,
+                      transition: "background 0.12s, color 0.12s",
+                      fontFamily: "var(--font-body)",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (isStreaming) return;
+                      e.currentTarget.style.background =
+                        "color-mix(in srgb, var(--text-muted) 14%, transparent)";
+                      e.currentTarget.style.color = "var(--text)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = modelDropdownOpen
+                        ? "color-mix(in srgb, var(--text-muted) 14%, transparent)"
+                        : "none";
+                      e.currentTarget.style.color = "var(--text-muted)";
                     }}
                   >
-                    <span style={{ color: "var(--text-muted)", fontSize: 12, fontWeight: 500 }}>
-                      Context window
-                    </span>
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={{ flexShrink: 0 }}
+                    >
+                      <rect x="4" y="4" width="16" height="16" rx="2" />
+                      <rect x="9" y="9" width="6" height="6" />
+                      <line x1="9" y1="1" x2="9" y2="4" />
+                      <line x1="15" y1="1" x2="15" y2="4" />
+                      <line x1="9" y1="20" x2="9" y2="23" />
+                      <line x1="15" y1="20" x2="15" y2="23" />
+                      <line x1="20" y1="9" x2="23" y2="9" />
+                      <line x1="20" y1="14" x2="23" y2="14" />
+                      <line x1="1" y1="9" x2="4" y2="9" />
+                      <line x1="1" y1="14" x2="4" y2="14" />
+                    </svg>
                     <span
                       style={{
-                        color: "var(--text)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        minWidth: 0,
+                      }}
+                    >
+                      {currentName}
+                    </span>
+                    {contextUsage?.contextWindow != null && (
+                      <span style={{ color: "var(--text-dim)", whiteSpace: "nowrap" }}>
+                        (
+                        {contextUsage.contextWindow >= 1_000_000
+                          ? `${(contextUsage.contextWindow / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`
+                          : `${Math.round(contextUsage.contextWindow / 1000)}k`}
+                        )
+                      </span>
+                    )}
+                  </button>
+                  {modelDropdownOpen && (
+                    <div
+                      ref={modelDropdownPanelRef}
+                      style={{
+                        position: "absolute",
+                        bottom: "calc(100% + 6px)",
+                        left: 0,
+                        zIndex: 100,
+                        background: "var(--bg)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 8,
+                        boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
+                        overflow: "hidden",
+                        width: "max-content",
+                        minWidth: 180,
+                        maxHeight: 360,
+                        overflowY: "auto",
+                      }}
+                    >
+                      {modelsByProvider.map((group, gi) => (
+                        <div key={group.provider}>
+                          {modelsByProvider.length > 1 && (
+                            <div
+                              style={{
+                                padding: "6px 12px 4px",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: "var(--text-dim)",
+                                textTransform: "uppercase",
+                                letterSpacing: "0.07em",
+                                borderTop: gi > 0 ? "1px solid var(--border)" : "none",
+                              }}
+                            >
+                              {group.provider}
+                            </div>
+                          )}
+                          {group.options.map((opt) => {
+                            const isActive =
+                              opt.modelId === model?.modelId && opt.provider === model?.provider;
+                            return (
+                              <button
+                                key={`${opt.provider}:${opt.modelId}`}
+                                onClick={() => {
+                                  setModelDropdownOpen(false);
+                                  if (!isActive) onModelChange(opt.provider, opt.modelId);
+                                }}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                  width: "100%",
+                                  padding: "7px 12px",
+                                  background: isActive ? "var(--bg-selected)" : "none",
+                                  border: "none",
+                                  color: isActive ? "var(--text)" : "var(--text-muted)",
+                                  cursor: "pointer",
+                                  fontSize: 12,
+                                  textAlign: "left",
+                                  fontWeight: isActive ? 600 : 400,
+                                  whiteSpace: "nowrap",
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!isActive)
+                                    e.currentTarget.style.background = "var(--bg-hover)";
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!isActive) e.currentTarget.style.background = "none";
+                                }}
+                              >
+                                {isActive ? (
+                                  <svg
+                                    width="10"
+                                    height="10"
+                                    viewBox="0 0 10 10"
+                                    fill="none"
+                                    stroke="var(--accent)"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    style={{ flexShrink: 0 }}
+                                  >
+                                    <polyline points="1.5 5 4 7.5 8.5 2.5" />
+                                  </svg>
+                                ) : (
+                                  <span style={{ width: 10, flexShrink: 0 }} />
+                                )}
+                                {opt.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {!isStreaming && onThinkingLevelChange && (
+                <div ref={thinkingDropdownRef} style={{ position: "relative" }}>
+                  <button
+                    onClick={() => !isStreaming && setThinkingDropdownOpen((v) => !v)}
+                    disabled={isStreaming}
+                    title="切换推理强度"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      padding: "4px 10px",
+                      height: 28,
+                      background: thinkingDropdownOpen
+                        ? "color-mix(in srgb, var(--text-muted) 14%, transparent)"
+                        : "none",
+                      border: "none",
+                      borderRadius: 9999,
+                      color: "var(--text-muted)",
+                      cursor: isStreaming ? "not-allowed" : "pointer",
+                      fontSize: 12,
+                      opacity: isStreaming ? 0.5 : 1,
+                      transition: "background 0.12s, color 0.12s",
+                      fontFamily: "var(--font-body)",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (isStreaming) return;
+                      e.currentTarget.style.background =
+                        "color-mix(in srgb, var(--text-muted) 14%, transparent)";
+                      e.currentTarget.style.color = "var(--text)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = thinkingDropdownOpen
+                        ? "color-mix(in srgb, var(--text-muted) 14%, transparent)"
+                        : "none";
+                      e.currentTarget.style.color = "var(--text-muted)";
+                    }}
+                  >
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={{ flexShrink: 0 }}
+                    >
+                      <path d="M9.5 2A5.5 5.5 0 0 0 4 7.5c0 1.7.78 3.21 2 4.21V14a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-2.29c1.22-1 2-2.51 2-4.21A5.5 5.5 0 0 0 9.5 2z" />
+                      <line x1="7" y1="18" x2="12" y2="18" />
+                      <line x1="8" y1="21" x2="11" y2="21" />
+                    </svg>
+                    <span>
+                      {(() => {
+                        const lvl = thinkingLevel ?? "auto";
+                        if (lvl === "auto" || !thinkingLevelMap) return lvl;
+                        const mapped = thinkingLevelMap[lvl];
+                        return mapped != null ? mapped : lvl;
+                      })()}
+                    </span>
+                  </button>
+                  {thinkingDropdownOpen && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: "calc(100% + 6px)",
+                        right: 0,
+                        zIndex: 100,
+                        background: "var(--bg)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 8,
+                        boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
+                        overflow: "hidden",
+                        minWidth: 180,
+                      }}
+                    >
+                      {THINKING_LEVELS.filter((lvl) => {
+                        if (!availableThinkingLevels) return true;
+                        if (lvl === "auto") return true;
+                        return availableThinkingLevels.includes(lvl);
+                      }).map((lvl) => {
+                        const isActive = (thinkingLevel ?? "auto") === lvl;
+                        const desc = THINKING_LEVEL_DESC[lvl];
+                        const mappedVal =
+                          lvl !== "auto" && thinkingLevelMap ? thinkingLevelMap[lvl] : undefined;
+                        const displayLabel =
+                          mappedVal != null && mappedVal !== lvl ? mappedVal : lvl;
+                        const showOriginal = mappedVal != null && mappedVal !== lvl;
+                        return (
+                          <button
+                            key={lvl}
+                            onClick={() => {
+                              setThinkingDropdownOpen(false);
+                              if (!isActive) onThinkingLevelChange(lvl);
+                            }}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              width: "100%",
+                              padding: "7px 12px",
+                              background: isActive ? "var(--bg-selected)" : "none",
+                              border: "none",
+                              color: isActive ? "var(--text)" : "var(--text-muted)",
+                              cursor: "pointer",
+                              fontSize: 12,
+                              textAlign: "left",
+                              fontWeight: isActive ? 600 : 400,
+                              whiteSpace: "nowrap",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!isActive) e.currentTarget.style.background = "var(--bg-hover)";
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!isActive) e.currentTarget.style.background = "none";
+                            }}
+                          >
+                            {isActive ? (
+                              <svg
+                                width="10"
+                                height="10"
+                                viewBox="0 0 10 10"
+                                fill="none"
+                                stroke="var(--accent)"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{ flexShrink: 0 }}
+                              >
+                                <polyline points="1.5 5 4 7.5 8.5 2.5" />
+                              </svg>
+                            ) : (
+                              <span style={{ width: 10, flexShrink: 0 }} />
+                            )}
+                            <span style={{ flex: 1 }}>
+                              {displayLabel}
+                              {showOriginal && (
+                                <span
+                                  style={{
+                                    fontSize: 12,
+                                    color: "var(--text-dim)",
+                                    fontFamily: "var(--font-mono)",
+                                    marginLeft: 5,
+                                  }}
+                                >
+                                  ({lvl})
+                                </span>
+                              )}
+                            </span>
+                            <span style={{ fontSize: 12, color: "var(--text-dim)", marginLeft: 8 }}>
+                              {desc}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Context % pill */}
+              {contextUsage != null && (
+                <div
+                  style={{ position: "relative", display: "flex" }}
+                  onMouseEnter={() => setContextTooltipOpen(true)}
+                  onMouseLeave={() => setContextTooltipOpen(false)}
+                >
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      padding: "4px 10px",
+                      height: 28,
+                      background: "none",
+                      border: "none",
+                      borderRadius: 9999,
+                      color: "var(--text-muted)",
+                      cursor: "default",
+                      fontSize: 12,
+                      fontFamily: "var(--font-body)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      style={{ flexShrink: 0 }}
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                    {contextUsage.percent != null ? Math.round(contextUsage.percent) + "%" : "—"}
+                  </span>
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: "calc(100% + 8px)",
+                      right: 0,
+                      background: "var(--bg)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      padding: "10px 14px",
+                      fontSize: 12,
+                      color: "var(--text)",
+                      whiteSpace: "nowrap",
+                      pointerEvents: "none",
+                      opacity: contextTooltipOpen ? 1 : 0,
+                      transition: "opacity 0.15s",
+                      zIndex: 100,
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 8,
+                      minWidth: 200,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "baseline",
+                      }}
+                    >
+                      <span style={{ color: "var(--text-muted)", fontSize: 12, fontWeight: 500 }}>
+                        Context window
+                      </span>
+                      <span
+                        style={{
+                          color: "var(--text)",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          fontFamily: "var(--font-mono)",
+                        }}
+                      >
+                        {contextUsage.percent != null
+                          ? `${Math.round(contextUsage.percent)}%`
+                          : "—"}
+                      </span>
+                    </div>
+                    {contextUsage.percent != null && (
+                      <div
+                        style={{
+                          height: 4,
+                          borderRadius: 2,
+                          background: "var(--border)",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            borderRadius: 2,
+                            width: `${contextUsage.percent}%`,
+                            background:
+                              contextUsage.percent > 90
+                                ? "var(--danger)"
+                                : contextUsage.percent > 75
+                                  ? "var(--warn)"
+                                  : "var(--accent)",
+                            transition: "width 0.4s ease",
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        color: "var(--text-dim)",
                         fontSize: 12,
-                        fontWeight: 600,
                         fontFamily: "var(--font-mono)",
                       }}
                     >
-                      {contextUsage.percent != null ? `${Math.round(contextUsage.percent)}%` : "—"}
-                    </span>
-                  </div>
-                  {contextUsage.percent != null && (
-                    <div
-                      style={{
-                        height: 4,
-                        borderRadius: 2,
-                        background: "var(--border)",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <div
-                        style={{
-                          height: "100%",
-                          borderRadius: 2,
-                          width: `${contextUsage.percent}%`,
-                          background:
-                            contextUsage.percent > 90
-                              ? "var(--danger)"
-                              : contextUsage.percent > 75
-                                ? "var(--warn)"
-                                : "var(--accent)",
-                          transition: "width 0.4s ease",
-                        }}
-                      />
+                      <span>
+                        {contextUsage.tokens != null
+                          ? `${(contextUsage.tokens / 1000).toFixed(1).replace(/\.0$/, "")}k tokens`
+                          : "—"}
+                      </span>
+                      <span>
+                        {contextUsage.contextWindow != null
+                          ? contextUsage.contextWindow >= 1_000_000
+                            ? `${(contextUsage.contextWindow / 1_000_000).toFixed(1).replace(/\.0$/, "")}M window`
+                            : `${(contextUsage.contextWindow / 1000).toFixed(0)}k window`
+                          : "—"}
+                      </span>
                     </div>
-                  )}
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      color: "var(--text-dim)",
-                      fontSize: 12,
-                      fontFamily: "var(--font-mono)",
-                    }}
-                  >
-                    <span>
-                      {contextUsage.tokens != null
-                        ? `${(contextUsage.tokens / 1000).toFixed(1).replace(/\.0$/, "")}k tokens`
-                        : "—"}
-                    </span>
-                    <span>
-                      {contextUsage.contextWindow != null
-                        ? contextUsage.contextWindow >= 1_000_000
-                          ? `${(contextUsage.contextWindow / 1_000_000).toFixed(1).replace(/\.0$/, "")}M window`
-                          : `${(contextUsage.contextWindow / 1000).toFixed(0)}k window`
-                        : "—"}
-                    </span>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+
+              {isStreaming ? (
+                <button
+                  onClick={onAbort}
+                  title="Stop agent"
+                  style={{
+                    flexShrink: 0,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 34,
+                    height: 34,
+                    padding: 0,
+                    background: "color-mix(in oklab, var(--danger), transparent 90%)",
+                    border: "1px solid color-mix(in oklab, var(--danger), transparent 58%)",
+                    borderRadius: "50%",
+                    color: "var(--danger)",
+                    cursor: "pointer",
+                    transition: "background 0.12s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background =
+                      "color-mix(in oklab, var(--danger), transparent 82%)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background =
+                      "color-mix(in oklab, var(--danger), transparent 90%)";
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 10 10" fill="none" aria-hidden>
+                    <rect x="1.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor" />
+                  </svg>
+                </button>
+              ) : (
+                <button
+                  onClick={handleSend}
+                  disabled={!canSend}
+                  title="Send message"
+                  style={{
+                    flexShrink: 0,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 34,
+                    height: 34,
+                    padding: 0,
+                    background: canSend
+                      ? "var(--accent)"
+                      : "color-mix(in srgb, var(--text-muted) 18%, transparent)",
+                    border: "1px solid transparent",
+                    borderRadius: "50%",
+                    color: canSend ? "var(--accent-on)" : "var(--text-dim)",
+                    cursor: canSend ? "pointer" : "not-allowed",
+                    opacity: canSend ? 1 : 0.65,
+                    transition: "background 0.12s, opacity 0.12s",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!canSend) return;
+                    e.currentTarget.style.background = "var(--accent-hover)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = canSend
+                      ? "var(--accent)"
+                      : "color-mix(in srgb, var(--text-muted) 18%, transparent)";
+                  }}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path d="M12 19V5" />
+                    <path d="M5 12l7-7 7 7" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

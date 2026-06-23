@@ -266,9 +266,18 @@ function getToolStateColor(state: ToolCallState): string {
   return "var(--text-dim)";
 }
 
+function getToolStateLabel(state: ToolCallState): string {
+  if (state === "error") return "error";
+  if (state === "done") return "done";
+  if (state === "running") return "running";
+  return "pending";
+}
+
 function getToolResultPreview(result?: ToolResultMessage): string {
   const error = getStructuredToolError(result);
-  if (error) return [error.code, error.message].filter(Boolean).join(" ").slice(0, 120);
+  if (error) {
+    return [error.title, error.code, error.message].filter(Boolean).join(" ").slice(0, 140);
+  }
   const text = getToolResultText(result);
   if (text === null || isEmptyToolResult(text)) return "";
   return text.trim().replace(/\s+/g, " ").slice(0, 120);
@@ -339,8 +348,6 @@ export function MessageView({
         toolResults={toolResults}
         modelNames={modelNames}
         entryId={entryId}
-        onFork={onFork}
-        forking={forking}
         onNavigate={onNavigate}
         showTimestamp={showTimestamp}
         prevTimestamp={prevTimestamp}
@@ -848,8 +855,6 @@ function AssistantMessageView({
   toolResults,
   modelNames,
   entryId,
-  onFork,
-  forking,
   onNavigate,
   showTimestamp,
   prevTimestamp,
@@ -860,8 +865,6 @@ function AssistantMessageView({
   toolResults?: Map<string, ToolResultMessage>;
   modelNames?: Record<string, string>;
   entryId?: string;
-  onFork?: (entryId: string) => void;
-  forking?: boolean;
   onNavigate?: (entryId: string) => void;
   showTimestamp?: boolean;
   prevTimestamp?: number;
@@ -874,9 +877,8 @@ function AssistantMessageView({
   const [copied, setCopied] = useState(false);
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
-  const canFork = !!entryId && !!onFork && !isStreaming;
   const canNavigate = !!entryId && !!onNavigate && !isStreaming;
-  const actionsVisible = hovered || actionsFocused || copied || forking;
+  const actionsVisible = hovered || actionsFocused || copied;
 
   // Streaming-based timing for thinking blocks
   const blockStartTimesRef = useRef<Map<number, number>>(new Map());
@@ -1147,56 +1149,6 @@ function AssistantMessageView({
             Branch
           </button>
         )}
-        {canFork && (
-          <button
-            onClick={() => onFork!(entryId!)}
-            disabled={forking}
-            title={forking ? "Creating new session..." : "Fork from this assistant message"}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-              padding: "3px 8px",
-              height: 22,
-              minWidth: 78,
-              justifyContent: "center",
-              background: "none",
-              border: "none",
-              borderRadius: 5,
-              color: forking ? "var(--accent)" : "var(--text-dim)",
-              cursor: forking ? "not-allowed" : "pointer",
-              fontSize: 12,
-              fontWeight: 400,
-              whiteSpace: "nowrap",
-              opacity: actionsVisible ? 1 : 0,
-              pointerEvents: actionsVisible ? "auto" : "none",
-              transition: "opacity 0.12s, color 0.12s",
-            }}
-            onMouseEnter={(e) => {
-              if (!forking) e.currentTarget.style.color = "var(--accent)";
-            }}
-            onMouseLeave={(e) => {
-              if (!forking) e.currentTarget.style.color = "var(--text-dim)";
-            }}
-          >
-            <svg
-              width="11"
-              height="11"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="6" y1="3" x2="6" y2="15" />
-              <circle cx="18" cy="6" r="3" />
-              <circle cx="6" cy="18" r="3" />
-              <path d="M18 9a9 9 0 0 1-9 9" />
-            </svg>
-            {forking ? "Creating..." : "Fork"}
-          </button>
-        )}
         {time && !isStreaming && (
           <span style={{ fontSize: 12, color: "var(--text-dim)", marginLeft: "auto" }}>{time}</span>
         )}
@@ -1374,7 +1326,7 @@ function ThinkingBlock({
   }, []);
 
   return (
-    <div>
+    <div style={{ margin: "2px 0" }}>
       {/* ── Thin trigger row ── */}
       <button
         onClick={() => setExpanded((v) => !v)}
@@ -1382,10 +1334,10 @@ function ThinkingBlock({
           display: "inline-flex",
           alignItems: "center",
           gap: 6,
-          padding: "3px 10px",
-          background: "var(--bg-subtle)",
+          padding: "2px 8px",
+          background: "none",
           border: "none",
-          borderRadius: 14,
+          borderRadius: 6,
           color: "var(--text-dim)",
           cursor: "pointer",
           fontSize: 12,
@@ -1395,11 +1347,11 @@ function ThinkingBlock({
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.color = "var(--text-muted)";
-          e.currentTarget.style.background = "var(--bg-hover)";
+          e.currentTarget.style.background = "var(--bg-subtle)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.color = "var(--text-dim)";
-          e.currentTarget.style.background = "var(--bg-subtle)";
+          e.currentTarget.style.background = "none";
         }}
       >
         <span>{expanded ? "Thinking" : "Thinking"}</span>
@@ -1484,6 +1436,7 @@ function ToolCallBlock({
   result,
   isRunning,
   duration,
+  elapsed,
   entryId,
   isFirst,
   isLast,
@@ -1492,6 +1445,7 @@ function ToolCallBlock({
   result?: ToolResultMessage;
   isRunning?: boolean;
   duration?: number;
+  elapsed?: number;
   entryId?: string;
   isFirst?: boolean;
   isLast?: boolean;
@@ -1505,18 +1459,18 @@ function ToolCallBlock({
   const resultPreview = getToolResultPreview(result);
   const toolFilePath = getToolFilePath(block);
   const errorInfo = getStructuredToolError(result);
-  const toolAnchorTitle = entryId ? `entry ${entryId}\ncurrent path` : undefined;
+  const shownDuration = duration ?? (isRunning && elapsed ? elapsed : undefined);
 
   return (
-    <div style={{ position: "relative", paddingLeft: 18, paddingBottom: isLast ? 0 : 2 }}>
+    <div style={{ position: "relative", paddingLeft: 14, paddingBottom: isLast ? 0 : 3 }}>
       {!isFirst && (
         <span
           aria-hidden
           style={{
             position: "absolute",
-            left: 5,
+            left: 4,
             top: 0,
-            height: 11,
+            height: 10,
             width: 1,
             background: "var(--border)",
           }}
@@ -1527,9 +1481,9 @@ function ToolCallBlock({
           aria-hidden
           style={{
             position: "absolute",
-            left: 5,
+            left: 4,
             top: 18,
-            bottom: -2,
+            bottom: -3,
             width: 1,
             background: "var(--border)",
           }}
@@ -1539,8 +1493,8 @@ function ToolCallBlock({
         aria-hidden
         style={{
           position: "absolute",
-          left: 2,
-          top: 11,
+          left: 1,
+          top: 10,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -1555,10 +1509,10 @@ function ToolCallBlock({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 7,
+          gap: 6,
           width: "100%",
-          minHeight: 28,
-          padding: "4px 6px",
+          minHeight: 26,
+          padding: "3px 5px",
           background: "none",
           border: "none",
           color: "var(--text-muted)",
@@ -1577,35 +1531,26 @@ function ToolCallBlock({
           e.currentTarget.style.background = "none";
         }}
       >
-        <span style={{ color: getToolStateColor(state), fontWeight: 600, flexShrink: 0 }}>
+        <span
+          style={{
+            color: state === "done" ? "var(--text-muted)" : getToolStateColor(state),
+            fontWeight: 600,
+            flexShrink: 0,
+            maxWidth: 180,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
           {block.toolName}
         </span>
-        {entryId && (
-          <span
-            title={toolAnchorTitle}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 15,
-              height: 15,
-              borderRadius: 999,
-              border: "1px solid var(--accent-border)",
-              background: "var(--bg)",
-              flexShrink: 0,
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/favicon.ico" alt="" style={{ width: 10, height: 10, display: "block" }} />
-          </span>
-        )}
         <span
           style={{
             color: "var(--text-dim)",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            flex: "0 1 45%",
+            flex: "0 1 34%",
             minWidth: 0,
           }}
         >
@@ -1654,41 +1599,20 @@ function ToolCallBlock({
             Open
           </span>
         )}
-        {result?._entryId && (
-          <span
-            title={result._anchorTitle ?? `entry ${result._entryId}`}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 15,
-              height: 15,
-              borderRadius: 999,
-              border: result._isCurrentPath
-                ? "1px solid var(--accent-border)"
-                : "1px solid var(--border)",
-              background: "var(--bg)",
-              opacity: result._isCurrentPath ? 1 : 0.7,
-              flexShrink: 0,
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/favicon.ico" alt="" style={{ width: 10, height: 10, display: "block" }} />
-          </span>
-        )}
         <span
           style={{
-            width: 30,
+            width: 34,
             fontSize: 12,
             color: "var(--text-dim)",
             flexShrink: 0,
             textAlign: "right",
             fontVariantNumeric: "tabular-nums",
-            opacity: duration !== undefined ? 1 : 0,
+            opacity: shownDuration !== undefined ? (isRunning ? 0.9 : 0.58) : 0,
             transition: "opacity 180ms ease",
+            ...(isRunning ? { animation: "pulse 1.8s ease-in-out infinite" } : {}),
           }}
         >
-          {duration ?? 0}s
+          {shownDuration ?? 0}s
         </span>
         <svg
           width="10"
@@ -1806,7 +1730,7 @@ function ToolCallsGroup({
   return (
     <div
       style={{
-        margin: "6px 0",
+        margin: "6px 0 4px",
         display: "flex",
         flexDirection: "column",
         gap: 2,
@@ -1816,8 +1740,9 @@ function ToolCallsGroup({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 8,
-          paddingLeft: 18,
+          gap: 6,
+          paddingLeft: 14,
+          paddingBottom: 2,
           color: "var(--text-dim)",
           fontSize: 12,
           fontFamily: "var(--font-mono)",
@@ -1864,6 +1789,7 @@ function ToolCallsGroup({
               result={result}
               isRunning={isStreaming && !result}
               duration={toolCallDurations?.get(block.toolCallId)}
+              elapsed={elapsed}
               entryId={entryId}
               isFirst={i === 0}
               isLast={i === visibleBlocks.length - 1 && hiddenCount === 0}
@@ -1877,7 +1803,7 @@ function ToolCallsGroup({
           onClick={() => setShowAll(true)}
           style={{
             alignSelf: "flex-start",
-            marginLeft: 18,
+            marginLeft: 14,
             marginTop: 2,
             padding: "2px 6px",
             background: "none",

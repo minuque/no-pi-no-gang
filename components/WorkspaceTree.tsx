@@ -404,6 +404,11 @@ export function WorkspaceTree({
 
     if (node.isDir) {
       items.push({
+        key: "preview-dir",
+        label: "Preview Contents",
+        onSelect: () => onSelectFile(node.fullPath),
+      });
+      items.push({
         key: "copy-path",
         label: "Copy Path",
         onSelect: () => navigator.clipboard.writeText(relativePath),
@@ -432,7 +437,7 @@ export function WorkspaceTree({
     }
 
     return items;
-  }, [contextMenu, cwd, onAddToChat]);
+  }, [contextMenu, cwd, onAddToChat, onSelectFile]);
 
   // ── Flatten all entries for search ────────────────────────────────────
   const flatEntries = useMemo(() => {

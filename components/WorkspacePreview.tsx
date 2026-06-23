@@ -2,14 +2,22 @@
 
 import { useEffect, useState } from "react";
 
-import { encodeFilePathForApi, getFileName, getRelativeFilePath } from "@/lib/file-paths";
+import {
+  encodeFilePathForApi,
+  getFileName,
+  getRelativeFilePath,
+  joinFilePath,
+} from "@/lib/file-paths";
 import { normalizeFilePathSlashes } from "@/lib/file-paths";
 import { FilePreviewContent, formatSize } from "@/lib/file-preview";
+
+import { FolderIcon, getFileIcon } from "./FileIcons";
 
 interface Props {
   filePath: string | null;
   cwd: string;
   onNavigateToDir: (dirPath: string) => void;
+  onOpenFile?: (filePath: string) => void;
 }
 
 type PreviewErrorKind = "outside-cwd" | "deleted" | "unreadable" | "binary";
@@ -96,23 +104,231 @@ async function fetchMeta(filePath: string): Promise<FileMeta> {
   }
 }
 
-export default function WorkspacePreview({ filePath, cwd, onNavigateToDir }: Props) {
+interface DirEntry {
+  name: string;
+  isDir: boolean;
+  size: number;
+  modified: string;
+}
+
+type PreviewKind = "file" | "dir" | "loading" | "error";
+
+async function fetchDirEntries(dirPath: string): Promise<DirEntry[]> {
+  const encoded = encodeFilePathForApi(dirPath);
+  const res = await fetch(`/api/files/${encoded}?type=list`);
+  if (!res.ok) throw new Error(String(res.status));
+  const data = await res.json();
+  return data.entries ?? [];
+}
+
+function DirContent({
+  dirPath,
+  cwd,
+  onNavigateToDir,
+  onOpenFile,
+}: {
+  dirPath: string;
+  cwd: string;
+  onNavigateToDir: (dirPath: string) => void;
+  onOpenFile?: (filePath: string) => void;
+}) {
+  const [entries, setEntries] = useState<DirEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    fetchDirEntries(dirPath)
+      .then((e) => {
+        if (!cancelled) {
+          setEntries(e);
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(String(err));
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dirPath]);
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "var(--text-muted)",
+          fontSize: 13,
+        }}
+      >
+        Loading folder contents...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "var(--danger)",
+          fontSize: 13,
+        }}
+      >
+        Failed to read folder: {error}
+      </div>
+    );
+  }
+
+  const handleItemClick = (entry: DirEntry) => {
+    const fullPath = joinFilePath(dirPath, entry.name);
+    if (entry.isDir) {
+      onNavigateToDir(fullPath);
+    } else if (onOpenFile) {
+      onOpenFile(fullPath);
+    }
+  };
+
+  return (
+    <div style={{ flex: 1, overflow: "auto", background: "var(--bg)" }}>
+      {/* Column headers */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          height: 28,
+          padding: "0 16px",
+          fontSize: 11,
+          fontWeight: 600,
+          color: "var(--text-dim)",
+          borderBottom: "1px solid var(--border)",
+          background: "var(--bg-panel)",
+          position: "sticky",
+          top: 0,
+          zIndex: 1,
+        }}
+      >
+        <span style={{ width: 16, flexShrink: 0 }} />
+        <span style={{ flex: 1 }}>Name</span>
+        <span style={{ width: 70, textAlign: "right", flexShrink: 0 }}>Size</span>
+      </div>
+      {entries.length === 0 ? (
+        <div
+          style={{
+            padding: "24px 16px",
+            color: "var(--text-dim)",
+            fontSize: 13,
+            textAlign: "center",
+          }}
+        >
+          Empty folder
+        </div>
+      ) : (
+        entries.map((entry, idx) => {
+          const fullPath = joinFilePath(dirPath, entry.name);
+          const relative = getRelativeFilePath(fullPath, cwd);
+          const isHovered = hoveredIdx === idx;
+          return (
+            <div
+              key={entry.name}
+              onClick={() => handleItemClick(entry)}
+              title={relative}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                height: 30,
+                padding: "0 16px",
+                cursor: "pointer",
+                background: isHovered ? "var(--bg-hover)" : "transparent",
+                borderBottom: "1px solid var(--border)",
+                fontSize: 13,
+                userSelect: "none",
+              }}
+              onMouseEnter={() => setHoveredIdx(idx)}
+              onMouseLeave={() => setHoveredIdx(null)}
+            >
+              <span style={{ flexShrink: 0, display: "flex", alignItems: "center", width: 16 }}>
+                {entry.isDir ? <FolderIcon size={14} open={false} /> : getFileIcon(entry.name, 14)}
+              </span>
+              <span
+                style={{
+                  flex: 1,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  color: entry.isDir ? "var(--text)" : "var(--text-muted)",
+                  fontWeight: entry.isDir ? 600 : 400,
+                }}
+              >
+                {entry.name}
+              </span>
+              <span
+                style={{
+                  width: 70,
+                  textAlign: "right",
+                  flexShrink: 0,
+                  color: "var(--text-dim)",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 11,
+                }}
+              >
+                {entry.isDir ? "—" : formatSize(entry.size)}
+              </span>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+export default function WorkspacePreview({ filePath, cwd, onNavigateToDir, onOpenFile }: Props) {
+  const [isDir, setIsDir] = useState<boolean | null>(null);
   const [meta, setMeta] = useState<FileMeta | null>(null);
   const [loadingMeta, setLoadingMeta] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setIsDir(null);
     setMeta(null);
     if (!filePath || !isInsideCwd(filePath, cwd)) {
       setLoadingMeta(false);
       return;
     }
     setLoadingMeta(true);
-    fetchMeta(filePath).then((next) => {
-      if (cancelled) return;
-      setMeta(next);
-      setLoadingMeta(false);
-    });
+
+    // Try listing — if it succeeds, it's a directory
+    fetchDirEntries(filePath)
+      .then(() => {
+        if (cancelled) return;
+        setIsDir(true);
+        setLoadingMeta(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Not a directory — fetch file meta
+        fetchMeta(filePath).then((next) => {
+          if (cancelled) return;
+          setIsDir(false);
+          setMeta(next);
+          setLoadingMeta(false);
+        });
+      });
     return () => {
       cancelled = true;
     };
@@ -139,13 +355,17 @@ export default function WorkspacePreview({ filePath, cwd, onNavigateToDir }: Pro
   const segments = getPathSegments(filePath, cwd);
   const errorKind: PreviewErrorKind | null = !isInsideCwd(filePath, cwd)
     ? "outside-cwd"
-    : meta?.language === "deleted"
+    : isDir === false && meta?.language === "deleted"
       ? "deleted"
-      : meta?.language === "unreadable"
+      : isDir === false && meta?.language === "unreadable"
         ? "unreadable"
-        : UNSUPPORTED_BINARY_EXTS.has(getFileExt(filePath))
+        : isDir === false && UNSUPPORTED_BINARY_EXTS.has(getFileExt(filePath))
           ? "binary"
           : null;
+
+  // Determine preview type for the header area
+  const isDirectoryPreview = isDir === true;
+  const fileName = getFileName(filePath);
 
   return (
     <div
@@ -209,14 +429,34 @@ export default function WorkspacePreview({ filePath, cwd, onNavigateToDir }: Pro
           ))}
         </div>
 
-        {/* File size */}
-        <FileSizeLabel filePath={filePath} />
+        {/* File size — only for files */}
+        {!isDirectoryPreview && !loadingMeta && <FileSizeLabel filePath={filePath} />}
+        {isDirectoryPreview && !loadingMeta && (
+          <span
+            style={{
+              color: "var(--text-muted)",
+              flexShrink: 0,
+              marginLeft: "auto",
+              lineHeight: 1.4,
+              fontSize: 10,
+            }}
+          >
+            folder
+          </span>
+        )}
       </div>
 
       {/* Content area */}
       <div style={{ flex: 1, overflow: "auto" }}>
         {loadingMeta ? (
           <PreviewStatus message="Loading..." />
+        ) : isDirectoryPreview ? (
+          <DirContent
+            dirPath={filePath}
+            cwd={cwd}
+            onNavigateToDir={onNavigateToDir}
+            onOpenFile={onOpenFile}
+          />
         ) : errorKind ? (
           <PreviewError kind={errorKind} filePath={filePath} cwd={cwd} />
         ) : (
