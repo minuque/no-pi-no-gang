@@ -982,7 +982,9 @@ export function ChatWindow({
                     animation: "spin 0.7s linear infinite",
                   }}
                 />
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Loading branch…</span>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  Loading branch path…
+                </span>
               </div>
             </div>
           )}

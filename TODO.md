@@ -35,8 +35,8 @@
 ### Must
 
 - [x] **会话节点元数据补缺**：`SessionInfo` 已有 `parentSessionId`、`cwd`、`modified`；继续补 `model`、`orphaned`、`hasCompaction`，并把 live `isStreaming` 从 agent state 合并到节点展示。
-- [ ] **Fork / Branch 文案统一**：Fork 明确是"创建新 `.jsonl` 会话文件"；Branch 明确是"同一 `.jsonl` 内路径切换"。
-- [ ] **分支切换状态同步**：消息列表、`entryIds`、leaf、BranchNavigator 来自同一次 `buildSessionContext()`。
+- [x] **Fork / Branch 文案统一**：Fork 明确是"创建新 `.jsonl` 会话文件"；Branch 明确是"同一 `.jsonl` 内路径切换"。
+- [x] **分支切换状态同步**：消息列表、`entryIds`、leaf、BranchNavigator 来自同一次 `buildSessionContext()`。
 - [x] **Chat 状态表达补齐**：当前已有输入区运行提示；继续补齐 `streaming`、`compacting`、`thinkingLevel`、SSE 连接、readonly / destroyed 状态的统一展示。
 - [x] **SSE 断线状态区分**：区分"正在重连 / 会话已销毁 / 当前只读浏览"。
 - [x] **Agent 状态展示补缺**：进入会话时已通过 `includeState` 读取 live state；继续把 `exists/running`、`isStreaming`、`isCompacting`、`thinkingLevel`、最后更新时间映射到明确 UI 状态。
@@ -49,8 +49,8 @@
 - [x] **Context Stack**：右侧工作台展示手动打开文件、最近 tool call 文件、当前会话引用文件。
 - [ ] **消息到文件单向跳转**：点击消息高亮相关文件。
 - [ ] **文件错误态**：明确展示 cwd 外、已删除、不可读、二进制不支持。
-- [ ] **Fork 按钮位置修正**：Fork 只在 user 消息上可操作，AssistantMessageView 不应暴露 Fork 入口（pi 设计一致）。✅ 已移除 AssistantMessageView 的 Fork 按钮，待验证。
-- [ ] **类型重命名**：`SessionTreeNode` → `EntryTreeNode`（文件内 entry 树），`SessionSessionTreeNode` → `ForkTreeNode`（跨文件 Fork 谱系）。✅ 已全局替换，待类型检查通过。
+- [x] **Fork 按钮位置修正**：Fork 只在 user 消息上可操作，AssistantMessageView 不应暴露 Fork 入口（pi 设计一致）。✅ 已验证通过。
+- [x] **类型重命名**：`SessionTreeNode` → `EntryTreeNode`（文件内 entry 树），`SessionSessionTreeNode` → `ForkTreeNode`（跨文件 Fork 谱系）。✅ `tsc --noEmit` 通过。
 - [ ] **术语收敛 — CONTEXT.md**：已建立领域词汇表，后续讨论需对齐。⚠️ 待 review。
 
 ### Should (新增)

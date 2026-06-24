@@ -94,30 +94,30 @@ function buildSessionTree(sessions: SessionInfo[]): ForkTreeNode[] {
     byId.set(s.id, { session: s, children: [] });
   }
 
-  // Build a map of parentSessionId chains so we can resolve missing ancestors
+  // Build a map of parentSessionId chains so nested forks display as siblings.
   const parentOf = new Map<string, string>();
   for (const s of sessions) {
     if (s.parentSessionId) parentOf.set(s.id, s.parentSessionId);
   }
 
-  // Walk up the parentSessionId chain to find the nearest ancestor that exists in byId
-  function resolveAncestor(id: string): string | null {
+  function resolveDisplayParent(id: string): string | null {
     let cur = parentOf.get(id);
+    let parent: string | null = cur ?? null;
     const visited = new Set<string>();
     while (cur) {
       if (visited.has(cur)) return null; // cycle guard
       visited.add(cur);
-      if (byId.has(cur)) return cur;
+      if (byId.has(cur)) parent = cur;
       cur = parentOf.get(cur);
     }
-    return null;
+    return parent && byId.has(parent) ? parent : null;
   }
 
   const roots: ForkTreeNode[] = [];
   for (const node of byId.values()) {
-    const ancestor = resolveAncestor(node.session.id);
-    if (ancestor) {
-      byId.get(ancestor)!.children.push(node);
+    const parent = resolveDisplayParent(node.session.id);
+    if (parent) {
+      byId.get(parent)!.children.push(node);
     } else {
       roots.push(node);
     }
@@ -1408,7 +1408,10 @@ function SessionItem({
             >
               {/* Session type badge */}
               {isFork && (
-                <SessionMetaBadge title="Fork: separate .jsonl session file" tone="accent">
+                <SessionMetaBadge
+                  title="Fork: a new independent .jsonl session file (via Fork)"
+                  tone="accent"
+                >
                   fork
                 </SessionMetaBadge>
               )}

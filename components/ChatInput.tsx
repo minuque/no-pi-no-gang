@@ -706,6 +706,15 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     cursor: "pointer",
                     padding: 0,
                     color: "var(--text-muted)",
+                    transition: "background 0.12s, color 0.12s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--bg-hover)";
+                    e.currentTarget.style.color = "var(--text)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "var(--bg-panel)";
+                    e.currentTarget.style.color = "var(--text-muted)";
                   }}
                 >
                   <svg
@@ -971,8 +980,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  width: 28,
-                  height: 28,
+                  width: 30,
+                  height: 30,
                   background: attachedImages.length
                     ? "color-mix(in oklab, var(--accent), transparent 90%)"
                     : "none",
@@ -1001,8 +1010,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                 }}
               >
                 <svg
-                  width="14"
-                  height="14"
+                  width="16"
+                  height="16"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -1014,20 +1023,20 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                 </svg>
               </button>
 
-              {/* 📂 Project pill + CWD picker dropdown */}
+              {/* 📂 CWD picker — icon-only, current dir highlighted in dropdown */}
               <div ref={cwdDropdownRef} style={{ position: "relative" }}>
                 <button
                   onClick={() => {
                     if (!isStreaming) setCwdDropdownOpen((v) => !v);
                   }}
                   disabled={isStreaming}
-                  title="Switch project directory"
+                  title={`Project: ${currentProject || "no-pi-no-gang"}`}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: 4,
-                    padding: "4px 10px",
-                    height: 28,
+                    justifyContent: "center",
+                    width: 30,
+                    height: 30,
                     background: cwdDropdownOpen
                       ? "color-mix(in srgb, var(--text-muted) 14%, transparent)"
                       : "none",
@@ -1035,9 +1044,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     borderRadius: 9999,
                     color: cwdDropdownOpen ? "var(--text)" : "var(--text-muted)",
                     cursor: isStreaming ? "not-allowed" : "pointer",
-                    fontSize: 12,
-                    fontFamily: "var(--font-body)",
-                    whiteSpace: "nowrap",
                     opacity: isStreaming ? 0.5 : 1,
                     transition: "background 0.12s, color 0.12s",
                   }}
@@ -1056,8 +1062,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                   }}
                 >
                   <svg
-                    width="13"
-                    height="13"
+                    width="16"
+                    height="16"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -1068,7 +1074,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                   >
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                   </svg>
-                  {currentProject || "no-pi-no-gang"}
                 </button>
 
                 {cwdDropdownOpen && (
@@ -1087,57 +1092,86 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                       maxWidth: 380,
                     }}
                   >
-                    {(recentCwds ?? []).map((cwd) => (
-                      <button
-                        key={cwd}
-                        onClick={() => {
-                          void selectRecentCwd(cwd);
-                        }}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 7,
-                          width: "100%",
-                          padding: "8px 10px",
-                          background: "none",
-                          border: "none",
-                          borderBottom: "1px solid var(--border)",
-                          color: "var(--text-muted)",
-                          cursor: "pointer",
-                          textAlign: "left",
-                          fontSize: 12,
-                          fontFamily: "var(--font-mono)",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                        title={cwd}
-                      >
-                        <svg
-                          width="10"
-                          height="10"
-                          viewBox="0 0 10 10"
-                          fill="none"
-                          stroke="var(--text-dim)"
-                          strokeWidth="1.1"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          style={{ flexShrink: 0 }}
-                        >
-                          <path d="M1 3A1 1 0 0 1 2 2H4L5 3.5H8.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-7A.5.5 0 0 1 1 8V3Z" />
-                        </svg>
-                        <span
+                    {(recentCwds ?? []).map((cwd) => {
+                      const isCurrent = currentProject
+                        ? cwd === currentProject ||
+                          cwd.endsWith("/" + currentProject) ||
+                          cwd.endsWith("\\" + currentProject) ||
+                          cwd.split(/[\\/]/).pop() === currentProject
+                        : false;
+                      return (
+                        <button
+                          key={cwd}
+                          onClick={() => {
+                            void selectRecentCwd(cwd);
+                          }}
                           style={{
-                            flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 7,
+                            width: "100%",
+                            padding: "8px 10px",
+                            background: isCurrent ? "var(--bg-selected)" : "none",
+                            border: "none",
+                            borderBottom: "1px solid var(--border)",
+                            color: isCurrent ? "var(--text)" : "var(--text-muted)",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            fontSize: 12,
+                            fontFamily: "var(--font-mono)",
+                            fontWeight: isCurrent ? 600 : 400,
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
+                            transition: "background 0.12s",
                           }}
+                          onMouseEnter={(e) => {
+                            if (!isCurrent) e.currentTarget.style.background = "var(--bg-hover)";
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isCurrent) e.currentTarget.style.background = "none";
+                          }}
+                          title={cwd}
                         >
-                          {shortenCwd(cwd)}
-                        </span>
-                      </button>
-                    ))}
+                          <svg
+                            width="10"
+                            height="10"
+                            viewBox="0 0 10 10"
+                            fill="none"
+                            stroke={isCurrent ? "var(--accent)" : "var(--text-dim)"}
+                            strokeWidth="1.1"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            style={{ flexShrink: 0 }}
+                          >
+                            <path d="M1 3A1 1 0 0 1 2 2H4L5 3.5H8.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-7A.5.5 0 0 1 1 8V3Z" />
+                          </svg>
+                          <span
+                            style={{
+                              flex: 1,
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {shortenCwd(cwd)}
+                          </span>
+                          {isCurrent && (
+                            <span
+                              style={{
+                                fontSize: 10,
+                                color: "var(--accent)",
+                                fontFamily: "var(--font-body)",
+                                fontWeight: 500,
+                                flexShrink: 0,
+                              }}
+                            >
+                              current
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
 
                     {/* Default cwd shortcut */}
                     {!cwdCustomOpen && (
@@ -1160,6 +1194,13 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                           cursor: "pointer",
                           textAlign: "left",
                           fontSize: 12,
+                          transition: "background 0.12s",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "var(--bg-hover)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "none";
                         }}
                       >
                         <svg
@@ -1200,6 +1241,13 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                           cursor: "pointer",
                           textAlign: "left",
                           fontSize: 12,
+                          transition: "background 0.12s",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = "var(--bg-hover)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = "none";
                         }}
                       >
                         <svg
@@ -1287,6 +1335,15 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                                   ? "not-allowed"
                                   : "pointer",
                               opacity: cwdCustomValidating || !cwdCustomValue.trim() ? 0.65 : 1,
+                              transition: "opacity 0.12s",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!cwdCustomValidating && cwdCustomValue.trim())
+                                e.currentTarget.style.opacity = "0.85";
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!cwdCustomValidating && cwdCustomValue.trim())
+                                e.currentTarget.style.opacity = "1";
                             }}
                           >
                             {cwdCustomValidating ? "Checking…" : "Open"}
@@ -1306,6 +1363,15 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                               color: "var(--text-muted)",
                               fontSize: 12,
                               cursor: "pointer",
+                              transition: "background 0.12s, color 0.12s",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = "var(--border)";
+                              e.currentTarget.style.color = "var(--text)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = "var(--bg-hover)";
+                              e.currentTarget.style.color = "var(--text-muted)";
                             }}
                           >
                             Cancel
@@ -1325,7 +1391,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     alignItems: "center",
                     gap: 4,
                     padding: "4px 10px",
-                    height: 28,
+                    height: 30,
                     background: "color-mix(in oklab, var(--warn), transparent 92%)",
                     border: "1px solid color-mix(in oklab, var(--warn), transparent 72%)",
                     borderRadius: 9999,
@@ -1336,8 +1402,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                   }}
                 >
                   <svg
-                    width="13"
-                    height="13"
+                    width="15"
+                    height="15"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -1380,7 +1446,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                       alignItems: "center",
                       gap: 4,
                       padding: "4px 10px",
-                      height: 28,
+                      height: 30,
                       maxWidth: 260,
                       overflow: "hidden",
                       background: modelDropdownOpen
@@ -1409,8 +1475,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     }}
                   >
                     <svg
-                      width="13"
-                      height="13"
+                      width="15"
+                      height="15"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -1557,7 +1623,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                       alignItems: "center",
                       gap: 4,
                       padding: "4px 10px",
-                      height: 28,
+                      height: 30,
                       background: thinkingDropdownOpen
                         ? "color-mix(in srgb, var(--text-muted) 14%, transparent)"
                         : "none",
@@ -1584,8 +1650,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     }}
                   >
                     <svg
-                      width="13"
-                      height="13"
+                      width="15"
+                      height="15"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -1719,7 +1785,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                       alignItems: "center",
                       gap: 4,
                       padding: "4px 10px",
-                      height: 28,
+                      height: 30,
                       background: "none",
                       border: "none",
                       borderRadius: 9999,
@@ -1731,8 +1797,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     }}
                   >
                     <svg
-                      width="13"
-                      height="13"
+                      width="15"
+                      height="15"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -1852,8 +1918,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    width: 34,
-                    height: 34,
+                    width: 36,
+                    height: 36,
                     padding: 0,
                     background: "color-mix(in oklab, var(--danger), transparent 90%)",
                     border: "1px solid color-mix(in oklab, var(--danger), transparent 58%)",
@@ -1871,7 +1937,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                       "color-mix(in oklab, var(--danger), transparent 90%)";
                   }}
                 >
-                  <svg width="12" height="12" viewBox="0 0 10 10" fill="none" aria-hidden>
+                  <svg width="14" height="14" viewBox="0 0 10 10" fill="none" aria-hidden>
                     <rect x="1.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor" />
                   </svg>
                 </button>
@@ -1885,8 +1951,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    width: 34,
-                    height: 34,
+                    width: 36,
+                    height: 36,
                     padding: 0,
                     background: canSend
                       ? "var(--accent)"
@@ -1909,8 +1975,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                   }}
                 >
                   <svg
-                    width="16"
-                    height="16"
+                    width="18"
+                    height="18"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"

@@ -379,6 +379,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const d = (await res.json()) as { context: { messages: AgentMessage[]; entryIds: string[] } };
       if (loadGenRef.current !== gen) return;
       const mergedMessages = mergeToolCallMessages(d.context.messages);
+      // Set activeLeafId + messages + entryIds in the same synchronous block
+      // so they all come from a single buildSessionContext() call.
+      // React batches them into one render — no intermediate inconsistent state.
+      setActiveLeafId(leafId);
       setMessages(mergedMessages);
       setEntryIds(d.context.entryIds ?? []);
       setContextUsage(
@@ -979,7 +983,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (!sid) return;
       loadGenRef.current += 1;
       sendAgentCommand(sid, { type: "navigate_tree", targetId: entryId }).catch(() => {});
-      setActiveLeafId(entryId);
       await loadContext(sid, entryId);
     },
     [loadContext],
@@ -987,7 +990,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const handleLeafChange = useCallback(
     async (leafId: string | null) => {
-      setActiveLeafId(leafId);
       const sid = sessionIdRef.current;
       if (!sid) return;
       loadGenRef.current += 1;

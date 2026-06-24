@@ -1,4 +1,4 @@
-# AGENTS.md
+# CLAUDE.md
 
 ## 快速开始
 

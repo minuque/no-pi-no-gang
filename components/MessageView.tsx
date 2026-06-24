@@ -75,16 +75,6 @@ function copyText(text: string): Promise<void> {
   }
 }
 
-type ContextStackSource = "tool" | "reference";
-
-interface ContextStackItem {
-  path: string;
-  label: string;
-  source: ContextStackSource;
-  entryId?: string;
-  ts: number;
-}
-
 interface StructuredToolError {
   title: string;
   message: string;
@@ -92,7 +82,6 @@ interface StructuredToolError {
   detail?: string;
 }
 
-const CONTEXT_STACK_STORAGE_KEY = "pi-context-stack-v1";
 const FILE_REF_RE =
   /(?:[a-zA-Z]:[\\/][^\s"'`<>|]+|\.{0,2}[\\/][^\s"'`<>|]+|[\w@.-]+(?:[\\/][\w@ .-]+)+\.[A-Za-z0-9]{1,8})/g;
 
@@ -129,60 +118,6 @@ function getToolFilePath(block: ToolCallContent): string | null {
     if (refs.length > 0) return refs[0];
   }
   return null;
-}
-
-function publishContextStackItems(items: ContextStackItem[]): void {
-  if (typeof window === "undefined" || items.length === 0) return;
-  try {
-    const existing = JSON.parse(
-      window.localStorage.getItem(CONTEXT_STACK_STORAGE_KEY) ?? "[]",
-    ) as ContextStackItem[];
-    const byKey = new Map<string, ContextStackItem>();
-    for (const item of [...items, ...existing]) {
-      byKey.set(`${item.source}:${item.path}`, item);
-    }
-    const next = Array.from(byKey.values())
-      .sort((a, b) => b.ts - a.ts)
-      .slice(0, 40);
-    window.localStorage.setItem(CONTEXT_STACK_STORAGE_KEY, JSON.stringify(next));
-    window.dispatchEvent(new Event("pi-context-stack-change"));
-  } catch {}
-}
-
-function collectContextStackItems(message: AgentMessage, entryId?: string): ContextStackItem[] {
-  const ts = Date.now();
-  const items: ContextStackItem[] = [];
-  const addRef = (path: string, source: ContextStackSource, label: string) => {
-    items.push({ path, source, label, entryId, ts });
-  };
-
-  if (message.role === "assistant") {
-    for (const block of message.content ?? []) {
-      if (block.type === "toolCall") {
-        const path = getToolFilePath(block as ToolCallContent);
-        if (path) addRef(path, "tool", (block as ToolCallContent).toolName || "tool call");
-        for (const value of collectStrings((block as ToolCallContent).input)) {
-          for (const ref of extractFileRefs(value)) addRef(ref, "tool", "tool call");
-        }
-      } else if (block.type === "text") {
-        for (const ref of extractFileRefs((block as TextContent).text)) {
-          addRef(ref, "reference", "message reference");
-        }
-      }
-    }
-  } else if (message.role === "user" || message.role === "toolResult") {
-    const content = message.content;
-    const text =
-      typeof content === "string"
-        ? content
-        : content
-            .filter((b): b is TextContent => b.type === "text")
-            .map((b) => b.text)
-            .join("\n");
-    for (const ref of extractFileRefs(text)) addRef(ref, "reference", "message reference");
-  }
-
-  return items;
 }
 
 function openWorkspaceFile(path: string): void {
@@ -322,10 +257,6 @@ export function MessageView({
   onRetry,
   onEditResend,
 }: Props) {
-  useEffect(() => {
-    publishContextStackItems(collectContextStackItems(message, entryId));
-  }, [message, entryId]);
-
   if (message.role === "user") {
     return (
       <UserMessageView
@@ -744,7 +675,7 @@ function UserMessageView({
                     onNavigate!(prevAssistantEntryId!);
                     onEditContent?.(content);
                   }}
-                  title="Branch — edit from here within this session"
+                  title="Branch — switch path within the same .jsonl session file"
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -795,7 +726,7 @@ function UserMessageView({
                   title={
                     forking
                       ? "Creating new session…"
-                      : "Fork — creates an independent copy from here"
+                      : "Fork — create a new independent .jsonl session file"
                   }
                   style={{
                     display: "flex",
@@ -1105,7 +1036,7 @@ function AssistantMessageView({
         {canNavigate && (
           <button
             onClick={() => onNavigate!(entryId!)}
-            title="Branch from this assistant message"
+            title="Branch — switch conversation path within this .jsonl session"
             style={{
               display: "flex",
               alignItems: "center",
