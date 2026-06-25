@@ -44,6 +44,62 @@ if (!fs.existsSync(nextDir)) {
   process.exit(1);
 }
 
+// Turbopack 为 serverExternalPackages 创建 hashed 模块 ID，
+// 并在 .next/node_modules/ 下生成 symlink 映射 hashed 名 → 真实包。
+// npm publish 会排除所有 node_modules 路径，导致 symlink 丢失。
+// 优先读取 .next/external-modules.json（build 时生成），
+// 不存在则 fallback 扫描 chunk 文件。
+ensureTurbopackExternalSymlinks(pkgDir);
+
+function ensureTurbopackExternalSymlinks(pkgDir) {
+  const projectNodeModules = path.join(pkgDir, "node_modules");
+  if (!fs.existsSync(projectNodeModules)) return;
+
+  const externalNodeModulesDir = path.join(pkgDir, ".next", "node_modules");
+  const manifestPath = path.join(pkgDir, ".next", "external-modules.json");
+  const chunksDir = path.join(pkgDir, ".next", "server", "chunks");
+
+  /** @type {{hashedName:string, baseName:string}[]} */
+  let mappings;
+  if (fs.existsSync(manifestPath)) {
+    mappings = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  } else if (fs.existsSync(chunksDir)) {
+    // Fallback: 扫描 chunk 提取映射（每次启动 ~10ms）
+    const hashedPackages = new Set();
+    for (const file of fs.readdirSync(chunksDir).filter((f) => f.endsWith(".js"))) {
+      const content = fs.readFileSync(path.join(chunksDir, file), "utf8");
+      for (const m of content.matchAll(/@([a-z0-9_-]+)\/([a-z0-9_-]+-[a-f0-9]{16})/gi)) {
+        hashedPackages.add(`@${m[1]}/${m[2]}`);
+      }
+    }
+    mappings = [...hashedPackages].map((h) => ({
+      hashedName: h,
+      baseName: h.replace(/-[a-f0-9]{16}$/, ""),
+    }));
+  } else {
+    return;
+  }
+
+  for (const { hashedName, baseName } of mappings) {
+    const targetDir = path.join(projectNodeModules, baseName);
+    if (!fs.existsSync(targetDir)) continue;
+
+    const linkPath = path.join(externalNodeModulesDir, hashedName);
+    if (fs.existsSync(linkPath)) continue;
+
+    fs.mkdirSync(path.dirname(linkPath), { recursive: true });
+    try {
+      fs.symlinkSync(targetDir, linkPath, "junction");
+    } catch {
+      try {
+        fs.cpSync(targetDir, linkPath, { recursive: true });
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+}
+
 const nextArgs = ["start", "-p", port];
 if (hostname) nextArgs.push("-H", hostname);
 
