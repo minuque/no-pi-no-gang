@@ -146,6 +146,7 @@ export interface UseAgentSessionOptions {
     tree: EntryTreeNode[],
     activeLeafId: string | null,
     onLeafChange: (leafId: string | null) => void,
+    agentRunning: boolean,
   ) => void;
   onSystemPromptChange?: (prompt: string | null) => void;
   setNewSessionModel?: (model: { provider: string; modelId: string } | null) => void;
@@ -1158,7 +1159,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   useEffect(() => {
     if (!onBranchDataChange) return;
-    onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange);
+    onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange, agentRunning);
   }, [data?.tree, activeLeafId, handleLeafChange, onBranchDataChange]);
 
   // Load model list
@@ -1265,6 +1266,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     handleAbort,
     handleFork,
     handleNavigate,
+    handleLeafChange,
     handleModelChange,
     handleCompact,
     handleSteer,

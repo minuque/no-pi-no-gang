@@ -1242,6 +1242,7 @@ function ThinkingBlock({
   isStreaming?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const label = isStreaming ? "Thinking..." : "Reasoning";
 
   useEffect(() => {
     if (!document.getElementById("think-pulse-style")) {
@@ -1285,7 +1286,7 @@ function ThinkingBlock({
           e.currentTarget.style.background = "none";
         }}
       >
-        <span>{expanded ? "Thinking" : "Thinking"}</span>
+        <span>{label}</span>
         {isStreaming && (
           <span style={{ display: "flex", gap: 2, alignItems: "flex-end", height: 12 }}>
             <span
@@ -1643,17 +1644,14 @@ function ToolCallsGroup({
   );
   const failedCount = states.filter((state) => state === "error").length;
   const runningCount = states.filter((state) => state === "running").length;
-  const doneCount = states.filter((state) => state === "done").length;
   const summaryColor =
     failedCount > 0 ? "var(--danger)" : runningCount > 0 ? "var(--accent)" : "var(--text-dim)";
-  const stateSummary =
+  const summaryLabel =
     failedCount > 0
-      ? `${failedCount} failed`
+      ? "Reasoning · Error"
       : runningCount > 0
-        ? `${runningCount} running`
-        : allDone
-          ? `${doneCount} done`
-          : "pending";
+        ? `Thinking... · Tools ${blocks.length}`
+        : `Reasoning · Tools ${blocks.length}`;
   const defaultVisibleCount = 3;
   const visibleBlocks = showAll ? blocks : blocks.slice(0, defaultVisibleCount);
   const hiddenCount = blocks.length - visibleBlocks.length;
@@ -1679,10 +1677,10 @@ function ToolCallsGroup({
           fontFamily: "var(--font-mono)",
         }}
       >
-        <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>Tools</span>
         <span
           style={{
             color: summaryColor,
+            fontWeight: 600,
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
@@ -1690,7 +1688,7 @@ function ToolCallsGroup({
             transition: "color 220ms ease",
           }}
         >
-          {blocks.length} steps · {stateSummary}
+          {summaryLabel}
         </span>
         <span
           style={{

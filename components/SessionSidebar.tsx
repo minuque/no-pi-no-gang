@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useTheme } from "@/hooks/useTheme";
-import type { EntryTreeNode as BranchTreeNode, SessionEntry, SessionInfo } from "@/lib/types";
+import type { SessionInfo } from "@/lib/types";
 
 interface Props {
   selectedSessionId: string | null;
@@ -16,10 +16,6 @@ interface Props {
   selectedCwd?: string | null;
   onCwdChange?: (cwd: string | null) => void;
   onSessionsChange?: (sessions: SessionInfo[]) => void;
-  branchTree?: BranchTreeNode[];
-  branchActiveLeafId?: string | null;
-  onBranchLeafChange?: (leafId: string | null) => void;
-  branchSwitchDisabled?: boolean;
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -130,73 +126,6 @@ function buildSessionTree(sessions: SessionInfo[]): ForkTreeNode[] {
   };
   sort(roots);
   return roots;
-}
-
-function branchHasSplit(nodes: BranchTreeNode[]): boolean {
-  for (const node of nodes) {
-    if (node.children.length > 1) return true;
-    if (branchHasSplit(node.children)) return true;
-  }
-  return false;
-}
-
-function countBranchPaths(node: BranchTreeNode): number {
-  const displayNode = compressBranchNode(node);
-  if (displayNode.children.length === 0) return 1;
-  return displayNode.children.reduce((total, child) => total + countBranchPaths(child), 0);
-}
-
-function countAdditionalBranches(nodes: BranchTreeNode[]): number {
-  if (!branchHasSplit(nodes) || nodes.length === 0) return 0;
-  const root = compressBranchRoot(nodes[0]);
-  const pathCount = root.children.reduce((total, child) => total + countBranchPaths(child), 0);
-  return Math.max(0, pathCount - 1);
-}
-
-function buildBranchActivePath(nodes: BranchTreeNode[], targetId: string | null): Set<string> {
-  if (!targetId) return new Set();
-  function search(items: BranchTreeNode[], path: string[]): string[] | null {
-    for (const node of items) {
-      const next = [...path, node.entry.id];
-      if (node.entry.id === targetId) return next;
-      const found = search(node.children, next);
-      if (found) return found;
-    }
-    return null;
-  }
-  return new Set(search(nodes, []) ?? []);
-}
-
-function compressBranchRoot(node: BranchTreeNode): BranchTreeNode {
-  let current = node;
-  while (current.children.length === 1) current = current.children[0];
-  return current;
-}
-
-function compressBranchNode(node: BranchTreeNode): BranchTreeNode {
-  let current = node;
-  while (current.children.length === 1) current = current.children[0];
-  return current;
-}
-
-function getBranchLabel(entry: SessionEntry): string {
-  if (entry.type === "message" && "message" in entry) {
-    const msg = entry.message as { role: string; content: unknown };
-    const content = msg.content;
-    let text = "";
-    if (typeof content === "string") {
-      text = content;
-    } else if (Array.isArray(content)) {
-      text = content
-        .filter((block): block is { type: "text"; text: string } => block.type === "text")
-        .map((block) => block.text)
-        .join(" ");
-    }
-    if (text.length > 40) text = text.slice(0, 40) + "...";
-    if (text) return text;
-    if (msg.role === "assistant") return "[assistant]";
-  }
-  return entry.type;
 }
 
 function containsSession(nodes: ForkTreeNode[], sessionId: string | null): boolean {
@@ -455,10 +384,6 @@ export function SessionSidebar({
   selectedCwd: selCwd,
   onCwdChange,
   onSessionsChange,
-  branchTree = [],
-  branchActiveLeafId = null,
-  onBranchLeafChange,
-  branchSwitchDisabled = false,
 }: Props) {
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -793,10 +718,6 @@ export function SessionSidebar({
             onSelectCwd={handleSelectCwd}
             onToggleCwd={handleToggleCwd}
             onSelectSession={onSelectSession}
-            branchTree={branchTree}
-            branchActiveLeafId={branchActiveLeafId}
-            onBranchLeafChange={onBranchLeafChange}
-            branchSwitchDisabled={branchSwitchDisabled}
             onRenamed={loadSessions}
             onSessionDeleted={(id) => {
               onSessionDeleted?.(id);
@@ -820,10 +741,6 @@ function CwdGroupSection({
   onSelectSession,
   onRenamed,
   onSessionDeleted,
-  branchTree,
-  branchActiveLeafId,
-  onBranchLeafChange,
-  branchSwitchDisabled,
 }: {
   group: CwdSessionGroup;
   selectedSessionId: string | null;
@@ -832,10 +749,6 @@ function CwdGroupSection({
   onSelectCwd: (cwd: string) => void;
   onToggleCwd: (cwd: string) => void;
   onSelectSession: (s: SessionInfo) => void;
-  branchTree: BranchTreeNode[];
-  branchActiveLeafId: string | null;
-  onBranchLeafChange?: (leafId: string | null) => void;
-  branchSwitchDisabled: boolean;
   onRenamed?: () => void;
   onSessionDeleted?: (id: string) => void;
 }) {
@@ -981,10 +894,6 @@ function CwdGroupSection({
                 onSelectSession={onSelectSession}
                 onRenamed={onRenamed}
                 onSessionDeleted={onSessionDeleted}
-                branchTree={branchTree}
-                branchActiveLeafId={branchActiveLeafId}
-                onBranchLeafChange={onBranchLeafChange}
-                branchSwitchDisabled={branchSwitchDisabled}
                 depth={0}
               />
             ))
@@ -1002,10 +911,6 @@ function SessionTreeItem({
   onSelectSession,
   onRenamed,
   onSessionDeleted,
-  branchTree,
-  branchActiveLeafId,
-  onBranchLeafChange,
-  branchSwitchDisabled,
   depth,
 }: {
   node: ForkTreeNode;
@@ -1013,23 +918,11 @@ function SessionTreeItem({
   onSelectSession: (s: SessionInfo) => void;
   onRenamed?: () => void;
   onSessionDeleted?: (id: string) => void;
-  branchTree: BranchTreeNode[];
-  branchActiveLeafId: string | null;
-  onBranchLeafChange?: (leafId: string | null) => void;
-  branchSwitchDisabled: boolean;
   depth: number;
 }) {
   const isSelectedPath = containsSession([node], selectedSessionId);
   const [collapsed, setCollapsed] = useState(true);
   const hasChildren = node.children.length > 0;
-  const branchCount =
-    node.session.id === selectedSessionId ? countAdditionalBranches(branchTree) : 0;
-  const showLeafBranches = branchCount > 0;
-  const branchRoot = branchTree.length > 0 ? compressBranchRoot(branchTree[0]) : null;
-  const branchActivePathIds = useMemo(
-    () => buildBranchActivePath(branchTree, branchActiveLeafId),
-    [branchTree, branchActiveLeafId],
-  );
 
   useEffect(() => {
     if (isSelectedPath) setCollapsed(false);
@@ -1045,8 +938,6 @@ function SessionTreeItem({
         onDeleted={(id) => onSessionDeleted?.(id)}
         depth={depth}
         hasChildren={hasChildren}
-        branchCount={branchCount}
-        liveStreamingFallback={node.session.id === selectedSessionId && branchSwitchDisabled}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((v) => !v)}
       />
@@ -1060,119 +951,11 @@ function SessionTreeItem({
               onSelectSession={onSelectSession}
               onRenamed={onRenamed}
               onSessionDeleted={onSessionDeleted}
-              branchTree={branchTree}
-              branchActiveLeafId={branchActiveLeafId}
-              onBranchLeafChange={onBranchLeafChange}
-              branchSwitchDisabled={branchSwitchDisabled}
               depth={depth + 1}
             />
           ))}
         </div>
       )}
-      {showLeafBranches && branchRoot && branchRoot.children.length > 1 && (
-        <div style={{ marginLeft: (depth + 1) * 14 + 6, padding: "1px 0 6px 0" }}>
-          {branchRoot.children.map((child) => (
-            <BranchLeafItem
-              key={child.entry.id}
-              node={child}
-              activePathIds={branchActivePathIds}
-              depth={0}
-              onSelect={onBranchLeafChange}
-              disabled={branchSwitchDisabled}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BranchLeafItem({
-  node,
-  activePathIds,
-  depth,
-  onSelect,
-  disabled,
-}: {
-  node: BranchTreeNode;
-  activePathIds: Set<string>;
-  depth: number;
-  onSelect?: (leafId: string | null) => void;
-  disabled: boolean;
-}) {
-  const displayNode = compressBranchNode(node);
-  const isActive = activePathIds.has(displayNode.entry.id);
-  const isOnPath = activePathIds.has(node.entry.id) || isActive;
-  const label = displayNode.label ?? getBranchLabel(displayNode.entry);
-  const indent = depth * 14;
-
-  return (
-    <div>
-      <button
-        onClick={() => {
-          if (!disabled) onSelect?.(displayNode.entry.id);
-        }}
-        disabled={disabled}
-        title={
-          disabled
-            ? "Branch path switching is disabled while streaming"
-            : `Switch branch path inside this .jsonl: ${label}`
-        }
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          width: `calc(100% - ${indent}px)`,
-          height: 26,
-          padding: "0 8px 0 0",
-          marginLeft: indent,
-          background: isActive ? "color-mix(in oklab, var(--accent), transparent 92%)" : "none",
-          border: "none",
-          borderLeft: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
-          borderRadius: "0 4px 4px 0",
-          color: isActive ? "var(--text)" : isOnPath ? "var(--text-muted)" : "var(--text-dim)",
-          cursor: disabled ? "not-allowed" : "pointer",
-          opacity: disabled ? 0.45 : 1,
-          textAlign: "left",
-        }}
-      >
-        <span
-          style={{
-            width: 7,
-            height: 7,
-            borderRadius: "50%",
-            marginLeft: 7,
-            flexShrink: 0,
-            background: isActive
-              ? "var(--accent)"
-              : isOnPath
-                ? "var(--text-muted)"
-                : "var(--border)",
-          }}
-        />
-        <span
-          style={{
-            minWidth: 0,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            fontSize: 11.5,
-            lineHeight: "20px",
-          }}
-        >
-          {label}
-        </span>
-      </button>
-      {displayNode.children.map((child) => (
-        <BranchLeafItem
-          key={child.entry.id}
-          node={child}
-          activePathIds={activePathIds}
-          depth={depth + 1}
-          onSelect={onSelect}
-          disabled={disabled}
-        />
-      ))}
     </div>
   );
 }
@@ -1186,8 +969,6 @@ function SessionItem({
   onDeleted,
   depth = 0,
   hasChildren = false,
-  branchCount = 0,
-  liveStreamingFallback = false,
   collapsed = false,
   onToggleCollapse,
 }: {
@@ -1198,8 +979,6 @@ function SessionItem({
   onDeleted?: (id: string) => void;
   depth?: number;
   hasChildren?: boolean;
-  branchCount?: number;
-  liveStreamingFallback?: boolean;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }) {
@@ -1217,7 +996,6 @@ function SessionItem({
   const hasCompaction = hasAnyFlag(session, ["hasCompaction", "hasCompactions", "compacted"]);
   const agentState = (session as SessionInfo & SessionMeta).agentState;
   const isLiveStreaming =
-    liveStreamingFallback ||
     agentState?.isStreaming === true ||
     hasAnyFlag(session, ["isStreaming", "streaming", "liveStreaming", "live", "isLive"]);
 
@@ -1439,14 +1217,6 @@ function SessionItem({
               <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
                 {session.messageCount} msg{session.messageCount !== 1 ? "s" : ""}
               </span>
-              {branchCount > 0 && (
-                <span
-                  title="Branch paths inside this .jsonl session file"
-                  style={{ flexShrink: 0 }}
-                >
-                  {branchCount} branch path{branchCount !== 1 ? "s" : ""}
-                </span>
-              )}
             </div>
           </div>
 

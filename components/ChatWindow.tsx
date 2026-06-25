@@ -25,6 +25,7 @@ interface Props {
     tree: EntryTreeNode[],
     activeLeafId: string | null,
     onLeafChange: (leafId: string | null) => void,
+    agentRunning: boolean,
   ) => void;
   onStreamingChange?: (isStreaming: boolean) => void;
   onSystemPromptChange?: (prompt: string | null) => void;
@@ -220,6 +221,7 @@ export function ChatWindow({
     handleAbort,
     handleFork,
     handleNavigate,
+    handleLeafChange,
     handleModelChange,
     handleThinkingLevelChange,
     handleAgentEventRef,
@@ -335,7 +337,6 @@ export function ChatWindow({
     : null;
 
   const cwd = session?.cwd ?? newSessionCwd;
-  const projectName = cwd ? cwd.split(/[/\\]/).pop() : undefined;
 
   const activeBranch = useMemo(() => {
     const tree = data?.tree;
@@ -557,7 +558,7 @@ export function ChatWindow({
       retryInfo={retryInfo}
       commands={commands}
       contextUsage={contextUsage}
-      currentProject={projectName}
+      currentCwd={cwd ?? undefined}
       recentCwds={recentCwds}
       homeDir={homeDir}
       onCwdSelect={onCwdSelect}

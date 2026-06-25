@@ -12,6 +12,7 @@ import { Toaster } from "sonner";
 import { useTheme } from "@/hooks/useTheme";
 import type { EntryTreeNode, SessionInfo } from "@/lib/types";
 
+import { BranchNavigator } from "./BranchNavigator";
 import type { ChatInputHandle } from "./ChatInput";
 import { SessionSidebar } from "./SessionSidebar";
 import { SystemPromptButton } from "./SystemPromptButton";
@@ -84,34 +85,27 @@ export function AppShell() {
   const chatInputRef = useRef<ChatInputHandle | null>(null);
   const topBarRef = useRef<HTMLDivElement>(null);
 
-  // Branch navigator state — populated by ChatWindow via onBranchDataChange
+  const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
+
+  // Branch navigator state — populated by ChatWindow, rendered in top bar
   const [branchTree, setBranchTree] = useState<EntryTreeNode[]>([]);
   const [branchActiveLeafId, setBranchActiveLeafId] = useState<string | null>(null);
-  const [branchSwitchDisabled, setBranchSwitchDisabled] = useState(false);
-  const branchLeafChangeFnRef = useRef<((leafId: string | null) => void) | null>(null);
-
+  const branchOnLeafChangeRef = useRef<((leafId: string | null) => void) | null>(null);
+  const [branchDisabled, setBranchDisabled] = useState(false);
   const handleBranchDataChange = useCallback(
     (
       tree: EntryTreeNode[],
       activeLeafId: string | null,
       onLeafChange: (leafId: string | null) => void,
+      agentRunning: boolean,
     ) => {
       setBranchTree(tree);
       setBranchActiveLeafId(activeLeafId);
-      branchLeafChangeFnRef.current = onLeafChange;
+      branchOnLeafChangeRef.current = onLeafChange;
+      setBranchDisabled(agentRunning);
     },
     [],
   );
-
-  const handleBranchLeafChange = useCallback((leafId: string | null) => {
-    branchLeafChangeFnRef.current?.(leafId);
-  }, []);
-
-  const handleStreamingChange = useCallback((isStreaming: boolean) => {
-    setBranchSwitchDisabled(isStreaming);
-  }, []);
-
-  const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
 
   // SSE status from ChatWindow → displayed in top bar
   const [sseStatus, setSseStatus] = useState<{
@@ -308,8 +302,6 @@ export function AppShell() {
       setNewSessionCwd(decodeURIComponent(cwdParam));
       setSelectedSession(null);
       setSessionKey((k) => k + 1);
-      setBranchTree([]);
-      setBranchActiveLeafId(null);
       setSystemPrompt(null);
 
       // Clean up the URL
@@ -337,8 +329,6 @@ export function AppShell() {
         return prev;
       });
       setSessionKey((k) => k + 1);
-      setBranchTree([]);
-      setBranchActiveLeafId(null);
       setSystemPrompt(null);
 
       router.replace("/", { scroll: false });
@@ -387,8 +377,6 @@ export function AppShell() {
       setSelectedSession(null);
       setNewSessionCwd(cwd);
       setSessionKey((k) => k + 1);
-      setBranchTree([]);
-      setBranchActiveLeafId(null);
       setSystemPrompt(null);
 
       router.replace("/", { scroll: false });
@@ -444,8 +432,6 @@ export function AppShell() {
         setSelectedSession(null);
         setNewSessionCwd(cwd ?? null);
         setSessionKey((k) => k + 1);
-        setBranchTree([]);
-        setBranchActiveLeafId(null);
         setSystemPrompt(null);
 
         router.replace("/", { scroll: false });
@@ -472,10 +458,6 @@ export function AppShell() {
         selectedCwd={selectedSession?.cwd ?? newSessionCwd ?? activeCwd ?? null}
         onCwdChange={handleCwdChange}
         onSessionsChange={setAllSessions}
-        branchTree={branchTree}
-        branchActiveLeafId={branchActiveLeafId}
-        onBranchLeafChange={handleBranchLeafChange}
-        branchSwitchDisabled={branchSwitchDisabled}
       />
       <div style={{ padding: "8px", flexShrink: 0, position: "relative" }}>
         <button
@@ -726,9 +708,11 @@ export function AppShell() {
             style={{
               display: "flex",
               alignItems: "center",
+              gap: 4,
               flexShrink: 0,
               borderBottom: "1px solid var(--border)",
               height: 44,
+              padding: "0 8px",
               background: "var(--bg)",
             }}
           >
@@ -740,8 +724,8 @@ export function AppShell() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                width: 36,
-                height: 36,
+                width: 32,
+                height: 32,
                 padding: 0,
                 background: "none",
                 border: "none",
@@ -791,9 +775,21 @@ export function AppShell() {
               )}
             </button>
             {showChat && <SystemPromptButton systemPrompt={systemPrompt} />}
+            {showChat && (
+              <BranchNavigator
+                tree={branchTree}
+                activeLeafId={branchActiveLeafId}
+                onLeafChange={(id) => branchOnLeafChangeRef.current?.(id)}
+                inline
+                containerRef={topBarRef}
+                hasSession={!!selectedSession}
+                disabled={branchDisabled}
+                hideWhenEmpty
+              />
+            )}
             {/* Right-side toolbar — SSE status + actions */}
             {showChat && (
-              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 2 }}>
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
                 {/* SSE status — inline in top bar */}
                 {sseStatus && (
                   <div
@@ -852,8 +848,8 @@ export function AppShell() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    width: 36,
-                    height: 36,
+                    width: 32,
+                    height: 32,
                     padding: 0,
                     background: "none",
                     border: "none",
@@ -916,8 +912,8 @@ export function AppShell() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    width: 36,
-                    height: 36,
+                    width: 32,
+                    height: 32,
                     padding: 0,
                     background: "none",
                     border: "none",
@@ -968,7 +964,6 @@ export function AppShell() {
               modelsRefreshKey={modelsRefreshKey}
               chatInputRef={chatInputRef}
               onBranchDataChange={handleBranchDataChange}
-              onStreamingChange={handleStreamingChange}
               onSystemPromptChange={handleSystemPromptChange}
               onSessionStatsChange={handleSessionStatsChange}
               onContextUsageChange={handleContextUsageChange}

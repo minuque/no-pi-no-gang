@@ -41,7 +41,7 @@ interface Props {
   retryInfo?: { attempt: number; maxAttempts: number; errorMessage?: string } | null;
   contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null } | null;
   commands?: SlashCommandItem[];
-  currentProject?: string;
+  currentCwd?: string;
   recentCwds?: string[];
   homeDir?: string;
   onCwdSelect?: (cwd: string) => void;
@@ -68,10 +68,32 @@ const THINKING_LEVEL_DESC: Record<(typeof THINKING_LEVELS)[number], string> = {
 };
 
 function getCommandSourceLabel(source: SlashCommandItem["source"]): string {
-  if (source === "extension") return "ext";
-  if (source === "prompt") return "prompt";
-  if (source === "skill") return "skill";
-  return "cmd";
+  if (source === "extension") return "EXT";
+  if (source === "prompt") return "PROMPT";
+  if (source === "skill") return "SKILL";
+  return "CMD";
+}
+
+function normalizeCommandDescription(description: string): string {
+  return description.replace(/\s+/g, " ").trim();
+}
+
+function getCommandShortDescription(command: SlashCommandItem): string {
+  const description = normalizeCommandDescription(command.description);
+  if (!description) return "";
+
+  const sentenceEnd = description.search(/[.!?](\s|$)/);
+  const firstSentence =
+    sentenceEnd === -1 ? description : description.slice(0, sentenceEnd + 1).trim();
+
+  return firstSentence.length > 120 ? `${firstSentence.slice(0, 117).trimEnd()}...` : firstSentence;
+}
+
+function getCommandDisplayName(command: SlashCommandItem): string {
+  if (command.source === "skill" && command.name.startsWith("skill:")) {
+    return command.name.slice("skill:".length);
+  }
+  return `/${command.name}`;
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
@@ -90,7 +112,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
     retryInfo,
     contextUsage,
     commands = [],
-    currentProject,
+    currentCwd,
     recentCwds = [],
     homeDir = "",
     onCwdSelect,
@@ -108,8 +130,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [commandFiltered, setCommandFiltered] = useState<SlashCommandItem[]>([]);
   const [focused, setFocused] = useState(false);
-  const [contextTooltipOpen, setContextTooltipOpen] = useState(false);
-
   // CWD picker state
   const [cwdDropdownOpen, setCwdDropdownOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -234,10 +254,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
   // ── CWD picker helpers ──
   const shortenCwd = (cwd: string): string => {
     const path = homeDir && cwd.startsWith(homeDir) ? "~" + cwd.slice(homeDir.length) : cwd;
-    const sep = path.includes("/") ? "/" : "\\";
-    const parts = path.split(sep).filter(Boolean);
-    if (parts.length <= 2) return path;
-    return "…/" + parts.slice(-2).join(sep);
+    const sep = path.includes("\\") ? "\\" : "/";
+    const parts = path.split(/[\\/]+/).filter(Boolean);
+    if (parts.length <= 3) return path;
+    if (parts[0] === "~") return ["~", "...", parts[parts.length - 1]].join(sep);
+    return [parts[0], parts[1], "...", parts[parts.length - 1]].filter(Boolean).join(sep);
   };
 
   const commitCwdPath = useCallback(async () => {
@@ -573,8 +594,27 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
     : modelOptions.length > 0
       ? modelOptions[0].name
       : null;
+  const currentCwdLabel = currentCwd ? shortenCwd(currentCwd) : "Select directory";
+  const contextPercentLabel =
+    contextUsage?.percent != null ? `${Math.round(contextUsage.percent)}%` : null;
+  const contextWindowLabel =
+    contextUsage?.contextWindow != null
+      ? contextUsage.contextWindow >= 1_000_000
+        ? `${(contextUsage.contextWindow / 1_000_000).toFixed(1).replace(/\.0$/, "")}M window`
+        : `${(contextUsage.contextWindow / 1000).toFixed(0)}k window`
+      : null;
+  const currentThinkingLabel = (() => {
+    const lvl = thinkingLevel ?? "auto";
+    if (lvl === "auto" || !thinkingLevelMap) return lvl;
+    const mapped = thinkingLevelMap[lvl];
+    return mapped != null ? mapped : lvl;
+  })();
 
   const showStatusLine = !!agentStatus;
+  const selectedCommand = commandFiltered[selectedCommandIndex] ?? commandFiltered[0] ?? null;
+  const selectedCommandDescription = selectedCommand
+    ? normalizeCommandDescription(selectedCommand.description)
+    : "";
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -796,7 +836,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
               position: "relative",
               display: "flex",
               flexDirection: "column",
-              gap: 12,
+              gap: 8,
               background: isDragOver
                 ? "color-mix(in oklab, var(--accent), transparent 92%)"
                 : "var(--ui-input-bg, var(--bg))",
@@ -810,7 +850,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                       : "color-mix(in srgb, var(--border) 70%, transparent)"
               }`,
               borderRadius: 18,
-              padding: "14px 14px 12px",
+              padding: "12px 10px 8px",
               boxShadow: isStreaming
                 ? "var(--ui-input-streaming-ring), 0 1px 2px rgba(0,0,0,0.25), 0 8px 24px -12px rgba(0,0,0,0.35)"
                 : focused
@@ -875,78 +915,160 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                 boxShadow: "0 -10px 28px rgba(0,0,0,0.34)",
                 overflow: "hidden",
                 width: "100%",
-                maxHeight: 280,
-                overflowY: "auto",
-                padding: 4,
+                maxHeight: 336,
+                display: "flex",
+                flexDirection: "column",
               }}
             >
-              {commandFiltered.map((cmd, i) => (
-                <button
-                  key={`${cmd.source ?? "cmd"}:${cmd.name}`}
-                  data-command-index={i}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "minmax(120px, max-content) minmax(0, 1fr) auto",
-                    alignItems: "center",
-                    gap: 10,
-                    width: "100%",
-                    minHeight: 34,
-                    padding: "7px 10px",
-                    background:
-                      i === selectedCommandIndex
-                        ? "color-mix(in srgb, var(--accent) 12%, var(--bg-hover))"
-                        : "none",
-                    border: "none",
-                    color: i === selectedCommandIndex ? "var(--text)" : "var(--text-muted)",
-                    cursor: "pointer",
-                    fontSize: 12,
-                    textAlign: "left",
-                    fontWeight: i === selectedCommandIndex ? 600 : 400,
-                    borderRadius: 7,
-                  }}
-                  onMouseEnter={() => setSelectedCommandIndex(i)}
-                  onClick={() => selectCommand(cmd.name)}
-                >
-                  <span
+              <div style={{ maxHeight: 224, overflowY: "auto", padding: 4 }}>
+                {commandFiltered.map((cmd, i) => (
+                  <button
+                    key={`${cmd.source ?? "cmd"}:${cmd.name}`}
+                    data-command-index={i}
                     style={{
-                      fontFamily: "var(--font-mono)",
-                      fontSize: 13,
-                      minWidth: 0,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    /{cmd.name}
-                  </span>
-                  <span
-                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "minmax(0, 1fr) auto",
+                      gridTemplateRows: "auto auto",
+                      alignItems: "center",
+                      columnGap: 10,
+                      rowGap: 2,
+                      width: "100%",
+                      minHeight: 46,
+                      padding: "7px 10px",
+                      background:
+                        i === selectedCommandIndex
+                          ? "color-mix(in srgb, var(--accent) 12%, var(--bg-hover))"
+                          : "none",
+                      border: "none",
+                      color: i === selectedCommandIndex ? "var(--text)" : "var(--text-muted)",
+                      cursor: "pointer",
                       fontSize: 12,
-                      color: "var(--text-dim)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
+                      textAlign: "left",
+                      fontWeight: i === selectedCommandIndex ? 600 : 400,
+                      borderRadius: 7,
                     }}
+                    onMouseEnter={() => setSelectedCommandIndex(i)}
+                    onClick={() => selectCommand(cmd.name)}
                   >
-                    {cmd.description}
-                  </span>
-                  <span
+                    <span
+                      style={{
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 13,
+                        minWidth: 0,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {getCommandDisplayName(cmd)}
+                    </span>
+                    <span
+                      style={{
+                        justifySelf: "end",
+                        padding: "1px 6px",
+                        border: "1px solid color-mix(in srgb, var(--border) 80%, transparent)",
+                        borderRadius: 999,
+                        color: "var(--text-dim)",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 10,
+                        lineHeight: "16px",
+                      }}
+                    >
+                      {getCommandSourceLabel(cmd.source)}
+                    </span>
+                    <span
+                      style={{
+                        gridColumn: "1 / -1",
+                        fontSize: 12,
+                        lineHeight: "16px",
+                        color: "var(--text-dim)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {getCommandShortDescription(cmd)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {selectedCommand && (
+                <div
+                  style={{
+                    borderTop: "1px solid color-mix(in srgb, var(--border) 78%, transparent)",
+                    background: "color-mix(in srgb, var(--bg-hover) 46%, var(--bg))",
+                    padding: "8px 10px 9px",
+                    display: "grid",
+                    gap: 5,
+                    flexShrink: 0,
+                  }}
+                >
+                  <div
                     style={{
-                      justifySelf: "end",
-                      padding: "1px 6px",
-                      border: "1px solid color-mix(in srgb, var(--border) 80%, transparent)",
-                      borderRadius: 999,
-                      color: "var(--text-dim)",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: 10,
-                      lineHeight: "16px",
-                      textTransform: "uppercase",
+                      display: "grid",
+                      gridTemplateColumns: "minmax(0, 1fr) auto",
+                      alignItems: "center",
+                      gap: 10,
                     }}
                   >
-                    {getCommandSourceLabel(cmd.source)}
-                  </span>
-                </button>
-              ))}
+                    <span
+                      style={{
+                        minWidth: 0,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 13,
+                        color: "var(--text)",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {getCommandDisplayName(selectedCommand)}
+                    </span>
+                    <span
+                      style={{
+                        justifySelf: "end",
+                        padding: "1px 6px",
+                        border: "1px solid color-mix(in srgb, var(--border) 80%, transparent)",
+                        borderRadius: 999,
+                        color: "var(--text-dim)",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 10,
+                        lineHeight: "16px",
+                      }}
+                    >
+                      {getCommandSourceLabel(selectedCommand.source)}
+                    </span>
+                  </div>
+                  {selectedCommandDescription && (
+                    <div
+                      style={{
+                        maxHeight: 72,
+                        overflowY: "auto",
+                        color: "var(--text-muted)",
+                        fontSize: 12,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {selectedCommandDescription}
+                    </div>
+                  )}
+                  {getCommandDisplayName(selectedCommand) !== `/${selectedCommand.name}` && (
+                    <div
+                      style={{
+                        color: "var(--text-dim)",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 11,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      /{selectedCommand.name}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
           {/* Bottom bar: left | spacer | right */}
@@ -954,20 +1076,20 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 6,
+              gap: 4,
               width: "100%",
               minWidth: 0,
               flexWrap: "wrap",
             }}
           >
-            {/* LEFT: attach | project | branch */}
+            {/* LEFT: attach | cwd | tools */}
             <div
               style={{
                 flex: "0 1 auto",
                 minWidth: 0,
                 display: "flex",
                 alignItems: "center",
-                gap: 8,
+                gap: 4,
                 overflow: "visible",
               }}
             >
@@ -980,8 +1102,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  width: 30,
-                  height: 30,
+                  width: 28,
+                  height: 28,
                   background: attachedImages.length
                     ? "color-mix(in oklab, var(--accent), transparent 90%)"
                     : "none",
@@ -1023,20 +1145,26 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                 </svg>
               </button>
 
-              {/* 📂 CWD picker — icon-only, current dir highlighted in dropdown */}
+              {/* CWD picker */}
               <div ref={cwdDropdownRef} style={{ position: "relative" }}>
                 <button
                   onClick={() => {
                     if (!isStreaming) setCwdDropdownOpen((v) => !v);
                   }}
                   disabled={isStreaming}
-                  title={`Project: ${currentProject || "no-pi-no-gang"}`}
+                  title={
+                    currentCwd ? `Working directory: ${currentCwd}` : "Select working directory"
+                  }
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
-                    justifyContent: "center",
-                    width: 30,
-                    height: 30,
+                    justifyContent: "flex-start",
+                    gap: 5,
+                    width: "auto",
+                    minWidth: 28,
+                    maxWidth: "min(48vw, 360px)",
+                    height: 28,
+                    padding: "0 6px",
                     background: cwdDropdownOpen
                       ? "color-mix(in srgb, var(--text-muted) 14%, transparent)"
                       : "none",
@@ -1044,7 +1172,10 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     borderRadius: 9999,
                     color: cwdDropdownOpen ? "var(--text)" : "var(--text-muted)",
                     cursor: isStreaming ? "not-allowed" : "pointer",
+                    fontSize: 12,
+                    fontFamily: "var(--font-mono)",
                     opacity: isStreaming ? 0.5 : 1,
+                    overflow: "hidden",
                     transition: "background 0.12s, color 0.12s",
                   }}
                   onMouseEnter={(e) => {
@@ -1074,6 +1205,16 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                   >
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
                   </svg>
+                  <span
+                    style={{
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {currentCwdLabel}
+                  </span>
                 </button>
 
                 {cwdDropdownOpen && (
@@ -1093,12 +1234,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     }}
                   >
                     {(recentCwds ?? []).map((cwd) => {
-                      const isCurrent = currentProject
-                        ? cwd === currentProject ||
-                          cwd.endsWith("/" + currentProject) ||
-                          cwd.endsWith("\\" + currentProject) ||
-                          cwd.split(/[\\/]/).pop() === currentProject
-                        : false;
+                      const isCurrent = currentCwd ? cwd === currentCwd : false;
                       return (
                         <button
                           key={cwd}
@@ -1421,9 +1557,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
             </div>
 
             {/* spacer */}
-            <div style={{ flex: 1, minWidth: 12 }} />
+            <div style={{ flex: 1, minWidth: 8 }} />
 
-            {/* RIGHT: context + model + thinking level + send/stop */}
+            {/* RIGHT: model + thinking level + send/stop */}
             <div
               style={{
                 flex: "0 1 auto",
@@ -1431,24 +1567,31 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "flex-end",
-                gap: 8,
+                gap: 4,
                 overflow: "visible",
               }}
             >
-              {/* Model selector — pill style, always visible */}
+              {/* Model selector */}
               {modelOptions.length > 0 && currentName && onModelChange && (
                 <div ref={dropdownRef} style={{ position: "relative" }}>
                   <button
                     onClick={() => setModelDropdownOpen((v) => !v)}
                     disabled={isStreaming}
+                    title={[
+                      `Model: ${currentName}`,
+                      contextPercentLabel ? `Context: ${contextPercentLabel}` : null,
+                      contextWindowLabel,
+                    ]
+                      .filter(Boolean)
+                      .join(" | ")}
+                    aria-label="Model"
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
-                      gap: 4,
-                      padding: "4px 10px",
-                      height: 30,
-                      maxWidth: 260,
-                      overflow: "hidden",
+                      justifyContent: "center",
+                      width: 28,
+                      height: 28,
+                      padding: 0,
                       background: modelDropdownOpen
                         ? "color-mix(in srgb, var(--text-muted) 14%, transparent)"
                         : "none",
@@ -1459,7 +1602,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                       fontSize: 12,
                       opacity: isStreaming ? 0.5 : 1,
                       transition: "background 0.12s, color 0.12s",
-                      fontFamily: "var(--font-body)",
                     }}
                     onMouseEnter={(e) => {
                       if (isStreaming) return;
@@ -1496,45 +1638,95 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                       <line x1="1" y1="9" x2="4" y2="9" />
                       <line x1="1" y1="14" x2="4" y2="14" />
                     </svg>
-                    <span
-                      style={{
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        minWidth: 0,
-                      }}
-                    >
-                      {currentName}
-                    </span>
-                    {contextUsage?.contextWindow != null && (
-                      <span style={{ color: "var(--text-dim)", whiteSpace: "nowrap" }}>
-                        (
-                        {contextUsage.contextWindow >= 1_000_000
-                          ? `${(contextUsage.contextWindow / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`
-                          : `${Math.round(contextUsage.contextWindow / 1000)}k`}
-                        )
-                      </span>
-                    )}
                   </button>
                   {modelDropdownOpen && (
                     <div
                       ref={modelDropdownPanelRef}
                       style={{
                         position: "absolute",
-                        bottom: "calc(100% + 6px)",
-                        left: 0,
+                        bottom: "calc(100% + 8px)",
+                        right: 0,
                         zIndex: 100,
                         background: "var(--bg)",
                         border: "1px solid var(--border)",
                         borderRadius: 8,
                         boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
                         overflow: "hidden",
-                        width: "max-content",
-                        minWidth: 180,
+                        width: 256,
+                        minWidth: 220,
                         maxHeight: 360,
                         overflowY: "auto",
                       }}
                     >
+                      {contextUsage != null && (
+                        <div
+                          style={{
+                            padding: "10px 12px",
+                            borderBottom: "1px solid var(--border)",
+                            minWidth: 220,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: 16,
+                              color: "var(--text)",
+                              fontSize: 12,
+                              fontWeight: 600,
+                            }}
+                          >
+                            <span>Context</span>
+                            <span style={{ fontFamily: "var(--font-mono)" }}>
+                              {contextPercentLabel ?? "-"}
+                            </span>
+                          </div>
+                          {contextUsage.percent != null && (
+                            <div
+                              style={{
+                                height: 4,
+                                borderRadius: 2,
+                                background: "var(--border)",
+                                overflow: "hidden",
+                                marginTop: 8,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  height: "100%",
+                                  borderRadius: 2,
+                                  width: `${contextUsage.percent}%`,
+                                  background:
+                                    contextUsage.percent > 90
+                                      ? "var(--danger)"
+                                      : contextUsage.percent > 75
+                                        ? "var(--warn)"
+                                        : "var(--accent)",
+                                  transition: "width 0.4s ease",
+                                }}
+                              />
+                            </div>
+                          )}
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: 16,
+                              marginTop: 8,
+                              color: "var(--text-dim)",
+                              fontSize: 12,
+                              fontFamily: "var(--font-mono)",
+                            }}
+                          >
+                            <span>
+                              {contextUsage.tokens != null
+                                ? `${(contextUsage.tokens / 1000).toFixed(1).replace(/\.0$/, "")}k tokens`
+                                : "-"}
+                            </span>
+                            <span>{contextWindowLabel ?? "-"}</span>
+                          </div>
+                        </div>
+                      )}
                       {modelsByProvider.map((group, gi) => (
                         <div key={group.provider}>
                           {modelsByProvider.length > 1 && (
@@ -1617,13 +1809,15 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                   <button
                     onClick={() => !isStreaming && setThinkingDropdownOpen((v) => !v)}
                     disabled={isStreaming}
-                    title="切换推理强度"
+                    title={`Thinking: ${currentThinkingLabel}`}
+                    aria-label="Thinking level"
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
-                      gap: 4,
-                      padding: "4px 10px",
-                      height: 30,
+                      justifyContent: "center",
+                      width: 28,
+                      height: 28,
+                      padding: 0,
                       background: thinkingDropdownOpen
                         ? "color-mix(in srgb, var(--text-muted) 14%, transparent)"
                         : "none",
@@ -1634,7 +1828,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                       fontSize: 12,
                       opacity: isStreaming ? 0.5 : 1,
                       transition: "background 0.12s, color 0.12s",
-                      fontFamily: "var(--font-body)",
                     }}
                     onMouseEnter={(e) => {
                       if (isStreaming) return;
@@ -1664,14 +1857,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                       <line x1="7" y1="18" x2="12" y2="18" />
                       <line x1="8" y1="21" x2="11" y2="21" />
                     </svg>
-                    <span>
-                      {(() => {
-                        const lvl = thinkingLevel ?? "auto";
-                        if (lvl === "auto" || !thinkingLevelMap) return lvl;
-                        const mapped = thinkingLevelMap[lvl];
-                        return mapped != null ? mapped : lvl;
-                      })()}
-                    </span>
                   </button>
                   {thinkingDropdownOpen && (
                     <div
@@ -1772,143 +1957,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                 </div>
               )}
 
-              {/* Context % pill */}
-              {contextUsage != null && (
-                <div
-                  style={{ position: "relative", display: "flex" }}
-                  onMouseEnter={() => setContextTooltipOpen(true)}
-                  onMouseLeave={() => setContextTooltipOpen(false)}
-                >
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 4,
-                      padding: "4px 10px",
-                      height: 30,
-                      background: "none",
-                      border: "none",
-                      borderRadius: 9999,
-                      color: "var(--text-muted)",
-                      cursor: "default",
-                      fontSize: 12,
-                      fontFamily: "var(--font-body)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    <svg
-                      width="15"
-                      height="15"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      style={{ flexShrink: 0 }}
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="12 6 12 12 16 14" />
-                    </svg>
-                    {contextUsage.percent != null ? Math.round(contextUsage.percent) + "%" : "—"}
-                  </span>
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: "calc(100% + 8px)",
-                      right: 0,
-                      background: "var(--bg)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 8,
-                      padding: "10px 14px",
-                      fontSize: 12,
-                      color: "var(--text)",
-                      whiteSpace: "nowrap",
-                      pointerEvents: "none",
-                      opacity: contextTooltipOpen ? 1 : 0,
-                      transition: "opacity 0.15s",
-                      zIndex: 100,
-                      boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 8,
-                      minWidth: 200,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "baseline",
-                      }}
-                    >
-                      <span style={{ color: "var(--text-muted)", fontSize: 12, fontWeight: 500 }}>
-                        Context window
-                      </span>
-                      <span
-                        style={{
-                          color: "var(--text)",
-                          fontSize: 12,
-                          fontWeight: 600,
-                          fontFamily: "var(--font-mono)",
-                        }}
-                      >
-                        {contextUsage.percent != null
-                          ? `${Math.round(contextUsage.percent)}%`
-                          : "—"}
-                      </span>
-                    </div>
-                    {contextUsage.percent != null && (
-                      <div
-                        style={{
-                          height: 4,
-                          borderRadius: 2,
-                          background: "var(--border)",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <div
-                          style={{
-                            height: "100%",
-                            borderRadius: 2,
-                            width: `${contextUsage.percent}%`,
-                            background:
-                              contextUsage.percent > 90
-                                ? "var(--danger)"
-                                : contextUsage.percent > 75
-                                  ? "var(--warn)"
-                                  : "var(--accent)",
-                            transition: "width 0.4s ease",
-                          }}
-                        />
-                      </div>
-                    )}
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        color: "var(--text-dim)",
-                        fontSize: 12,
-                        fontFamily: "var(--font-mono)",
-                      }}
-                    >
-                      <span>
-                        {contextUsage.tokens != null
-                          ? `${(contextUsage.tokens / 1000).toFixed(1).replace(/\.0$/, "")}k tokens`
-                          : "—"}
-                      </span>
-                      <span>
-                        {contextUsage.contextWindow != null
-                          ? contextUsage.contextWindow >= 1_000_000
-                            ? `${(contextUsage.contextWindow / 1_000_000).toFixed(1).replace(/\.0$/, "")}M window`
-                            : `${(contextUsage.contextWindow / 1000).toFixed(0)}k window`
-                          : "—"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {isStreaming ? (
                 <button
                   onClick={onAbort}
@@ -1918,8 +1966,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    width: 36,
-                    height: 36,
+                    width: 34,
+                    height: 34,
                     padding: 0,
                     background: "color-mix(in oklab, var(--danger), transparent 90%)",
                     border: "1px solid color-mix(in oklab, var(--danger), transparent 58%)",
@@ -1951,8 +1999,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    width: 36,
-                    height: 36,
+                    width: 34,
+                    height: 34,
                     padding: 0,
                     background: canSend
                       ? "var(--accent)"
