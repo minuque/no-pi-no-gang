@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import dynamic from "next/dynamic";
+
+import { useViewTransition } from "@/hooks/useViewTransition";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import NProgress from "nprogress";
@@ -32,6 +34,7 @@ export function AppShell() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isDark, toggleTheme } = useTheme();
+  const vtTransition = useViewTransition();
   const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(null);
   const selectedSessionRef = useRef(selectedSession);
   selectedSessionRef.current = selectedSession;
@@ -556,8 +559,8 @@ export function AppShell() {
                 {
                   label: "Models",
                   onClick: () => {
-                    setModelsConfigOpen(true);
                     setSettingsMenuOpen(false);
+                    vtTransition(() => setModelsConfigOpen(true));
                   },
                   disabled: false,
                   preload: () => { (ModelsConfig as any).preload?.(); },
@@ -588,8 +591,8 @@ export function AppShell() {
                 {
                   label: "Skills",
                   onClick: () => {
-                    setSkillsConfigOpen(true);
                     setSettingsMenuOpen(false);
+                    vtTransition(() => setSkillsConfigOpen(true));
                   },
                   disabled: !activeCwd && !selectedSession?.cwd && !newSessionCwd,
                   preload: () => { (SkillsConfig as any).preload?.(); },
@@ -919,7 +922,7 @@ export function AppShell() {
                   )}
                 </button>
                 <button
-                  onClick={() => setWorkspacePanelOpen((v) => !v)}
+                  onClick={() => vtTransition(() => setWorkspacePanelOpen((v) => !v))}
                   title={workspacePanelOpen ? "Close workspace panel" : "Open workspace panel"}
                   aria-label={workspacePanelOpen ? "Close workspace panel" : "Open workspace panel"}
                   style={{
@@ -1024,24 +1027,28 @@ export function AppShell() {
           <WorkspacePanel
             open={workspacePanelOpen}
             cwd={activeCwd ?? selectedSession?.cwd ?? newSessionCwd ?? null}
-            onClose={() => setWorkspacePanelOpen(false)}
+            onClose={() => vtTransition(() => setWorkspacePanelOpen(false))}
             onAddToChat={(text) => chatInputRef.current?.insertText(text)}
           />
         </div>
       </div>
       {modelsConfigOpen && (
-        <ModelsConfig
-          onClose={() => {
-            setModelsConfigOpen(false);
-            setModelsRefreshKey((k) => k + 1);
-          }}
-        />
+        <div style={{ viewTransitionName: "settings-overlay" }}>
+          <ModelsConfig
+            onClose={() => {
+              vtTransition(() => setModelsConfigOpen(false));
+              setModelsRefreshKey((k) => k + 1);
+            }}
+          />
+        </div>
       )}
       {skillsConfigOpen && (activeCwd ?? selectedSession?.cwd ?? newSessionCwd) && (
-        <SkillsConfig
-          cwd={(activeCwd ?? selectedSession?.cwd ?? newSessionCwd)!}
-          onClose={() => setSkillsConfigOpen(false)}
-        />
+        <div style={{ viewTransitionName: "settings-overlay" }}>
+          <SkillsConfig
+            cwd={(activeCwd ?? selectedSession?.cwd ?? newSessionCwd)!}
+            onClose={() => vtTransition(() => setSkillsConfigOpen(false))}
+          />
+        </div>
       )}
       <Toaster
         position="top-center"

@@ -1030,3 +1030,155 @@ html.theme-switching [style*="border"] {
     display: none !important;
   }
 }
+
+/* ── View Transition CSS Recipes ────────────────────────────────────────────
+   Uses browser-native ::view-transition pseudo-elements.
+   Activated via experimental.viewTransition in next.config + document.startViewTransition().
+   React <ViewTransition> component not available — React 19.2.4 stable lacks canary APIs. */
+
+:root {
+  --duration-exit: 150ms;
+  --duration-enter: 210ms;
+  --duration-move: 400ms;
+}
+
+/* Shared keyframes */
+@keyframes vt-fade {
+  from { filter: blur(3px); opacity: 0; }
+  to { filter: blur(0); opacity: 1; }
+}
+
+@keyframes vt-slide {
+  from { translate: var(--slide-offset); }
+  to { translate: 0; }
+}
+
+@keyframes vt-slide-y {
+  from { transform: translateY(var(--slide-y-offset, 10px)); }
+  to { transform: translateY(0); }
+}
+
+/* Fade */
+::view-transition-old(.vt-fade-out) {
+  animation: var(--duration-exit) ease-in vt-fade reverse;
+}
+::view-transition-new(.vt-fade-in) {
+  animation: var(--duration-enter) ease-out var(--duration-exit) both vt-fade;
+}
+
+/* Slide vertical */
+::view-transition-old(.vt-slide-down) {
+  animation:
+    var(--duration-exit) ease-out both vt-fade reverse,
+    var(--duration-exit) ease-out both vt-slide-y reverse;
+}
+::view-transition-new(.vt-slide-up) {
+  animation:
+    var(--duration-enter) ease-in var(--duration-exit) both vt-fade,
+    var(--duration-move) ease-in both vt-slide-y;
+}
+
+/* Directional navigation — forward */
+::view-transition-old(.vt-nav-forward) {
+  --slide-offset: -60px;
+  animation:
+    var(--duration-exit) ease-in both vt-fade reverse,
+    var(--duration-move) ease-in-out both vt-slide reverse;
+}
+::view-transition-new(.vt-nav-forward) {
+  --slide-offset: 60px;
+  animation:
+    var(--duration-enter) ease-out var(--duration-exit) both vt-fade,
+    var(--duration-move) ease-in-out both vt-slide;
+}
+
+/* Directional navigation — back */
+::view-transition-old(.vt-nav-back) {
+  --slide-offset: 60px;
+  animation:
+    var(--duration-exit) ease-in both vt-fade reverse,
+    var(--duration-move) ease-in-out both vt-slide reverse;
+}
+::view-transition-new(.vt-nav-back) {
+  --slide-offset: -60px;
+  animation:
+    var(--duration-enter) ease-out var(--duration-exit) both vt-fade,
+    var(--duration-move) ease-in-out both vt-slide;
+}
+
+/* Shared element morph */
+::view-transition-group(.vt-morph) {
+  animation-duration: var(--duration-move);
+}
+::view-transition-image-pair(.vt-morph) {
+  animation-name: vt-via-blur;
+}
+@keyframes vt-via-blur {
+  30% { filter: blur(3px); }
+}
+
+/* Scale */
+@keyframes vt-scale-down {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(0.85); opacity: 0; }
+}
+@keyframes vt-scale-up {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+::view-transition-old(.vt-scale-out) {
+  animation: var(--duration-exit) ease-in vt-scale-down;
+}
+::view-transition-new(.vt-scale-in) {
+  animation: var(--duration-enter) ease-out var(--duration-exit) both vt-scale-up;
+}
+
+/* Persistent element isolation */
+::view-transition-group(.vt-persistent) {
+  animation: none;
+  z-index: 100;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-group(*) {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+  }
+}
+
+/* ── App-specific view-transition-name rules ─────────────────────────────────
+   Each element with viewTransitionName gets ::view-transition-{old,new}(name)
+   pseudo-elements during a document.startViewTransition() call. */
+
+/* Settings/modal overlay — scale+fade in, fade out */
+::view-transition-old(settings-overlay) {
+  animation: var(--duration-exit) ease-in vt-scale-down;
+}
+::view-transition-new(settings-overlay) {
+  animation: var(--duration-enter) ease-out var(--duration-exit) both vt-scale-up;
+}
+
+/* Workspace panel — slide in from right */
+::view-transition-old(workspace-panel) {
+  --slide-offset: 0;
+  animation:
+    var(--duration-exit) ease-in both vt-fade reverse,
+    var(--duration-exit) ease-in both vt-slide reverse;
+}
+::view-transition-new(workspace-panel) {
+  --slide-offset: 40px;
+  animation:
+    var(--duration-enter) ease-out var(--duration-exit) both vt-fade,
+    var(--duration-move) ease-out both vt-slide;
+}
+
+/* Chat content — slide up reveal */
+::view-transition-new(chat-content) {
+  --slide-y-offset: 16px;
+  animation:
+    var(--duration-enter) ease-out var(--duration-exit) both vt-fade,
+    var(--duration-move) ease-out both vt-slide-y;
+}

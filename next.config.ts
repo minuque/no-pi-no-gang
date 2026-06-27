@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1", "localhost", "192.168.*.*"],
   experimental: {
     turbopackFileSystemCacheForDev: true,
+    viewTransition: true,
   },
   // turbopack.root omitted — __dirname in git worktrees on Windows causes
   // EPERM scandir into protected directories from glob expansion. Next.js
