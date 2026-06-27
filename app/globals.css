@@ -39,7 +39,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
-  scrollbar-width: thin;
+  scrollbar-width: auto;
+  scrollbar-color: #3a3a3e transparent;
 }
 
 body {
@@ -47,15 +48,25 @@ body {
 }
 
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 2px;
+  background: #3a3a3e;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4a4a50;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-dim);
@@ -76,6 +87,40 @@ code {
 
 [data-mono-numbers] {
   font-variant-numeric: tabular-nums;
+}
+
+.message-action-button {
+  width: 36px !important;
+  height: 33px !important;
+  border-radius: 7px !important;
+  transition:
+    opacity 0.12s,
+    background 0.12s,
+    color 0.12s !important;
+}
+
+.message-action-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.message-action-button:hover {
+  background: var(--bg-hover) !important;
+  color: var(--text) !important;
+}
+
+.message-action-button:active {
+  background: var(--bg-selected) !important;
+}
+
+.selection-toolbar-btn {
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.selection-toolbar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
 }
 
 /* ── markdown-body: chat message content typography ── */
@@ -939,7 +984,10 @@ html.theme-switching [style*="border"] {
   border-radius: 9999px;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.12s, color 0.12s, transform 0.1s;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    transform 0.1s;
 }
 .tb-btn:hover {
   background: var(--bg-hover);
@@ -961,7 +1009,9 @@ html.theme-switching [style*="border"] {
   border-radius: 8px;
   cursor: pointer;
   font-size: 12px;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
 }
 .sidebar-btn:hover {
   background: var(--bg-hover);
@@ -1094,18 +1144,32 @@ html.theme-switching [style*="border"] {
 
 /* Shared keyframes */
 @keyframes vt-fade {
-  from { filter: blur(3px); opacity: 0; }
-  to { filter: blur(0); opacity: 1; }
+  from {
+    filter: blur(3px);
+    opacity: 0;
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+  }
 }
 
 @keyframes vt-slide {
-  from { translate: var(--slide-offset); }
-  to { translate: 0; }
+  from {
+    translate: var(--slide-offset);
+  }
+  to {
+    translate: 0;
+  }
 }
 
 @keyframes vt-slide-y {
-  from { transform: translateY(var(--slide-y-offset, 10px)); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(var(--slide-y-offset, 10px));
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 /* Fade */
@@ -1164,17 +1228,31 @@ html.theme-switching [style*="border"] {
   animation-name: vt-via-blur;
 }
 @keyframes vt-via-blur {
-  30% { filter: blur(3px); }
+  30% {
+    filter: blur(3px);
+  }
 }
 
 /* Scale */
 @keyframes vt-scale-down {
-  from { transform: scale(1); opacity: 1; }
-  to { transform: scale(0.85); opacity: 0; }
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.85);
+    opacity: 0;
+  }
 }
 @keyframes vt-scale-up {
-  from { transform: scale(0.85); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 ::view-transition-old(.vt-scale-out) {
   animation: var(--duration-exit) ease-in vt-scale-down;
@@ -1238,7 +1316,7 @@ html.theme-switching [style*="border"] {
  * a fixed pseudo-element.  Gives flat surfaces a VSCode-like
  * "matte paper" tactile quality. */
 body::after {
-  content: '';
+  content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;

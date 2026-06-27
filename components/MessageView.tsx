@@ -559,14 +559,16 @@ function UserMessageView({
           >
             {onEditResend && (
               <button
+                className="message-action-button"
                 onClick={startEdit}
                 title="Edit and resend"
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 4,
-                  padding: "3px 8px",
-                  height: 22,
+                  justifyContent: "center",
+                  padding: 0,
+                  width: 19,
+                  height: 18,
                   background: "none",
                   border: "none",
                   borderRadius: 5,
@@ -574,7 +576,6 @@ function UserMessageView({
                   cursor: "pointer",
                   fontSize: 12,
                   fontWeight: 400,
-                  whiteSpace: "nowrap",
                   transition: "color 0.12s",
                 }}
                 onMouseEnter={(e) => {
@@ -597,18 +598,19 @@ function UserMessageView({
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
-                Edit
               </button>
             )}
           </div>
           <button
+            className="message-action-button"
             onClick={copyContent}
             title="Copy message"
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 4,
-              padding: "3px 8px",
+              justifyContent: "center",
+              padding: 0,
+              width: 24,
               height: 22,
               background: "none",
               border: "none",
@@ -617,7 +619,6 @@ function UserMessageView({
               cursor: "pointer",
               fontSize: 12,
               fontWeight: 400,
-              whiteSpace: "nowrap",
               opacity: actionsVisible ? 1 : 0,
               pointerEvents: actionsVisible ? "auto" : "none",
               transition: "opacity 0.12s, color 0.12s",
@@ -631,8 +632,8 @@ function UserMessageView({
           >
             {copied ? (
               <svg
-                width="11"
-                height="11"
+                width="9"
+                height="9"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -644,8 +645,8 @@ function UserMessageView({
               </svg>
             ) : (
               <svg
-                width="11"
-                height="11"
+                width="9"
+                height="9"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -657,7 +658,6 @@ function UserMessageView({
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
               </svg>
             )}
-            {copied ? "Copied" : "Copy"}
           </button>
           {(canFork || canNavigate) && (
             <div
@@ -671,6 +671,7 @@ function UserMessageView({
             >
               {canNavigate && (
                 <button
+                  className="message-action-button"
                   onClick={() => {
                     onNavigate!(prevAssistantEntryId!);
                     onEditContent?.(content);
@@ -679,11 +680,10 @@ function UserMessageView({
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 4,
-                    padding: "3px 8px",
-                    height: 22,
-                    minWidth: 68,
                     justifyContent: "center",
+                    padding: 0,
+                    width: 24,
+                    height: 22,
                     background: "none",
                     border: "none",
                     borderRadius: 5,
@@ -691,7 +691,6 @@ function UserMessageView({
                     cursor: "pointer",
                     fontSize: 12,
                     fontWeight: 400,
-                    whiteSpace: "nowrap",
                     transition: "color 0.12s",
                   }}
                   onMouseEnter={(e) => {
@@ -714,11 +713,11 @@ function UserMessageView({
                     <polyline points="15 10 20 15 15 20" />
                     <path d="M4 4v7a4 4 0 0 0 4 4h12" />
                   </svg>
-                  Branch
                 </button>
               )}
               {canFork && (
                 <button
+                  className="message-action-button"
                   onClick={() => {
                     onFork!(entryId!);
                   }}
@@ -731,11 +730,10 @@ function UserMessageView({
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 4,
-                    padding: "3px 8px",
-                    height: 22,
-                    minWidth: 78,
                     justifyContent: "center",
+                    padding: 0,
+                    width: 24,
+                    height: 22,
                     background: "none",
                     border: "none",
                     borderRadius: 5,
@@ -743,7 +741,6 @@ function UserMessageView({
                     cursor: forking ? "not-allowed" : "pointer",
                     fontSize: 12,
                     fontWeight: 400,
-                    whiteSpace: "nowrap",
                     transition: "color 0.16s ease, opacity 0.16s ease",
                   }}
                   onMouseEnter={(e) => {
@@ -768,7 +765,6 @@ function UserMessageView({
                     <circle cx="6" cy="18" r="3" />
                     <path d="M18 9a9 9 0 0 1-9 9" />
                   </svg>
-                  {forking ? "Creating…" : "Fork"}
                 </button>
               )}
             </div>
@@ -928,15 +924,20 @@ function AssistantMessageView({
           marginTop: 4,
         }}
       >
+        {time && !isStreaming && (
+          <span style={{ fontSize: 12, color: "var(--text-dim)" }}>{time}</span>
+        )}
         {onRetry && !isStreaming && (
           <button
+            className="message-action-button"
             onClick={onRetry}
             title="Retry with the same prompt"
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 4,
-              padding: "3px 8px",
+              justifyContent: "center",
+              padding: 0,
+              width: 24,
               height: 22,
               background: "none",
               border: "none",
@@ -945,7 +946,6 @@ function AssistantMessageView({
               cursor: "pointer",
               fontSize: 12,
               fontWeight: 400,
-              whiteSpace: "nowrap",
               opacity: actionsVisible ? 1 : 0,
               pointerEvents: actionsVisible ? "auto" : "none",
               transition: "opacity 0.12s, color 0.12s",
@@ -970,18 +970,19 @@ function AssistantMessageView({
               <polyline points="23 4 23 10 17 10" />
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
             </svg>
-            Retry
           </button>
         )}
         {textContent && !isStreaming && (
           <button
+            className="message-action-button"
             onClick={copyContent}
             title="Copy message"
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 4,
-              padding: "3px 8px",
+              justifyContent: "center",
+              padding: 0,
+              width: 24,
               height: 22,
               background: "none",
               border: "none",
@@ -990,7 +991,6 @@ function AssistantMessageView({
               cursor: "pointer",
               fontSize: 12,
               fontWeight: 400,
-              whiteSpace: "nowrap",
               opacity: actionsVisible ? 1 : 0,
               pointerEvents: actionsVisible ? "auto" : "none",
               transition: "opacity 0.12s, color 0.12s",
@@ -1004,8 +1004,8 @@ function AssistantMessageView({
           >
             {copied ? (
               <svg
-                width="11"
-                height="11"
+                width="9"
+                height="9"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -1017,8 +1017,8 @@ function AssistantMessageView({
               </svg>
             ) : (
               <svg
-                width="11"
-                height="11"
+                width="9"
+                height="9"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -1030,21 +1030,20 @@ function AssistantMessageView({
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
               </svg>
             )}
-            {copied ? "Copied" : "Copy"}
           </button>
         )}
         {canNavigate && (
           <button
+            className="message-action-button"
             onClick={() => onNavigate!(entryId!)}
             title="Branch — switch conversation path within this .jsonl session"
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 4,
-              padding: "3px 8px",
-              height: 22,
-              minWidth: 68,
               justifyContent: "center",
+              padding: 0,
+              width: 24,
+              height: 22,
               background: "none",
               border: "none",
               borderRadius: 5,
@@ -1052,7 +1051,6 @@ function AssistantMessageView({
               cursor: "pointer",
               fontSize: 12,
               fontWeight: 400,
-              whiteSpace: "nowrap",
               opacity: actionsVisible ? 1 : 0,
               pointerEvents: actionsVisible ? "auto" : "none",
               transition: "opacity 0.12s, color 0.12s",
@@ -1077,11 +1075,7 @@ function AssistantMessageView({
               <polyline points="15 10 20 15 15 20" />
               <path d="M4 4v7a4 4 0 0 0 4 4h12" />
             </svg>
-            Branch
           </button>
-        )}
-        {time && !isStreaming && (
-          <span style={{ fontSize: 12, color: "var(--text-dim)", marginLeft: "auto" }}>{time}</span>
         )}
       </div>
     </div>

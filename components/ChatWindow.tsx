@@ -46,6 +46,7 @@ interface Props {
   homeDir?: string;
   onCwdSelect?: (cwd: string) => void;
   onCwdDefault?: () => void;
+  onToolPresetChange?: (preset: "none" | "default" | "full") => void;
 }
 
 function phaseLabel(phase: AgentPhase): string {
@@ -190,6 +191,7 @@ export const ChatWindow = memo(function ChatWindow({
   homeDir = "",
   onCwdSelect,
   onCwdDefault,
+  onToolPresetChange,
 }: Props) {
   const {
     data,
@@ -281,6 +283,13 @@ export const ChatWindow = memo(function ChatWindow({
     [onLoadingChange],
   );
 
+  // Push tool preset up to AppShell for the overview panel.
+  const toolPresetRef = useRef(toolPreset);
+  toolPresetRef.current = toolPreset;
+  useEffect(() => {
+    onToolPresetChange?.(toolPresetRef.current);
+  }, [toolPreset, onToolPresetChange]);
+
   useEffect(() => {
     onStreamingChange?.(agentRunning);
   }, [agentRunning, onStreamingChange]);
@@ -337,6 +346,11 @@ export const ChatWindow = memo(function ChatWindow({
     : null;
 
   const cwd = session?.cwd ?? newSessionCwd;
+  const [selectionToolbar, setSelectionToolbar] = useState<{
+    text: string;
+    top: number;
+    left: number;
+  } | null>(null);
 
   const activeBranch = useMemo(() => {
     const tree = data?.tree;
@@ -385,6 +399,49 @@ export const ChatWindow = memo(function ChatWindow({
     scrollToBottom,
     isAtBottom,
   } = useChatScroll({ follow: agentRunning });
+  const captureChatSelection = useCallback(() => {
+    const selection = window.getSelection();
+    const text = selection?.toString().trim() ?? "";
+    const scrollNode = scrollContainerRef.current;
+    if (!selection || !text || !scrollNode || selection.rangeCount === 0) {
+      setSelectionToolbar(null);
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer;
+    const anchorNode =
+      container.nodeType === Node.ELEMENT_NODE ? container : (container.parentNode as Node | null);
+    if (!anchorNode || !scrollNode.contains(anchorNode)) {
+      setSelectionToolbar(null);
+      return;
+    }
+
+    const rect = range.getBoundingClientRect();
+    if (!rect.width && !rect.height) {
+      setSelectionToolbar(null);
+      return;
+    }
+    // 紧贴选中文本右下角：collapsed-to-end 获取选区结束精确位置
+    //（rect.right 是容器块右边界，Markdown 块级元素下会偏右）
+    const endRange = range.cloneRange();
+    endRange.collapse(false);
+    const endRect = endRange.getBoundingClientRect();
+    // 按钮顶边 = 选区底边（0px 间隙）；左边 = 选区结束位置 + 6px 间距
+    const toolbarTop = Math.max(0, rect.bottom);
+    const toolbarLeft = Math.min(window.innerWidth - 144, Math.max(4, endRect.left + 6));
+    setSelectionToolbar({
+      text,
+      top: toolbarTop,
+      left: toolbarLeft,
+    });
+  }, [scrollContainerRef]);
+  const addSelectionToChat = useCallback(() => {
+    if (!selectionToolbar?.text) return;
+    chatInputRef?.current?.insertText(`> ${selectionToolbar.text.replace(/\n+/g, "\n> ")}\n\n`);
+    window.getSelection()?.removeAllRanges();
+    setSelectionToolbar(null);
+  }, [chatInputRef, selectionToolbar]);
 
   // Pre-compute tool result lookup (needed by all message renders)
   const toolResultsMap = useMemo(() => {
@@ -743,6 +800,9 @@ export const ChatWindow = memo(function ChatWindow({
             <div
               ref={setScrollContainerRef}
               className="h-full overflow-y-auto [scrollbar-width:none]"
+              onMouseUp={captureChatSelection}
+              onKeyUp={captureChatSelection}
+              onScroll={() => setSelectionToolbar(null)}
             >
               <div ref={scrollContentRef} style={{ paddingTop: 16 }}>
                 {/* Completed messages */}
@@ -874,6 +934,64 @@ export const ChatWindow = memo(function ChatWindow({
                 <div style={{ height: 24 }} />
               </div>
             </div>
+
+            {selectionToolbar && (
+              <div
+                style={{
+                  position: "fixed",
+                  top: selectionToolbar.top,
+                  left: selectionToolbar.left,
+                  zIndex: 30,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  padding: 3,
+                  background: "var(--surface-raised, var(--bg-hover))",
+                  border: "1px solid var(--border)",
+                  borderRadius: 9999,
+                  boxShadow: "var(--shadow-md, 0 4px 12px rgba(0,0,0,0.45))",
+                  color: "var(--text-muted)",
+                  animation: "fade-in-up 0.12s ease both",
+                }}
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <button
+                  onClick={addSelectionToChat}
+                  title="添加选中文本到对话"
+                  className="selection-toolbar-btn"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    height: 26,
+                    padding: "0 9px",
+                    background: "transparent",
+                    border: "none",
+                    borderRadius: 9999,
+                    color: "inherit",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+                    <path d="M12 8v6" />
+                    <path d="M9 11h6" />
+                  </svg>
+                  添加到对话
+                </button>
+              </div>
+            )}
 
             {userAnchors.length > 1 && (
               <UserMessageNav

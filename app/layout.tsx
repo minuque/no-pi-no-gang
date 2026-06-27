@@ -8,9 +8,9 @@ import "@fontsource/jetbrains-mono/700.css";
 
 import "./globals.css";
 
-const APP_NAME = "Pi Agent";
+const APP_NAME = "No Pi No Gang";
 const APP_DESCRIPTION =
-  "Pi Coding Agent — interactive chat, code analysis, and automated development tasks.";
+  "No Pi No Gang — interactive chat, code analysis, and automated development tasks.";
 
 export const viewport: Viewport = {
   width: "device-width",

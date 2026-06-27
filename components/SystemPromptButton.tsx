@@ -89,10 +89,10 @@ export function SystemPromptButton({ systemPrompt }: Props) {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
-                padding: "10px 14px",
-                borderBottom: "1px solid var(--border)",
+                height: 44,
                 flexShrink: 0,
+                padding: "0 10px 0 18px",
+                borderBottom: "1px solid var(--border)",
               }}
             >
               <svg
@@ -104,7 +104,7 @@ export function SystemPromptButton({ systemPrompt }: Props) {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                style={{ flexShrink: 0 }}
+                style={{ flexShrink: 0, marginRight: 8 }}
               >
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
@@ -114,47 +114,62 @@ export function SystemPromptButton({ systemPrompt }: Props) {
               <span
                 style={{
                   flex: 1,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--text)",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: "var(--text-muted)",
                 }}
               >
                 System Prompt
               </span>
+              {systemPrompt && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "var(--text-dim)",
+                    fontFamily: "var(--font-mono)",
+                    marginRight: 8,
+                  }}
+                >
+                  {systemPrompt.split(/\n/).length} line
+                  {systemPrompt.split(/\n/).length !== 1 ? "s" : ""} ·{" "}
+                  {systemPrompt.length.toLocaleString()} chars
+                </span>
+              )}
               <button
                 onClick={() => setOpen(false)}
                 title="Close"
                 style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 4,
+                  border: "none",
+                  background: "transparent",
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  width: 26,
-                  height: 26,
-                  padding: 0,
-                  background: "none",
-                  border: "none",
-                  borderRadius: 5,
-                  color: "var(--text-dim)",
-                  cursor: "pointer",
-                  transition: "background 0.1s, color 0.1s",
+                  flexShrink: 0,
+                  transition: "background 0.12s, color 0.12s",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = "var(--bg-hover)";
                   e.currentTarget.style.color = "var(--text)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "none";
-                  e.currentTarget.style.color = "var(--text-dim)";
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "var(--text-muted)";
                 }}
               >
                 <svg
-                  width="14"
-                  height="14"
+                  width="17"
+                  height="17"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
                   strokeLinecap="round"
+                  strokeLinejoin="round"
                 >
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
@@ -204,58 +219,6 @@ export function SystemPromptButton({ systemPrompt }: Props) {
                   Send a message to load the system prompt
                 </div>
               )}
-            </div>
-            {/* Footer */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "flex-end",
-                gap: 8,
-                padding: "8px 14px",
-                borderTop: "1px solid var(--border)",
-                flexShrink: 0,
-              }}
-            >
-              {systemPrompt && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: "var(--text-dim)",
-                    fontFamily: "var(--font-mono)",
-                    marginRight: "auto",
-                  }}
-                >
-                  {systemPrompt.split(/\n/).length} line
-                  {systemPrompt.split(/\n/).length !== 1 ? "s" : ""} ·{" "}
-                  {systemPrompt.length.toLocaleString()} chars
-                </span>
-              )}
-              <button
-                onClick={() => setOpen(false)}
-                style={{
-                  height: 28,
-                  padding: "0 14px",
-                  background: "var(--bg-hover)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 5,
-                  color: "var(--text-muted)",
-                  cursor: "pointer",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  transition: "background 0.1s, color 0.1s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "var(--bg-selected)";
-                  e.currentTarget.style.color = "var(--text)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "var(--bg-hover)";
-                  e.currentTarget.style.color = "var(--text-muted)";
-                }}
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>

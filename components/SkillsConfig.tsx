@@ -566,13 +566,13 @@ export function SkillsConfig({ cwd, onClose }: { cwd: string; onClose: () => voi
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
-            padding: "12px 18px",
-            borderBottom: "1px solid var(--border)",
+            height: 44,
             flexShrink: 0,
+            padding: "0 10px 0 18px",
+            borderBottom: "1px solid var(--border)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, flex: 1, minWidth: 0 }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>Skills</span>
             <code
               style={{
@@ -590,17 +590,43 @@ export function SkillsConfig({ cwd, onClose }: { cwd: string; onClose: () => voi
           </div>
           <button
             onClick={onClose}
+            title="Close"
             style={{
-              background: "none",
+              width: 28,
+              height: 28,
+              borderRadius: 4,
               border: "none",
+              background: "transparent",
               color: "var(--text-muted)",
               cursor: "pointer",
-              fontSize: 20,
-              lineHeight: 1,
-              padding: "2px 6px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+              transition: "background 0.12s, color 0.12s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--bg-hover)";
+              e.currentTarget.style.color = "var(--text)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = "var(--text-muted)";
             }}
           >
-            ×
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
           </button>
         </div>
 
@@ -807,33 +833,6 @@ export function SkillsConfig({ cwd, onClose }: { cwd: string; onClose: () => voi
               </div>
             )}
           </div>
-        </div>
-
-        {/* Footer */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            padding: "10px 18px",
-            borderTop: "1px solid var(--border)",
-            flexShrink: 0,
-          }}
-        >
-          <button
-            onClick={onClose}
-            style={{
-              padding: "6px 14px",
-              background: "none",
-              border: "1px solid var(--border)",
-              borderRadius: 6,
-              color: "var(--text-muted)",
-              cursor: "pointer",
-              fontSize: 13,
-            }}
-          >
-            Close
-          </button>
         </div>
       </div>
     </div>

@@ -32,12 +32,12 @@ function SsrFallback() {
       {/* Large logo acts as LCP element — loaded from HTML, no JS needed */}
       <img
         src="/pi-logo-on-dark.svg"
-        alt="Pi Agent"
+        alt="No Pi No Gang"
         width={48}
         height={48}
         style={{ opacity: 0.9 }}
       />
-      <span style={{ color: "#555", fontSize: 13, letterSpacing: "0.03em" }}>Pi Agent</span>
+      <span style={{ color: "#555", fontSize: 13, letterSpacing: "0.03em" }}>No Pi No Gang</span>
     </div>
   );
 }

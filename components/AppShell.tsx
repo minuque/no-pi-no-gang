@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import dynamic from "next/dynamic";
-
-import { useViewTransition } from "@/hooks/useViewTransition";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import NProgress from "nprogress";
@@ -12,17 +10,16 @@ import "nprogress/nprogress.css";
 import { Toaster } from "sonner";
 
 import { useTheme } from "@/hooks/useTheme";
+import { useViewTransition } from "@/hooks/useViewTransition";
 import type { EntryTreeNode, SessionInfo } from "@/lib/types";
 
 import { BranchNavigator } from "./BranchNavigator";
 import type { ChatInputHandle } from "./ChatInput";
+import { SessionOverviewPanel } from "./SessionOverviewPanel";
 import { SessionSidebar } from "./SessionSidebar";
-import { SystemPromptButton } from "./SystemPromptButton";
 
 const ChatWindow = dynamic(() => import("./ChatWindow").then((m) => m.ChatWindow), { ssr: false });
-const WorkspacePanel = dynamic(() => import("./WorkspacePanel").then((m) => m.WorkspacePanel), {
-  ssr: false,
-});
+
 const ModelsConfig = dynamic(() => import("./ModelsConfig").then((m) => m.ModelsConfig), {
   ssr: false,
 });
@@ -84,11 +81,12 @@ export function AppShell() {
       setRightPanelWidth(Math.round(window.innerWidth * 0.42));
     }
   }, []);
-  const [workspacePanelOpen, setWorkspacePanelOpen] = useState(false);
+  const [workspacePanelOpen, setWorkspacePanelOpen] = useState(true);
   const chatInputRef = useRef<ChatInputHandle | null>(null);
   const topBarRef = useRef<HTMLDivElement>(null);
 
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
+  const [toolPreset, setToolPreset] = useState<"none" | "default" | "full">("default");
 
   // Branch navigator state — populated by ChatWindow, rendered in top bar
   const [branchTree, setBranchTree] = useState<EntryTreeNode[]>([]);
@@ -128,6 +126,10 @@ export function AppShell() {
 
   const handleSystemPromptChange = useCallback((prompt: string | null) => {
     setSystemPrompt(prompt);
+  }, []);
+
+  const handleToolPresetChange = useCallback((preset: "none" | "default" | "full") => {
+    setToolPreset(preset);
   }, []);
 
   // Session stats (tokens + cost) — populated by ChatWindow, displayed in top bar
@@ -545,7 +547,9 @@ export function AppShell() {
                     vtTransition(() => setModelsConfigOpen(true));
                   },
                   disabled: false,
-                  preload: () => { (ModelsConfig as any).preload?.(); },
+                  preload: () => {
+                    (ModelsConfig as { preload?: () => void }).preload?.();
+                  },
                   icon: (
                     <svg
                       width="14"
@@ -577,7 +581,9 @@ export function AppShell() {
                     vtTransition(() => setSkillsConfigOpen(true));
                   },
                   disabled: !activeCwd && !selectedSession?.cwd && !newSessionCwd,
-                  preload: () => { (SkillsConfig as any).preload?.(); },
+                  preload: () => {
+                    (SkillsConfig as { preload?: () => void }).preload?.();
+                  },
                   icon: (
                     <svg
                       width="14"
@@ -622,7 +628,9 @@ export function AppShell() {
                       e.currentTarget.style.color = "var(--text)";
                     }
                   }}
-                  onFocus={() => { preload?.(); }}
+                  onFocus={() => {
+                    preload?.();
+                  }}
                   onMouseLeave={(e) => {
                     if (!disabled) {
                       e.currentTarget.style.background = "none";
@@ -752,7 +760,6 @@ export function AppShell() {
                 </svg>
               )}
             </button>
-            {showChat && <SystemPromptButton systemPrompt={systemPrompt} />}
             {showChat && (
               <BranchNavigator
                 tree={branchTree}
@@ -863,8 +870,8 @@ export function AppShell() {
                 </button>
                 <button
                   onClick={() => vtTransition(() => setWorkspacePanelOpen((v) => !v))}
-                  title={workspacePanelOpen ? "Close workspace panel" : "Open workspace panel"}
-                  aria-label={workspacePanelOpen ? "Close workspace panel" : "Open workspace panel"}
+                  title={workspacePanelOpen ? "Close overview panel" : "Open overview panel"}
+                  aria-label={workspacePanelOpen ? "Close overview panel" : "Open overview panel"}
                   className="tb-btn"
                   style={{ color: workspacePanelOpen ? "var(--text)" : "var(--text-muted)" }}
                 >
@@ -907,6 +914,7 @@ export function AppShell() {
               homeDir={homeDir}
               onCwdSelect={handleCwdChange}
               onCwdDefault={handleCwdDefault}
+              onToolPresetChange={handleToolPresetChange}
             />
           </div>
         </div>
@@ -941,11 +949,14 @@ export function AppShell() {
             transition: "opacity 0.15s ease",
           }}
         >
-          <WorkspacePanel
-            open={workspacePanelOpen}
+          <SessionOverviewPanel
+            session={selectedSession}
             cwd={activeCwd ?? selectedSession?.cwd ?? newSessionCwd ?? null}
             onClose={() => vtTransition(() => setWorkspacePanelOpen(false))}
-            onAddToChat={(text) => chatInputRef.current?.insertText(text)}
+            systemPrompt={systemPrompt}
+            contextUsage={contextUsage}
+            sessionStats={sessionStats}
+            toolPreset={toolPreset}
           />
         </div>
       </div>

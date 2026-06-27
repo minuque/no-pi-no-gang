@@ -165,7 +165,7 @@ function matchesSessionSearch(session: SessionInfo, query: string): boolean {
   );
 }
 
-function PiAgentTitle() {
+function AppLogo() {
   const { isDark } = useTheme();
 
   return (
@@ -584,7 +584,7 @@ export function SessionSidebar({
           gap: 6,
         }}
       >
-        <PiAgentTitle />
+        <AppLogo />
         <div
           style={{
             flex: 1,
