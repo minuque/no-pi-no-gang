@@ -27,3 +27,7 @@ GitHub Issues (`gh` CLI)，不 triage 外部 PR。See `docs/agents/issue-tracker
 ### Domain docs
 
 单上下文：`CONTEXT.md` + `docs/adr/`。See `docs/agents/domain.md`.
+
+### 设计约束
+
+UI 设计语言与组件美学规范，详见 [`DESIGN.md`](./DESIGN.md)。所有 UI 改动必须遵守其中列出的设计约束（色彩、字体、圆角、阴影、动画、Token 使用等）。
