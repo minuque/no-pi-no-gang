@@ -692,12 +692,13 @@ export const ChatWindow = memo(function ChatWindow({
                 <img
                   src={isDark ? "/pi-logo-on-dark.svg" : "/pi-logo-on-light.svg"}
                   alt="No Pi No Gang"
-                  width={28}
-                  height={28}
+                  width={34}
+                  height={34}
                 />
                 <span
                   style={{
-                    fontSize: 14,
+                    fontSize: 16,
+                    fontWeight: 500,
                     minWidth: 0,
                     overflow: "hidden",
                     whiteSpace: "nowrap",
@@ -730,6 +731,127 @@ export const ChatWindow = memo(function ChatWindow({
                 </span>
               </div>
             </div>
+            {/* Keyboard shortcuts hint */}
+            <div
+              style={{
+                marginTop: 20,
+                display: "flex",
+                gap: 8,
+                justifyContent: "center",
+                alignItems: "center",
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              <span
+                style={{
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  border: "1px solid var(--border)",
+                  fontSize: 11,
+                  color: "var(--text-dim)",
+                }}
+              >
+                Enter
+              </span>
+              <span style={{ fontSize: 11, color: "var(--text-dim)" }}>send</span>
+              <span style={{ fontSize: 11, color: "var(--text-dim)" }}>·</span>
+              <span
+                style={{
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  border: "1px solid var(--border)",
+                  fontSize: 11,
+                  color: "var(--text-dim)",
+                }}
+              >
+                Shift+Enter
+              </span>
+              <span style={{ fontSize: 11, color: "var(--text-dim)" }}>newline</span>
+              <span style={{ fontSize: 11, color: "var(--text-dim)" }}>·</span>
+              <span
+                style={{
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  border: "1px solid var(--border)",
+                  fontSize: 11,
+                  color: "var(--text-dim)",
+                }}
+              >
+                /
+              </span>
+              <span style={{ fontSize: 11, color: "var(--text-dim)" }}>commands</span>
+              <span style={{ fontSize: 11, color: "var(--text-dim)" }}>·</span>
+              <span
+                style={{
+                  padding: "2px 6px",
+                  borderRadius: 4,
+                  border: "1px solid var(--border)",
+                  fontSize: 11,
+                  color: "var(--text-dim)",
+                }}
+              >
+                Esc
+              </span>
+              <span style={{ fontSize: 11, color: "var(--text-dim)" }}>blur</span>
+            </div>
+            {/* Recent projects */}
+            {recentCwds && recentCwds.length > 0 && (
+              <div
+                style={{
+                  marginTop: 16,
+                  display: "flex",
+                  gap: 6,
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                }}
+              >
+                {recentCwds.map((cwd) => {
+                  const name = cwd.split(/[/\\]/).pop() || cwd;
+                  return (
+                    <button
+                      key={cwd}
+                      onClick={() => onCwdSelect?.(cwd)}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        padding: "5px 10px",
+                        borderRadius: 6,
+                        border: "1px solid var(--border)",
+                        background: "var(--bg-panel)",
+                        color: "var(--text-muted)",
+                        fontSize: 12,
+                        cursor: "pointer",
+                        transition: "background 0.15s, color 0.15s",
+                        fontFamily: "var(--font-mono)",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--bg-hover)";
+                        e.currentTarget.style.color = "var(--text)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "var(--bg-panel)";
+                        e.currentTarget.style.color = "var(--text-muted)";
+                      }}
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                      </svg>
+                      {name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {chatInputElement}
           </div>
         </div>

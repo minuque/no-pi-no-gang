@@ -17,32 +17,15 @@ export function SystemPromptButton({ systemPrompt }: Props) {
           ref={btnRef}
           onClick={() => setOpen(true)}
           title="System Prompt"
+          className="tb-btn"
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             width: 30,
             height: 30,
             margin: "auto 0",
-            padding: 0,
             background: systemPrompt
               ? "color-mix(in oklab, var(--accent), transparent 90%)"
               : "none",
-            border: "none",
-            borderRadius: 9999,
-            cursor: "pointer",
             color: systemPrompt ? "var(--accent)" : "var(--text-muted)",
-            transition: "color 0.1s, background 0.1s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--bg-hover)";
-            e.currentTarget.style.color = "var(--text)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = systemPrompt
-              ? "color-mix(in oklab, var(--accent), transparent 90%)"
-              : "none";
-            e.currentTarget.style.color = systemPrompt ? "var(--accent)" : "var(--text-muted)";
           }}
         >
           <svg
@@ -70,7 +53,7 @@ export function SystemPromptButton({ systemPrompt }: Props) {
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 1000,
+            zIndex: "var(--z-modal)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",

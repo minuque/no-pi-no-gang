@@ -14,12 +14,12 @@ export default function GlobalError() {
             justifyContent: "center",
             height: "100dvh",
             gap: 12,
-            background: "#111113",
-            color: "#b8b8b8",
+            background: "var(--bg, #111113)",
+            color: "var(--text-muted, #b8b8b8)",
             fontFamily: "system-ui, sans-serif",
           }}
         >
-          <h1 style={{ fontSize: 24, fontWeight: 600, color: "#d4d4d4", margin: 0 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 600, color: "var(--text, #d4d4d4)", margin: 0 }}>
             Something went wrong
           </h1>
           <p style={{ fontSize: 14, margin: 0 }}>Please refresh the page to try again.</p>

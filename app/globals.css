@@ -71,6 +71,11 @@ body {
 pre,
 code {
   font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-mono-numbers] {
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── markdown-body: chat message content typography ── */
@@ -219,6 +224,9 @@ html.dark .markdown-body {
   padding: 6px 12px;
   text-align: left;
   vertical-align: top;
+}
+.markdown-body td {
+  font-variant-numeric: tabular-nums;
 }
 .markdown-body th {
   background: var(--bg-panel);
@@ -918,6 +926,48 @@ html.theme-switching [style*="border"] {
   transform: none;
 }
 
+/* Toolbar buttons — round icon buttons in top bar */
+.tb-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s, transform 0.1s;
+}
+.tb-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.tb-btn:active {
+  transform: scale(0.96);
+}
+
+/* Sidebar settings button — full-width with rounded corners */
+.sidebar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 0.12s, color 0.12s;
+}
+.sidebar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
 @media (max-width: 640px) {
   .resize-handle,
   .resize-handle-overlay {
@@ -1181,4 +1231,24 @@ html.theme-switching [style*="border"] {
   animation:
     var(--duration-enter) ease-out var(--duration-exit) both vt-fade,
     var(--duration-move) ease-out both vt-slide-y;
+}
+
+/* ── Noise grain overlay ─────────────────────────────────────────
+ * Subtle screen-door texture using SVG feTurbulence, applied as
+ * a fixed pseudo-element.  Gives flat surfaces a VSCode-like
+ * "matte paper" tactile quality. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 99999;
+  opacity: 0.02;
+}
+html.dark body::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' fill='%23fff'/%3E%3C/svg%3E");
+}
+html.light body::after {
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' fill='%23000'/%3E%3C/svg%3E");
 }

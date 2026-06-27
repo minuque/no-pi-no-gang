@@ -476,28 +476,10 @@ export function AppShell() {
         <button
           onClick={() => setSettingsMenuOpen((v) => !v)}
           title="Settings"
+          className="sidebar-btn"
           style={{
-            width: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            height: 32,
-            padding: "0 10px",
             background: settingsMenuOpen ? "var(--bg-hover)" : "none",
-            border: "none",
-            borderRadius: 8,
             color: settingsMenuOpen ? "var(--text)" : "var(--text-muted)",
-            cursor: "pointer",
-            fontSize: 12,
-            transition: "background 0.12s, color 0.12s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--bg-hover)";
-            e.currentTarget.style.color = "var(--text)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = settingsMenuOpen ? "var(--bg-hover)" : "none";
-            e.currentTarget.style.color = settingsMenuOpen ? "var(--text)" : "var(--text-muted)";
           }}
         >
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -537,7 +519,7 @@ export function AppShell() {
         {settingsMenuOpen && (
           <>
             <div
-              style={{ position: "fixed", inset: 0, zIndex: 499 }}
+              style={{ position: "fixed", inset: 0, zIndex: "var(--z-overlay)" }}
               onClick={() => setSettingsMenuOpen(false)}
             />
             <div
@@ -551,7 +533,7 @@ export function AppShell() {
                 border: "1px solid var(--border)",
                 borderRadius: 8,
                 padding: 4,
-                zIndex: 500,
+                zIndex: "var(--z-overlay)",
                 boxShadow: "var(--shadow-md)",
               }}
             >
@@ -669,7 +651,7 @@ export function AppShell() {
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 199,
+            zIndex: "var(--z-sidebar)",
             background: "rgba(0,0,0,0.4)",
             opacity: sidebarOpen ? 1 : 0,
             pointerEvents: sidebarOpen ? "auto" : "none",
@@ -686,7 +668,7 @@ export function AppShell() {
             display: "flex",
             flexDirection: "column",
             flexShrink: 0,
-            zIndex: 200,
+            zIndex: "calc(var(--z-sidebar) + 1)",
             width: sidebarOpen ? sidebarWidth : 0,
             minWidth: sidebarOpen ? sidebarWidth : 0,
           }}
@@ -737,29 +719,8 @@ export function AppShell() {
               onClick={() => setSidebarOpen((v) => !v)}
               title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
               aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 32,
-                height: 32,
-                padding: 0,
-                background: "none",
-                border: "none",
-                borderRadius: 9999,
-                color: "var(--text-muted)",
-                cursor: "pointer",
-                flexShrink: 0,
-                transition: "background 0.12s, color 0.12s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--bg-hover)";
-                e.currentTarget.style.color = "var(--text)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "none";
-                e.currentTarget.style.color = "var(--text-muted)";
-              }}
+              className="tb-btn"
+              style={{ color: "var(--text-muted)" }}
             >
               {sidebarOpen ? (
                 <svg
@@ -861,29 +822,8 @@ export function AppShell() {
                   title={isDark ? "Switch to light mode" : "Switch to dark mode"}
                   aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
                   aria-pressed={isDark}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 32,
-                    height: 32,
-                    padding: 0,
-                    background: "none",
-                    border: "none",
-                    borderRadius: 9999,
-                    color: "var(--text-muted)",
-                    cursor: "pointer",
-                    flexShrink: 0,
-                    transition: "background 0.12s, color 0.12s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "var(--bg-hover)";
-                    e.currentTarget.style.color = "var(--text)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "none";
-                    e.currentTarget.style.color = "var(--text-muted)";
-                  }}
+                  className="tb-btn"
+                  style={{ color: "var(--text-muted)" }}
                 >
                   {isDark ? (
                     <svg
@@ -925,31 +865,8 @@ export function AppShell() {
                   onClick={() => vtTransition(() => setWorkspacePanelOpen((v) => !v))}
                   title={workspacePanelOpen ? "Close workspace panel" : "Open workspace panel"}
                   aria-label={workspacePanelOpen ? "Close workspace panel" : "Open workspace panel"}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 32,
-                    height: 32,
-                    padding: 0,
-                    background: "none",
-                    border: "none",
-                    borderRadius: 9999,
-                    color: workspacePanelOpen ? "var(--text)" : "var(--text-muted)",
-                    cursor: "pointer",
-                    flexShrink: 0,
-                    transition: "background 0.12s, color 0.12s",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "var(--bg-hover)";
-                    e.currentTarget.style.color = "var(--text)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "none";
-                    e.currentTarget.style.color = workspacePanelOpen
-                      ? "var(--text)"
-                      : "var(--text-muted)";
-                  }}
+                  className="tb-btn"
+                  style={{ color: workspacePanelOpen ? "var(--text)" : "var(--text-muted)" }}
                 >
                   <svg
                     width="14"
