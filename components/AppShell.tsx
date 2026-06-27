@@ -112,6 +112,16 @@ export function AppShell() {
     label: string;
     tone: "muted" | "success" | "warn" | "danger";
   } | null>(null);
+  const handleSseStatusChange = useCallback(
+    (status: { label: string; tone: "muted" | "success" | "warn" | "danger" } | null) => {
+      setSseStatus((prev) => {
+        if (prev === status) return prev;
+        if (!prev || !status) return status;
+        return prev.label === status.label && prev.tone === status.tone ? prev : status;
+      });
+    },
+    [],
+  );
 
   const handleSystemPromptChange = useCallback((prompt: string | null) => {
     setSystemPrompt(prompt);
@@ -968,7 +978,7 @@ export function AppShell() {
               onSessionStatsChange={handleSessionStatsChange}
               onContextUsageChange={handleContextUsageChange}
               onLoadingChange={handleChatLoadingChange}
-              onSseStatusChange={setSseStatus}
+              onSseStatusChange={handleSseStatusChange}
               recentCwds={recentCwds}
               homeDir={homeDir}
               onCwdSelect={handleCwdChange}

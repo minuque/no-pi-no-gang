@@ -366,18 +366,16 @@ export function ChatWindow({
     if (eventStatus === "connected") return { label: "connected", tone: "success" as const };
     if (sessionStatus.exists) return { label: "idle", tone: "muted" as const };
     return null;
-  }, [eventStatus, sessionStatus]);
+  }, [eventStatus, sessionStatus.destroyed, sessionStatus.readonly, sessionStatus.exists]);
+  const sseStatusKey = sseStatus ? `${sseStatus.label}|${sseStatus.tone}` : "null";
+  const lastReportedSseStatusKey = useRef<string | null>(null);
 
   // Push SSE status upward to AppShell top bar
   useEffect(() => {
+    if (lastReportedSseStatusKey.current === sseStatusKey) return;
+    lastReportedSseStatusKey.current = sseStatusKey;
     onSseStatusChange?.(sseStatus);
-  }, [sseStatus, onSseStatusChange]);
-  useEffect(
-    () => () => {
-      onSseStatusChange?.(null);
-    },
-    [onSseStatusChange],
-  );
+  }, [sseStatus, sseStatusKey, onSseStatusChange]);
 
   // ── Native scroll controller (replaces Virtuoso) ──
   const {

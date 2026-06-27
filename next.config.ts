@@ -68,12 +68,18 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains; preload",
           },
+          ...(isDev ? [{ key: "Clear-Site-Data", value: '"cache"' }] : []),
         ],
       },
       // 构建资源 (_next/static) —— 一年强缓存
       {
         source: "/_next/static/(.*)",
-        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+        headers: [
+          {
+            key: "Cache-Control",
+            value: isDev ? "no-store, must-revalidate" : "public, max-age=31536000, immutable",
+          },
+        ],
       },
       // favicon —— 1 天缓存
       {
