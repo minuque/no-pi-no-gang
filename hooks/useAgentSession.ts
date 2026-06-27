@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import { toast } from "sonner";
 
@@ -994,7 +994,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const sid = sessionIdRef.current;
       if (!sid) return;
       loadGenRef.current += 1;
-      await loadContext(sid, leafId);
+      startTransition(() => {
+        loadContext(sid, leafId);
+      });
       if (leafId) {
         sendAgentCommand(sid, { type: "navigate_tree", targetId: leafId }).catch(() => {});
       }

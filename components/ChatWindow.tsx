@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { type AgentPhase, useAgentSession } from "@/hooks/useAgentSession";
 import { useChatScroll } from "@/hooks/useChatScroll";
@@ -171,7 +171,7 @@ function Typewriter({ phrases }: { phrases: string[] }) {
   );
 }
 
-export function ChatWindow({
+export const ChatWindow = memo(function ChatWindow({
   session,
   newSessionCwd,
   onAgentEnd,
@@ -991,4 +991,4 @@ export function ChatWindow({
       )}
     </div>
   );
-}
+});

@@ -340,6 +340,17 @@ declare global {
     | undefined;
 }
 
+/**
+ * Get or create the global session registry stored on globalThis.
+ *
+ * NOTE: This uses globalThis rather than a module-scoped variable by design.
+ * AgentSessionWrapper is the runtime side of a long-lived Agent session that
+ * must survive across hot-reload cycles and across individual HTTP requests
+ * in the Next.js App Router. A module-level Map would be re-created on each
+ * module reload, losing all active sessions. globalThis gives us a single
+ * mutable store that lives for the lifetime of the Node process, shared
+ * across all request contexts — not a per-request shared-state anti-pattern.
+ */
 function getRegistry(): Map<string, AgentSessionWrapper> {
   if (!globalThis.__piSessions) {
     globalThis.__piSessions = new Map();

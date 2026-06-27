@@ -393,10 +393,15 @@ export function SessionSidebar({
   const [searchQuery, setSearchQuery] = useState("");
   const sessionRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const acRef = useRef<AbortController | null>(null);
   const loadSessions = useCallback(async (showLoading = false) => {
+    // Abort any in-flight request before starting a new one
+    acRef.current?.abort();
+    const ac = new AbortController();
+    acRef.current = ac;
     try {
       if (showLoading) setLoading(true);
-      const res = await fetch("/api/sessions");
+      const res = await fetch("/api/sessions", { signal: ac.signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as { sessions: SessionInfo[] };
       setAllSessions(data.sessions);

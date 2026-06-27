@@ -15,6 +15,23 @@ export interface AddProviderPickerProps {
   onClose: () => void;
 }
 
+const CARD_STYLE: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 8,
+  padding: "10px 12px",
+  background: "var(--bg-panel)",
+  border: "1px solid var(--border)",
+  borderRadius: 7,
+  boxSizing: "border-box",
+  cursor: "pointer",
+  minWidth: 0,
+  textAlign: "left",
+  transition: "border-color 0.12s, background 0.12s",
+  width: "100%",
+};
+
 export function AddProviderPicker({
   oauthProviders,
   apiKeyProviders,
@@ -47,23 +64,6 @@ export function AddProviderPicker({
     "anthropic-compatible".includes(q);
 
   const totalCount = availableOAuth.length + availableApiKey.length + (showCustom ? 1 : 0);
-
-  const cardStyle: React.CSSProperties = {
-    display: "flex",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    padding: "10px 12px",
-    background: "var(--bg-panel)",
-    border: "1px solid var(--border)",
-    borderRadius: 7,
-    boxSizing: "border-box",
-    cursor: "pointer",
-    minWidth: 0,
-    textAlign: "left",
-    transition: "border-color 0.12s, background 0.12s",
-    width: "100%",
-  };
 
   return (
     <div
@@ -180,7 +180,7 @@ export function AddProviderPicker({
                     onAddCustom();
                     onClose();
                   }}
-                  style={cardStyle}
+                  style={CARD_STYLE}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = "var(--accent)";
                     e.currentTarget.style.background = "var(--bg-hover)";
@@ -261,7 +261,7 @@ export function AddProviderPicker({
                     onSelectOAuth(p.id);
                     onClose();
                   }}
-                  style={cardStyle}
+                  style={CARD_STYLE}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = "var(--accent)";
                     e.currentTarget.style.background = "var(--bg-hover)";
@@ -315,7 +315,7 @@ export function AddProviderPicker({
                     onSelectApiKey(p.id);
                     onClose();
                   }}
-                  style={cardStyle}
+                  style={CARD_STYLE}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = "var(--accent)";
                     e.currentTarget.style.background = "var(--bg-hover)";

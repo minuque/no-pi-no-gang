@@ -56,6 +56,8 @@ export interface ChatInputHandle {
   addImages: (files: File[]) => void;
 }
 
+const WHITESPACE_RE = /\s+/g;
+
 const THINKING_LEVELS = ["auto", "off", "minimal", "low", "medium", "high", "xhigh"] as const;
 const THINKING_LEVEL_DESC: Record<(typeof THINKING_LEVELS)[number], string> = {
   auto: "沿用 pi 默认设置",
@@ -75,7 +77,7 @@ function getCommandSourceLabel(source: SlashCommandItem["source"]): string {
 }
 
 function normalizeCommandDescription(description: string): string {
-  return description.replace(/\s+/g, " ").trim();
+  return description.replace(WHITESPACE_RE, " ").trim();
 }
 
 function getCommandShortDescription(command: SlashCommandItem): string {
@@ -580,13 +582,17 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
     }));
   })();
 
-  // Group options by provider, preserving insertion order
-  const modelsByProvider: { provider: string; options: ModelOption[] }[] = [];
+  // Group options by provider, preserving insertion order (Map for O(1) lookup)
+  const providerMap = new Map<string, ModelOption[]>();
   for (const opt of modelOptions) {
-    const group = modelsByProvider.find((g) => g.provider === opt.provider);
-    if (group) group.options.push(opt);
-    else modelsByProvider.push({ provider: opt.provider, options: [opt] });
+    const list = providerMap.get(opt.provider);
+    if (list) list.push(opt);
+    else providerMap.set(opt.provider, [opt]);
   }
+  const modelsByProvider = [...providerMap.entries()].map(([provider, options]) => ({
+    provider,
+    options,
+  }));
 
   const currentName = model
     ? (modelOptions.find((o) => o.modelId === model.modelId && o.provider === model.provider)

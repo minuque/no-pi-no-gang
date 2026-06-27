@@ -560,6 +560,7 @@ export function AppShell() {
                     setSettingsMenuOpen(false);
                   },
                   disabled: false,
+                  preload: () => { (ModelsConfig as any).preload?.(); },
                   icon: (
                     <svg
                       width="14"
@@ -591,6 +592,7 @@ export function AppShell() {
                     setSettingsMenuOpen(false);
                   },
                   disabled: !activeCwd && !selectedSession?.cwd && !newSessionCwd,
+                  preload: () => { (SkillsConfig as any).preload?.(); },
                   icon: (
                     <svg
                       width="14"
@@ -608,7 +610,7 @@ export function AppShell() {
                     </svg>
                   ),
                 },
-              ].map(({ label, onClick, disabled, icon }) => (
+              ].map(({ label, onClick, disabled, icon, preload }) => (
                 <button
                   key={label}
                   onClick={onClick}
@@ -629,11 +631,13 @@ export function AppShell() {
                     transition: "background 0.1s, color 0.1s",
                   }}
                   onMouseEnter={(e) => {
+                    preload?.();
                     if (!disabled) {
                       e.currentTarget.style.background = "var(--bg-hover)";
                       e.currentTarget.style.color = "var(--text)";
                     }
                   }}
+                  onFocus={() => { preload?.(); }}
                   onMouseLeave={(e) => {
                     if (!disabled) {
                       e.currentTarget.style.background = "none";

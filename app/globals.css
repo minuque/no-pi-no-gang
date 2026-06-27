@@ -925,6 +925,12 @@ html.theme-switching [style*="border"] {
   }
 }
 
+/* Chat message list item — content-visibility for scroll performance */
+.chat-message-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
+
 @keyframes saved-check-draw {
   from {
     stroke-dashoffset: 18;
