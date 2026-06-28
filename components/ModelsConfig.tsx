@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import { AddProviderPicker } from "./AddProviderPicker";
 import { ApiKeyDetail } from "./ApiKeyDetail";
 import { ModelDetail } from "./ModelDetail";
@@ -20,6 +22,7 @@ import { ProviderIcon } from "./ProviderIcon";
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function ModelsConfig({ onClose }: { onClose: () => void }) {
+  const t = useTranslations("ModelsConfig");
   const [config, setConfig] = useState<ModelsJson>({ providers: {} });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -259,7 +262,9 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
             }}
           >
             <div style={{ display: "flex", alignItems: "baseline", gap: 10, flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>Models</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>
+                {t("modelsTitle")}
+              </span>
               <code
                 style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}
               >
@@ -268,7 +273,7 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
             </div>
             <button
               onClick={onClose}
-              title="Close"
+              title={t("close")}
               style={{
                 width: 28,
                 height: 28,
@@ -410,7 +415,7 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
                 {/* Custom providers */}
                 {loading ? (
                   <div style={{ padding: "10px 8px", fontSize: 12, color: "var(--text-muted)" }}>
-                    Loading…
+                    {t("loading")}
                   </div>
                 ) : (
                   providers.map(([pName, pData]) => {
@@ -517,7 +522,7 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
                                   whiteSpace: "nowrap",
                                 }}
                               >
-                                {m.id || "new model"}
+                                {m.id || t("newModel")}
                               </span>
                               {m.reasoning && (
                                 <span
@@ -561,7 +566,7 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
                             e.currentTarget.style.background = "none";
                           }}
                         >
-                          <span style={{ fontSize: 11 }}>+ model</span>
+                          <span style={{ fontSize: 11 }}>{t("addModel")}</span>
                         </div>
                       </div>
                     );
@@ -596,7 +601,7 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
                     e.currentTarget.style.color = "var(--text-muted)";
                   }}
                 >
-                  + Add provider
+                  {t("addProvider")}
                 </button>
               </div>
             </div>
@@ -616,7 +621,7 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
                         fontSize: 13,
                       }}
                     >
-                      Select a provider or model
+                      {t("selectProviderOrModel")}
                     </div>
                   ))}
             </div>
@@ -686,7 +691,7 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               )}
-              <span>{savedOk ? "Saved" : saving ? "Saving…" : "Save"}</span>
+              <span>{savedOk ? t("saved") : saving ? t("saving") : t("save")}</span>
             </button>
           </div>
         </div>

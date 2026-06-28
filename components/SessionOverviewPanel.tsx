@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import type { SlashCommandItem } from "@/lib/pi-resources";
 import type { SessionInfo } from "@/lib/types";
 
@@ -62,6 +64,7 @@ function fmtShortDate(iso: string): string {
 
 /** Section header — sentence case, subtly larger, with optional count badge. */
 function SectionLabel({ label, count }: { label: string; count?: number }) {
+  const t = useTranslations("SessionOverviewPanel");
   return (
     <div
       style={{
@@ -225,13 +228,14 @@ function ContextBar({
   contextWindow: number;
   percent: number | null;
 }) {
+  const t = useTranslations("SessionOverviewPanel");
   const pct = percent ?? 0;
   const barColor = pct > 95 ? "var(--danger)" : pct > 80 ? "var(--warn)" : "var(--accent)";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 11, color: "var(--text-dim)" }}>Context used</span>
+        <span style={{ fontSize: 11, color: "var(--text-dim)" }}>{t("contextUsed")}</span>
         <span
           style={{
             fontSize: 11,
@@ -271,6 +275,7 @@ function ContextBar({
 
 /** Inline stat cell for token grid. */
 function StatCell({ label, value }: { label: string; value: string }) {
+  const t = useTranslations("SessionOverviewPanel");
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
       <span
@@ -290,6 +295,7 @@ function StatCell({ label, value }: { label: string; value: string }) {
 }
 
 function EmptyState() {
+  const t = useTranslations("SessionOverviewPanel");
   return (
     <div
       style={{
@@ -318,7 +324,7 @@ function EmptyState() {
         <line x1="12" y1="16" x2="12" y2="12" />
         <line x1="12" y1="8" x2="12.01" y2="8" />
       </svg>
-      <span style={{ fontSize: 13 }}>Select a session to view its context</span>
+      <span style={{ fontSize: 13 }}>{t("selectSessionToView")}</span>
     </div>
   );
 }
@@ -355,6 +361,7 @@ export function SessionOverviewPanel({
   sessionStats,
   toolPreset,
 }: Props) {
+  const t = useTranslations("SessionOverviewPanel");
   const [skillsData, setSkillsData] = useState<Array<{
     name: string;
     description: string;
@@ -459,11 +466,11 @@ export function SessionOverviewPanel({
             color: "var(--text-muted)",
           }}
         >
-          Overview
+          {t("overview")}
         </span>
         <button
           onClick={onClose}
-          title="Close overview"
+          title={t("closeOverview")}
           style={{
             width: 28,
             height: 28,
@@ -557,7 +564,7 @@ export function SessionOverviewPanel({
                   {session.id.slice(0, 12)}
                 </span>
                 <span style={{ fontSize: 11, color: "var(--text-dim)" }}>
-                  {session.messageCount} msgs
+                  {t("msgs", { count: session.messageCount })}
                 </span>
                 <span style={{ fontSize: 11, color: "var(--text-dim)" }}>
                   {fmtShortDate(session.created)}
@@ -589,12 +596,16 @@ export function SessionOverviewPanel({
               borderRadius: 6,
             }}
           >
-            <StatCell label="input" value={formatTokens(sessionStats.tokens.input)} />
-            <StatCell label="output" value={formatTokens(sessionStats.tokens.output)} />
-            <StatCell label="cache read" value={formatTokens(sessionStats.tokens.cacheRead)} />
+            <StatCell label={t("input")} value={formatTokens(sessionStats.tokens.input)} />
+            <StatCell label={t("output")} value={formatTokens(sessionStats.tokens.output)} />
+            <StatCell label={t("cacheRead")} value={formatTokens(sessionStats.tokens.cacheRead)} />
             <StatCell
-              label="cost"
-              value={sessionStats.cost !== undefined ? `$${sessionStats.cost.toFixed(3)}` : "—"}
+              label={t("cost")}
+              value={
+                sessionStats.cost !== undefined
+                  ? t("costValue", { value: sessionStats.cost.toFixed(3) })
+                  : t("emptyDash")
+              }
             />
           </div>
         )}
@@ -602,7 +613,7 @@ export function SessionOverviewPanel({
         {/* ── System prompt ── */}
         {systemPrompt ? (
           <div>
-            <SectionLabel label="System prompt" />
+            <SectionLabel label={t("systemPrompt")} />
             <div
               style={{
                 padding: "8px 10px",
@@ -654,7 +665,7 @@ export function SessionOverviewPanel({
                   e.currentTarget.style.color = "var(--accent)";
                 }}
               >
-                Show all
+                {t("showAll")}
               </button>
             )}
 
@@ -715,7 +726,7 @@ export function SessionOverviewPanel({
                           color: "var(--text-muted)",
                         }}
                       >
-                        System prompt
+                        {t("systemPrompt")}
                       </span>
                       <button
                         onClick={() => setPromptModalOpen(false)}
@@ -778,12 +789,12 @@ export function SessionOverviewPanel({
             )}
           </div>
         ) : (
-          <div style={{ fontSize: 12, color: "var(--text-dim)" }}>No system prompt configured</div>
+          <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{t("noSystemPrompt")}</div>
         )}
 
         {/* ── Tools ── */}
         <div>
-          <SectionLabel label="Tools" count={toolNames.length} />
+          <SectionLabel label={t("tools")} count={toolNames.length} />
           <ChipRow items={toolNames} />
         </div>
 
@@ -825,7 +836,7 @@ export function SessionOverviewPanel({
                   gap: 5,
                 }}
               >
-                <span style={{ textTransform: "capitalize" }}>{key}</span>
+                <span>{t(key)}</span>
                 <span
                   style={{
                     fontSize: 10.5,
@@ -898,12 +909,12 @@ export function SessionOverviewPanel({
                   </div>
                 ) : (
                   <div style={{ fontSize: 12, color: "var(--text-dim)", padding: "4px 0" }}>
-                    No skills installed
+                    {t("noSkillsInstalled")}
                   </div>
                 )
               ) : (
                 <div style={{ fontSize: 12, color: "var(--text-dim)", padding: "4px 0" }}>
-                  Loading…
+                  {t("loading")}
                 </div>
               ))}
 
@@ -933,12 +944,12 @@ export function SessionOverviewPanel({
                   </div>
                 ) : (
                   <div style={{ fontSize: 12, color: "var(--text-dim)", padding: "4px 0" }}>
-                    No commands available
+                    {t("noCommandsAvailable")}
                   </div>
                 )
               ) : (
                 <div style={{ fontSize: 12, color: "var(--text-dim)", padding: "4px 0" }}>
-                  Loading…
+                  {t("loading")}
                 </div>
               ))}
           </div>

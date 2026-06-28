@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { useTranslations } from "next-intl";
 import NProgress from "nprogress";
 import "nprogress/nprogress.css";
 import { Toaster } from "sonner";
@@ -15,6 +16,7 @@ import type { EntryTreeNode, SessionInfo } from "@/lib/types";
 
 import { BranchNavigator } from "./BranchNavigator";
 import type { ChatInputHandle } from "./ChatInput";
+import { LocaleSwitcher } from "./LocaleSwitcher";
 import { SessionOverviewPanel } from "./SessionOverviewPanel";
 import { SessionSidebar } from "./SessionSidebar";
 
@@ -28,6 +30,7 @@ const SkillsConfig = dynamic(() => import("./SkillsConfig").then((m) => m.Skills
 });
 
 export function AppShell() {
+  const t = useTranslations("AppShell");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isDark, toggleTheme } = useTheme();
@@ -280,7 +283,7 @@ export function AppShell() {
   const effectiveCwd = selectedSession?.cwd ?? newSessionCwd ?? activeCwd;
   useEffect(() => {
     const name = effectiveCwd ? effectiveCwd.split(/[/\\]/).filter(Boolean).pop() : null;
-    document.title = name ?? "no-pi-no-gang";
+    document.title = name ?? t("documentTitle");
   }, [effectiveCwd]);
 
   useEffect(() => {
@@ -477,7 +480,7 @@ export function AppShell() {
       <div style={{ padding: "8px", flexShrink: 0, position: "relative" }}>
         <button
           onClick={() => setSettingsMenuOpen((v) => !v)}
-          title="Settings"
+          title={t("settings")}
           className="sidebar-btn"
           style={{
             background: settingsMenuOpen ? "var(--bg-hover)" : "none",
@@ -498,7 +501,7 @@ export function AppShell() {
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
-            Settings
+            {t("settings")}
           </span>
           <svg
             width="10"
@@ -541,7 +544,8 @@ export function AppShell() {
             >
               {[
                 {
-                  label: "Models",
+                  label: t("models"),
+                  id: "models",
                   onClick: () => {
                     setSettingsMenuOpen(false);
                     vtTransition(() => setModelsConfigOpen(true));
@@ -575,7 +579,8 @@ export function AppShell() {
                   ),
                 },
                 {
-                  label: "Skills",
+                  label: t("skills"),
+                  id: "skills",
                   onClick: () => {
                     setSettingsMenuOpen(false);
                     vtTransition(() => setSkillsConfigOpen(true));
@@ -601,9 +606,9 @@ export function AppShell() {
                     </svg>
                   ),
                 },
-              ].map(({ label, onClick, disabled, icon, preload }) => (
+              ].map(({ label, onClick, disabled, icon, preload, id }) => (
                 <button
-                  key={label}
+                  key={id}
                   onClick={onClick}
                   disabled={disabled}
                   style={{
@@ -725,8 +730,8 @@ export function AppShell() {
           >
             <button
               onClick={() => setSidebarOpen((v) => !v)}
-              title={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-              aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+              title={t(sidebarOpen ? "hideSidebar" : "showSidebar")}
+              aria-label={t(sidebarOpen ? "hideSidebar" : "showSidebar")}
               className="tb-btn"
               style={{ color: "var(--text-muted)" }}
             >
@@ -821,13 +826,14 @@ export function AppShell() {
                     {sseStatus.label}
                   </div>
                 )}
+                <LocaleSwitcher />
                 <button
                   onClick={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
                     toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
                   }}
-                  title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-                  aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+                  title={t(isDark ? "switchToLight" : "switchToDark")}
+                  aria-label={t(isDark ? "switchToLight" : "switchToDark")}
                   aria-pressed={isDark}
                   className="tb-btn"
                   style={{ color: "var(--text-muted)" }}
@@ -870,8 +876,8 @@ export function AppShell() {
                 </button>
                 <button
                   onClick={() => vtTransition(() => setWorkspacePanelOpen((v) => !v))}
-                  title={workspacePanelOpen ? "Close overview panel" : "Open overview panel"}
-                  aria-label={workspacePanelOpen ? "Close overview panel" : "Open overview panel"}
+                  title={t(workspacePanelOpen ? "closeOverviewPanel" : "openOverviewPanel")}
+                  aria-label={t(workspacePanelOpen ? "closeOverviewPanel" : "openOverviewPanel")}
                   className="tb-btn"
                   style={{ color: workspacePanelOpen ? "var(--text)" : "var(--text-muted)" }}
                 >

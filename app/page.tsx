@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import { AppShell } from "@/components/AppShell";
 
 /**
@@ -16,6 +18,7 @@ import { AppShell } from "@/components/AppShell";
  */
 
 function SsrFallback() {
+  const t = useTranslations("Page");
   return (
     <div
       style={{
@@ -32,12 +35,14 @@ function SsrFallback() {
       {/* Large logo acts as LCP element — loaded from HTML, no JS needed */}
       <img
         src="/pi-logo-on-dark.svg"
-        alt="No Pi No Gang"
+        alt={t("ssrLoadingAlt")}
         width={48}
         height={48}
         style={{ opacity: 0.9 }}
       />
-      <span style={{ color: "#555", fontSize: 13, letterSpacing: "0.03em" }}>No Pi No Gang</span>
+      <span style={{ color: "#555", fontSize: 13, letterSpacing: "0.03em" }}>
+        {t("ssrLoadingText")}
+      </span>
     </div>
   );
 }

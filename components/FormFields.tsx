@@ -3,6 +3,8 @@
 import type React from "react";
 import { useEffect, useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -65,6 +67,7 @@ export function SecretTextInput({
   style?: React.CSSProperties;
 }) {
   const [visible, setVisible] = useState(false);
+  const t = useTranslations("FormFields");
 
   useEffect(() => {
     if (!value) setVisible(false);
@@ -89,8 +92,8 @@ export function SecretTextInput({
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        aria-label={visible ? "Hide API key" : "Show API key"}
-        title={visible ? "Hide API key" : "Show API key"}
+        aria-label={visible ? t("hideApiKey") : t("showApiKey")}
+        title={visible ? t("hideApiKey") : t("showApiKey")}
         style={{
           position: "absolute",
           right: 5,
@@ -175,13 +178,14 @@ export function Select({
   options: readonly string[];
   required?: boolean;
 }) {
+  const tSelect = useTranslations("FormFields");
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
       style={{ ...inputStyle, color: value ? "var(--text)" : "var(--text-dim)" }}
     >
-      {!required && <option value="">— inherit / none —</option>}
+      {!required && <option value="">{tSelect("inheritNone")}</option>}
       {options.map((o) => (
         <option key={o} value={o}>
           {o}

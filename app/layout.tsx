@@ -6,6 +6,8 @@ import "@fontsource/jetbrains-mono/500.css";
 import "@fontsource/jetbrains-mono/600.css";
 import "@fontsource/jetbrains-mono/700.css";
 
+import { I18nProvider } from "@/components/I18nProvider";
+
 import "./globals.css";
 
 const APP_NAME = "No Pi No Gang";
@@ -79,12 +81,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body style={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
-        <main
-          id="main"
-          style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}
-        >
-          {children}
-        </main>
+        <I18nProvider>
+          <main
+            id="main"
+            style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}
+          >
+            {children}
+          </main>
+        </I18nProvider>
       </body>
     </html>
   );

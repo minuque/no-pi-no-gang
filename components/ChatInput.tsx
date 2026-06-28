@@ -10,6 +10,8 @@ import React, {
   useState,
 } from "react";
 
+import { useTranslations } from "next-intl";
+
 import type { SlashCommandItem } from "@/lib/pi-resources";
 
 export interface AttachedImage {
@@ -59,15 +61,6 @@ export interface ChatInputHandle {
 const WHITESPACE_RE = /\s+/g;
 
 const THINKING_LEVELS = ["auto", "off", "minimal", "low", "medium", "high", "xhigh"] as const;
-const THINKING_LEVEL_DESC: Record<(typeof THINKING_LEVELS)[number], string> = {
-  auto: "沿用 pi 默认设置",
-  off: "关闭推理",
-  minimal: "最少推理",
-  low: "低强度推理",
-  medium: "中等推理",
-  high: "高强度推理",
-  xhigh: "最高强度推理",
-};
 
 function getCommandSourceLabel(source: SlashCommandItem["source"]): string {
   if (source === "extension") return "EXT";
@@ -124,6 +117,16 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
   }: Props,
   ref,
 ) {
+  const t = useTranslations("ChatInput");
+  const THINKING_LEVEL_DESC: Record<string, string> = {
+    auto: t("thinkingAuto"),
+    off: t("thinkingOff"),
+    minimal: t("thinkingMinimal"),
+    low: t("thinkingLow"),
+    medium: t("thinkingMedium"),
+    high: t("thinkingHigh"),
+    xhigh: t("thinkingXhigh"),
+  };
   const [value, setValue] = useState("");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [thinkingDropdownOpen, setThinkingDropdownOpen] = useState(false);
@@ -711,9 +714,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
               <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
               <path d="M3 3v5h5" />
             </svg>
-            Retrying ({retryInfo.attempt}/{retryInfo.maxAttempts})…
+            {t("retrying", { attempt: retryInfo.attempt, maxAttempts: retryInfo.maxAttempts })}
             {retryInfo.errorMessage && (
-              <span style={{ opacity: 0.7, marginLeft: 4 }}>- {retryInfo.errorMessage}</span>
+              <span style={{ opacity: 0.7, marginLeft: 4 }}>
+                {t("errorPrefix", { error: retryInfo.errorMessage })}
+              </span>
             )}
           </div>
         )}
@@ -885,8 +890,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
               onPaste={handlePaste}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
-              placeholder={isStreaming ? "Agent is running…" : "Describe a task or ask a question"}
-              aria-label="Chat message input"
+              placeholder={isStreaming ? t("agentRunning") : t("describeTask")}
+              aria-label={t("chatInputAria")}
               rows={1}
               style={{
                 flex: 1,
@@ -1103,7 +1108,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isStreaming}
-                title="Attach image"
+                title={t("attachImage")}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -1158,9 +1163,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     if (!isStreaming) setCwdDropdownOpen((v) => !v);
                   }}
                   disabled={isStreaming}
-                  title={
-                    currentCwd ? `Working directory: ${currentCwd}` : "Select working directory"
-                  }
+                  title={currentCwd ? t("workingDir", { cwd: currentCwd }) : t("selectWorkingDir")}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -1308,7 +1311,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                                 flexShrink: 0,
                               }}
                             >
-                              current
+                              {t("current")}
                             </span>
                           )}
                         </button>
@@ -1358,7 +1361,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                         >
                           <path d="M1 3A1 1 0 0 1 2 2H4L5 3.5H8.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-7A.5.5 0 0 1 1 8V3Z" />
                         </svg>
-                        <span>Use default directory</span>
+                        <span>{t("useDefaultDir")}</span>
                       </button>
                     )}
 
@@ -1405,7 +1408,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                           <line x1="5" y1="1" x2="5" y2="9" />
                           <line x1="1" y1="5" x2="9" y2="5" />
                         </svg>
-                        <span>Custom path…</span>
+                        <span>{t("customPath")}</span>
                       </button>
                     ) : (
                       <div
@@ -1432,7 +1435,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                               setCwdCustomError(null);
                             }
                           }}
-                          placeholder="/path/to/project"
+                          placeholder={t("projectPlaceholder")}
                           style={{
                             width: "100%",
                             fontSize: 12,
@@ -1488,7 +1491,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                                 e.currentTarget.style.opacity = "1";
                             }}
                           >
-                            {cwdCustomValidating ? "Checking…" : "Open"}
+                            {cwdCustomValidating ? t("checking") : t("open")}
                           </button>
                           <button
                             onClick={() => {
@@ -1516,7 +1519,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                               e.currentTarget.style.color = "var(--text-muted)";
                             }}
                           >
-                            Cancel
+                            {t("cancel")}
                           </button>
                         </div>
                       </div>
@@ -1527,7 +1530,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
 
               {toolPreset === "none" && (
                 <span
-                  title="Tools are disabled for the next request"
+                  title={t("noToolsTitle")}
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -1557,7 +1560,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     <circle cx="12" cy="12" r="10" />
                     <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
                   </svg>
-                  No tools
+                  {t("noTools")}
                 </span>
               )}
             </div>
@@ -1682,7 +1685,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                               fontWeight: 600,
                             }}
                           >
-                            <span>Context</span>
+                            <span>{t("context")}</span>
                             <span style={{ fontFamily: "var(--font-mono)" }}>
                               {contextPercentLabel ?? "-"}
                             </span>
@@ -1966,7 +1969,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
               {isStreaming ? (
                 <button
                   onClick={onAbort}
-                  title="Stop agent"
+                  title={t("stopAgent")}
                   style={{
                     flexShrink: 0,
                     display: "inline-flex",
@@ -1999,7 +2002,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                 <button
                   onClick={handleSend}
                   disabled={!canSend}
-                  title="Send message"
+                  title={t("sendMessage")}
                   style={{
                     flexShrink: 0,
                     display: "inline-flex",

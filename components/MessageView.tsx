@@ -4,6 +4,8 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import dynamic from "next/dynamic";
 
+import { useTranslations } from "next-intl";
+
 import type {
   AgentMessage,
   AssistantContentBlock,
@@ -318,6 +320,7 @@ function UserMessageView({
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const t = useTranslations("MessageView");
 
   const content =
     typeof message.content === "string"
@@ -441,7 +444,7 @@ function UserMessageView({
                   fontSize: 12,
                 }}
               >
-                Cancel
+                {t("cancel")}
               </button>
               <button
                 onClick={saveEdit}
@@ -458,7 +461,7 @@ function UserMessageView({
                   fontWeight: 600,
                 }}
               >
-                Send
+                {t("send")}
               </button>
             </div>
           </div>
@@ -561,7 +564,7 @@ function UserMessageView({
               <button
                 className="message-action-button"
                 onClick={startEdit}
-                title="Edit and resend"
+                title={t("editResend")}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -604,7 +607,7 @@ function UserMessageView({
           <button
             className="message-action-button"
             onClick={copyContent}
-            title="Copy message"
+            title={t("copyMessage")}
             style={{
               display: "flex",
               alignItems: "center",
@@ -676,7 +679,7 @@ function UserMessageView({
                     onNavigate!(prevAssistantEntryId!);
                     onEditContent?.(content);
                   }}
-                  title="Branch — switch path within the same .jsonl session file"
+                  title={t("branchNavigate")}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -722,11 +725,7 @@ function UserMessageView({
                     onFork!(entryId!);
                   }}
                   disabled={forking}
-                  title={
-                    forking
-                      ? "Creating new session…"
-                      : "Fork — create a new independent .jsonl session file"
-                  }
+                  title={forking ? t("creatingSession") : t("forkAction")}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -804,6 +803,7 @@ function AssistantMessageView({
   const [copied, setCopied] = useState(false);
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
+  const t = useTranslations("MessageView");
   const canNavigate = !!entryId && !!onNavigate && !isStreaming;
   const actionsVisible = hovered || actionsFocused || copied;
 
@@ -931,7 +931,7 @@ function AssistantMessageView({
           <button
             className="message-action-button"
             onClick={onRetry}
-            title="Retry with the same prompt"
+            title={t("retryAction")}
             style={{
               display: "flex",
               alignItems: "center",
@@ -976,7 +976,7 @@ function AssistantMessageView({
           <button
             className="message-action-button"
             onClick={copyContent}
-            title="Copy message"
+            title={t("copyMessage")}
             style={{
               display: "flex",
               alignItems: "center",
@@ -1236,7 +1236,8 @@ function ThinkingBlock({
   isStreaming?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const label = isStreaming ? "Thinking..." : "Reasoning";
+  const t = useTranslations("MessageView");
+  const label = isStreaming ? t("thinking") : t("reasoning");
 
   useEffect(() => {
     if (!document.getElementById("think-pulse-style")) {
@@ -1385,6 +1386,7 @@ function ToolCallBlock({
   const resultPreview = getToolResultPreview(result);
   const toolFilePath = getToolFilePath(block);
   const errorInfo = getStructuredToolError(result);
+  const t = useTranslations("MessageView");
   const shownDuration = duration ?? (isRunning && elapsed ? elapsed : undefined);
 
   return (
@@ -1522,7 +1524,7 @@ function ToolCallBlock({
               fontSize: 11,
             }}
           >
-            Open
+            {t("open")}
           </span>
         )}
         <span
@@ -1612,6 +1614,7 @@ function ToolCallsGroup({
   toolCallDurations?: Map<string, number>;
 }) {
   const [showAll, setShowAll] = useState(false);
+  const t = useTranslations("MessageView");
   const mountRef = useRef(0);
   const [elapsed, setElapsed] = useState(0);
 
@@ -1642,10 +1645,10 @@ function ToolCallsGroup({
     failedCount > 0 ? "var(--danger)" : runningCount > 0 ? "var(--accent)" : "var(--text-dim)";
   const summaryLabel =
     failedCount > 0
-      ? "Reasoning · Error"
+      ? t("reasoningError")
       : runningCount > 0
-        ? `Thinking... · Tools ${blocks.length}`
-        : `Reasoning · Tools ${blocks.length}`;
+        ? t("thinkingToolsRunning", { count: blocks.length })
+        : t("reasoningTools", { count: blocks.length });
   const defaultVisibleCount = 3;
   const visibleBlocks = showAll ? blocks : blocks.slice(0, defaultVisibleCount);
   const hiddenCount = blocks.length - visibleBlocks.length;
@@ -1746,7 +1749,7 @@ function ToolCallsGroup({
             e.currentTarget.style.color = "var(--text-dim)";
           }}
         >
-          Show {hiddenCount} more
+          {t("showMore", { count: hiddenCount })}
         </button>
       )}
     </div>
@@ -1797,6 +1800,7 @@ function PairedResult({
   isEmpty: boolean;
   isError: boolean;
 }) {
+  const t = useTranslations("MessageView");
   return (
     <div
       style={{
@@ -1820,7 +1824,7 @@ function PairedResult({
           opacity: isEmpty ? 0.6 : 1,
         }}
       >
-        {isEmpty ? "(no output)" : text}
+        {isEmpty ? t("noOutput") : text}
       </pre>
     </div>
   );

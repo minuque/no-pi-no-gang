@@ -7,8 +7,8 @@
 - no-pi-no-gang 的目标是基于 pi SDK 的 **Agent Harness + Task Runtime**，不是单纯 Web 外壳。
 - pi SDK 继续负责 `AgentSession`、模型调用、会话写入和 agent loop。
 - no-pi-no-gang 负责运行时、可观测性、审批、审计、业务能力编排。
-- 公司业务模块优先通过 MCP 接入，朝"业务能力可插拔"演进。
-- `.jsonl` 是会话事实源，TaskSession 是运行事实源，业务数据库是业务事实源。
+- 业务模块优先通过 MCP 接入，朝"业务能力可插拔"演进。
+- `.jsonl` 是会话事实源，TaskSession 是运行事实源，数据库是业务事实源。
 - agent 不直接写业务数据库；写操作通过受治理的 MCP tool 调用业务 API。
 
 核心原则：不要把业务 API 细节塞进 prompt 或 UI。先抽象 Capability Gateway，再把业务模块注册为可治理的 resources / prompts / tools。
@@ -213,28 +213,3 @@
 - 一个业务 workflow 能完整经历 read context、plan、approval、write、audit。
 - 关键 runtime / capability 变更有自动化或明确手动验证步骤。
 
----
-
-## 权重规则
-
-- 90-100：P0，核心语义、运行时边界、业务安全。
-- 75-89：P1，可理解性、可靠性、审批审计。
-- 60-74：P2，配置、错误态、操作体验。
-- 40-59：P3，维护、诊断、测试增强。
-
-## 特性总览
-
-| 特性 | W | P | v0.0.1 | v0.0.2 | v0.0.3 | v0.0.4 | v0.0.5 | v0.0.6+ |
-|---|---|---|---|---|---|---|---|---|
-| 会话谱系与 cwd 视角 | 100 | P0 | ● | | | | | |
-| Fork / Branch 语义 | 95 | P0 | ● | | | | | |
-| Chat 执行流可审计 | 92 | P0 | ● | ● | | | | |
-| Agent 生命周期可靠性 | 90 | P0 | ● | ● | ● | | | |
-| TaskSession 过渡抽象 | 98 | P0 | | ● | | | | |
-| agentd / worker runtime | 96 | P0 | | | ● | | | |
-| pi SDK extension 编排 | 90 | P0 | | ● | ● | ● | | |
-| MCP 只读业务能力 | 94 | P0 | | | | ● | | |
-| 审批型写操作 | 92 | P0 | | | | | ● | |
-| 业务审计与脱敏 | 88 | P1 | | | | ● | ● | ● |
-| 模型 / 工具 / 技能配置 | 68 | P2 | ● | | | | | |
-| 可观测性与回归验证 | 55 | P3 | | | | | | ● |

@@ -2,11 +2,14 @@
 
 import { useRef, useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 interface Props {
   systemPrompt: string | null;
 }
 
 export function SystemPromptButton({ systemPrompt }: Props) {
+  const t = useTranslations("SystemPromptButton");
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
 
@@ -16,7 +19,7 @@ export function SystemPromptButton({ systemPrompt }: Props) {
         <button
           ref={btnRef}
           onClick={() => setOpen(true)}
-          title="System Prompt"
+          title={t("systemPrompt")}
           className="tb-btn"
           style={{
             width: 30,
@@ -119,7 +122,7 @@ export function SystemPromptButton({ systemPrompt }: Props) {
                   color: "var(--text-muted)",
                 }}
               >
-                System Prompt
+                {t("systemPrompt")}
               </span>
               {systemPrompt && (
                 <span
@@ -130,14 +133,13 @@ export function SystemPromptButton({ systemPrompt }: Props) {
                     marginRight: 8,
                   }}
                 >
-                  {systemPrompt.split(/\n/).length} line
-                  {systemPrompt.split(/\n/).length !== 1 ? "s" : ""} ·{" "}
-                  {systemPrompt.length.toLocaleString()} chars
+                  {t("lineCount", { count: systemPrompt.split(/\n/).length })} ·{" "}
+                  {t("chars", { count: systemPrompt.length })}
                 </span>
               )}
               <button
                 onClick={() => setOpen(false)}
-                title="Close"
+                title={t("close")}
                 style={{
                   width: 28,
                   height: 28,
@@ -206,7 +208,7 @@ export function SystemPromptButton({ systemPrompt }: Props) {
                     fontStyle: "italic",
                   }}
                 >
-                  System prompt is empty (tools are disabled)
+                  {t("emptyPrompt")}
                 </div>
               ) : (
                 <div
@@ -216,7 +218,7 @@ export function SystemPromptButton({ systemPrompt }: Props) {
                     fontStyle: "italic",
                   }}
                 >
-                  Send a message to load the system prompt
+                  {t("sendToLoad")}
                 </div>
               )}
             </div>

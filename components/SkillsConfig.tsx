@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import type { SkillSearchResult } from "@/app/api/skills/search/route";
 
 interface Skill {
@@ -38,15 +40,12 @@ function Toggle({
   loading: boolean;
   onToggle: () => void;
 }) {
+  const tToggle = useTranslations("SkillsConfig");
   return (
     <button
       onClick={onToggle}
       disabled={loading}
-      title={
-        enabled
-          ? "Visible in model prompt — click to disable"
-          : "Hidden from model prompt — click to enable"
-      }
+      title={enabled ? tToggle("toggleEnabled") : tToggle("toggleDisabled")}
       style={{
         flexShrink: 0,
         width: 40,
@@ -93,6 +92,7 @@ function SkillDetail({
 }) {
   const label = sourceLabel(skill);
   const enabled = !skill.disableModelInvocation;
+  const tDetail = useTranslations("SkillsConfig");
 
   function displayPath(p: string): string {
     if (label === "project" && p.startsWith(cwd)) {
@@ -138,7 +138,9 @@ function SkillDetail({
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-        <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>Name</span>
+        <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>
+          {tDetail("name")}
+        </span>
         <span
           style={{
             fontFamily: "var(--font-mono)",
@@ -152,7 +154,7 @@ function SkillDetail({
 
       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
         <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>
-          Description
+          {tDetail("description")}
         </span>
         <span style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6 }}>
           {skill.description}
@@ -163,6 +165,7 @@ function SkillDetail({
 }
 
 function AddSkillPanel({ cwd, onInstalled }: { cwd: string; onInstalled: () => void }) {
+  const tAdd = useTranslations("SkillsConfig");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SkillSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -197,7 +200,7 @@ function AddSkillPanel({ cwd, onInstalled }: { cwd: string; onInstalled: () => v
         return;
       }
       setResults(d.results ?? []);
-      if ((d.results ?? []).length === 0) setSearchError("No skills found");
+      if ((d.results ?? []).length === 0) setSearchError(tAdd("noSkillsFound"));
     } catch (e) {
       setSearchError(String(e));
     } finally {
@@ -245,7 +248,9 @@ function AddSkillPanel({ cwd, onInstalled }: { cwd: string; onInstalled: () => v
           marginBottom: 20,
         }}
       >
-        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Add Skill</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
+          {tAdd("addSkillTitle")}
+        </div>
 
         {/* Search row */}
         <div style={{ display: "flex", gap: 8 }}>
@@ -256,7 +261,7 @@ function AddSkillPanel({ cwd, onInstalled }: { cwd: string; onInstalled: () => v
             onKeyDown={(e) => {
               if (e.key === "Enter") search(query);
             }}
-            placeholder="e.g. react, testing, deploy"
+            placeholder={tAdd("skillSearchPlaceholder")}
             style={{
               flex: 1,
               padding: "7px 10px",
@@ -283,7 +288,7 @@ function AddSkillPanel({ cwd, onInstalled }: { cwd: string; onInstalled: () => v
               flexShrink: 0,
             }}
           >
-            {searching ? "Searching…" : "Search"}
+            {searching ? tAdd("searching") : tAdd("search")}
           </button>
         </div>
 
@@ -439,7 +444,11 @@ function AddSkillPanel({ cwd, onInstalled }: { cwd: string; onInstalled: () => v
                     transition: "color 0.12s",
                   }}
                 >
-                  {isInstalled ? "✓ Installed" : isInstalling ? "Installing…" : "Install"}
+                  {isInstalled
+                    ? tAdd("installedBadge")
+                    : isInstalling
+                      ? tAdd("installing")
+                      : tAdd("install")}
                 </button>
               </div>
             );
@@ -467,6 +476,7 @@ function AddSkillPanel({ cwd, onInstalled }: { cwd: string; onInstalled: () => v
 }
 
 export function SkillsConfig({ cwd, onClose }: { cwd: string; onClose: () => void }) {
+  const t = useTranslations("SkillsConfig");
   const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -573,7 +583,9 @@ export function SkillsConfig({ cwd, onClose }: { cwd: string; onClose: () => voi
           }}
         >
           <div style={{ display: "flex", alignItems: "baseline", gap: 10, flex: 1, minWidth: 0 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>Skills</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>
+              {t("skillsTitle")}
+            </span>
             <code
               style={{
                 fontSize: 11,
@@ -590,7 +602,7 @@ export function SkillsConfig({ cwd, onClose }: { cwd: string; onClose: () => voi
           </div>
           <button
             onClick={onClose}
-            title="Close"
+            title={t("close")}
             style={{
               width: 28,
               height: 28,
@@ -652,7 +664,7 @@ export function SkillsConfig({ cwd, onClose }: { cwd: string; onClose: () => voi
                     color: "var(--text-muted)",
                   }}
                 >
-                  Loading…
+                  {t("loading")}
                 </div>
               ) : error ? (
                 <div
@@ -672,7 +684,7 @@ export function SkillsConfig({ cwd, onClose }: { cwd: string; onClose: () => voi
                     color: "var(--text-dim)",
                   }}
                 >
-                  No skills found
+                  {t("noSkillsFound")}
                 </div>
               ) : (
                 (() => {
@@ -795,7 +807,7 @@ export function SkillsConfig({ cwd, onClose }: { cwd: string; onClose: () => voi
                   <line x1="12" y1="5" x2="12" y2="19" />
                   <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
-                Add skill
+                {t("addSkill")}
               </div>
             </div>
           </div>
@@ -829,7 +841,7 @@ export function SkillsConfig({ cwd, onClose }: { cwd: string; onClose: () => voi
                   fontSize: 13,
                 }}
               >
-                Select a skill
+                {t("selectSkill")}
               </div>
             )}
           </div>

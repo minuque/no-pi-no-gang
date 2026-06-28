@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import { useTheme } from "@/hooks/useTheme";
 import type { SessionInfo } from "@/lib/types";
 
@@ -18,17 +20,20 @@ interface Props {
   onSessionsChange?: (sessions: SessionInfo[]) => void;
 }
 
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(
+  dateStr: string,
+  tr: (key: string, params?: Record<string, number | string>) => string,
+): string {
   const date = new Date(dateStr);
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const mins = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 7) return `${days}d ago`;
+  if (mins < 1) return tr("justNow");
+  if (mins < 60) return tr("mAgo", { count: mins });
+  if (hours < 24) return tr("hAgo", { count: hours });
+  if (days < 7) return tr("dAgo", { count: days });
   return date.toLocaleDateString();
 }
 
@@ -67,9 +72,13 @@ function getRecentCwds(sessions: SessionInfo[]): string[] {
     .map(([cwd]) => cwd);
 }
 
-function getCwdLabel(cwd: string): string {
+function getCwdLabel(cwd: string, t?: (key: string) => string): string {
   const normalized = cwd.replace(/[\\/]+$/, "");
-  return normalized.split(/[\\/]/).filter(Boolean).pop() || normalized || "Unknown project";
+  return (
+    normalized.split(/[\\/]/).filter(Boolean).pop() ||
+    normalized ||
+    (t ? t("unknownProject") : "Unknown project")
+  );
 }
 
 interface CwdSessionGroup {
@@ -167,11 +176,12 @@ function matchesSessionSearch(session: SessionInfo, query: string): boolean {
 
 function AppLogo() {
   const { isDark } = useTheme();
+  const t = useTranslations("Common");
 
   return (
     <img
       src={isDark ? "/pi-logo-on-dark.svg" : "/pi-logo-on-light.svg"}
-      alt="No Pi No Gang"
+      alt={t("appName")}
       width={22}
       height={22}
       style={{ opacity: 0.85 }}
@@ -385,6 +395,7 @@ export function SessionSidebar({
   onCwdChange,
   onSessionsChange,
 }: Props) {
+  const t = useTranslations("SessionSidebar");
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -413,6 +424,9 @@ export function SessionSidebar({
         sessionRefreshTimerRef.current = setTimeout(() => setSessionRefreshDone(false), 2000);
       }
     } catch (e) {
+      // Ignore AbortError — caused by React Strict Mode double-mount
+      // or component remount cancelling the previous in-flight request.
+      if (e instanceof DOMException && e.name === "AbortError") return;
       setError(String(e));
     } finally {
       if (showLoading) setLoading(false);
@@ -519,7 +533,7 @@ export function SessionSidebar({
     if (!isSearching) return cwdGroups;
     return cwdGroups
       .map((group) => {
-        const cwdMatches = [getCwdLabel(group.cwd), group.cwd].some((value) =>
+        const cwdMatches = [getCwdLabel(group.cwd, t), group.cwd].some((value) =>
           value.toLowerCase().includes(normalizedSearchQuery),
         );
         const sessions = cwdMatches
@@ -617,8 +631,8 @@ export function SessionSidebar({
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search"
-            aria-label="Search sessions"
+            placeholder={t("searchPlaceholder")}
+            aria-label={t("searchAriaLabel")}
             style={{
               flex: 1,
               minWidth: 0,
@@ -635,7 +649,7 @@ export function SessionSidebar({
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              title="Clear search"
+              title={t("clearSearch")}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -669,13 +683,13 @@ export function SessionSidebar({
         <HeaderBtn
           onClick={handleNewSession}
           disabled={!selCwd}
-          title={selCwd ? "New .jsonl session file" : "Select a project first"}
+          title={selCwd ? t("newSessionFile") : t("selectProjectFirst")}
         >
           <IconPlus />
         </HeaderBtn>
         <HeaderBtn
           onClick={() => loadSessions(false)}
-          title="Refresh sessions"
+          title={t("refreshSessions")}
           active={sessionRefreshDone}
         >
           {sessionRefreshDone ? <IconCheck /> : <IconRefresh />}
@@ -693,7 +707,7 @@ export function SessionSidebar({
               letterSpacing: "0.02em",
             }}
           >
-            Loading sessions...
+            {t("loadingSessions")}
           </div>
         )}
         {error && (
@@ -701,7 +715,7 @@ export function SessionSidebar({
         )}
         {!loading && !error && cwdGroups.length === 0 && (
           <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 12 }}>
-            No sessions
+            {t("noSessions")}
           </div>
         )}
         {!loading &&
@@ -710,7 +724,7 @@ export function SessionSidebar({
           cwdGroups.length > 0 &&
           visibleCwdGroups.length === 0 && (
             <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 12 }}>
-              No matching sessions
+              {t("noMatchingSessions")}
             </div>
           )}
         {visibleCwdGroups.map((group) => (
@@ -757,6 +771,7 @@ function CwdGroupSection({
   onRenamed?: () => void;
   onSessionDeleted?: (id: string) => void;
 }) {
+  const t = useTranslations("SessionSidebar");
   const [hovered, setHovered] = useState(false);
   const empty = group.sessions.length === 0;
 
@@ -808,7 +823,7 @@ function CwdGroupSection({
                 lineHeight: "20px",
               }}
             >
-              {getCwdLabel(group.cwd)}
+              {getCwdLabel(group.cwd, t)}
             </span>
           </div>
 
@@ -841,11 +856,9 @@ function CwdGroupSection({
               lineHeight: "16px",
             }}
           >
-            <span>
-              {group.sessions.length} session{group.sessions.length !== 1 ? "s" : ""}
-            </span>
+            <span>{t("sessionCount", { count: group.sessions.length })}</span>
             {group.modified && (
-              <span title={group.modified}>{formatRelativeTime(group.modified)}</span>
+              <span title={group.modified}>{formatRelativeTime(group.modified, t)}</span>
             )}
           </div>
         </button>
@@ -856,7 +869,7 @@ function CwdGroupSection({
             e.stopPropagation();
             onToggleCwd(group.cwd);
           }}
-          title={isCollapsed ? "Expand" : "Collapse"}
+          title={isCollapsed ? t("expand") : t("collapse")}
           style={{
             display: "flex",
             alignItems: "flex-start",
@@ -888,7 +901,7 @@ function CwdGroupSection({
                 opacity: 0.6,
               }}
             >
-              No sessions in this project
+              {t("noSessionsInProject")}
             </div>
           ) : (
             group.tree.map((node) => (
@@ -987,6 +1000,7 @@ function SessionItem({
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }) {
+  const t = useTranslations("SessionSidebar");
   const [hovered, setHovered] = useState(false);
   const [actionsFocused, setActionsFocused] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -1117,18 +1131,13 @@ function SessionItem({
               whiteSpace: "nowrap",
             }}
           >
-            Delete{" "}
-            <b>
-              &ldquo;{title.slice(0, 24)}
-              {title.length > 24 ? "…" : ""}&rdquo;
-            </b>
-            ?
+            {t("deleteConfirm", { title: title.slice(0, 24) + (title.length > 24 ? "…" : "") })}
           </span>
           <button onClick={handleDeleteConfirm} style={btnDanger}>
-            Delete
+            {t("delete")}
           </button>
           <button onClick={handleDeleteCancel} style={btnGhost}>
-            Cancel
+            {t("cancel")}
           </button>
         </>
       ) : renaming ? (
@@ -1191,36 +1200,30 @@ function SessionItem({
             >
               {/* Session type badge */}
               {isFork && (
-                <SessionMetaBadge
-                  title="Fork: a new independent .jsonl session file (via Fork)"
-                  tone="accent"
-                >
-                  fork
+                <SessionMetaBadge title={t("forkBadgeTitle")} tone="accent">
+                  {t("forkBadge")}
                 </SessionMetaBadge>
               )}
               {isOrphaned && (
-                <SessionMetaBadge
-                  title="Orphaned: parent .jsonl session file is missing"
-                  tone="danger"
-                >
-                  orphan
+                <SessionMetaBadge title={t("orphanBadgeTitle")} tone="danger">
+                  {t("orphanBadge")}
                 </SessionMetaBadge>
               )}
               {hasCompaction && (
-                <SessionMetaBadge title="Has compaction entries in this .jsonl session" tone="warn">
-                  compact
+                <SessionMetaBadge title={t("compactBadgeTitle")} tone="warn">
+                  {t("compactBadge")}
                 </SessionMetaBadge>
               )}
               {isLiveStreaming && (
-                <SessionMetaBadge title="Live streaming is active in this session" tone="success">
-                  live
+                <SessionMetaBadge title={t("liveBadgeTitle")} tone="success">
+                  {t("liveBadge")}
                 </SessionMetaBadge>
               )}
               <span title={session.modified} style={{ flexShrink: 0 }}>
-                {formatRelativeTime(session.modified)}
+                {formatRelativeTime(session.modified, t)}
               </span>
               <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                {session.messageCount} msg{session.messageCount !== 1 ? "s" : ""}
+                {t("msgCount", { count: session.messageCount })}
               </span>
             </div>
           </div>
@@ -1232,7 +1235,7 @@ function SessionItem({
                 e.stopPropagation();
                 onToggleCollapse?.();
               }}
-              title={collapsed ? "Expand fork .jsonl files" : "Collapse fork .jsonl files"}
+              title={collapsed ? t("expandForks") : t("collapseForks")}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1274,7 +1277,7 @@ function SessionItem({
           >
             <button
               onClick={startRename}
-              title="Rename"
+              title={t("rename")}
               style={btnIcon}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "var(--bg-selected)";
@@ -1289,7 +1292,7 @@ function SessionItem({
             </button>
             <button
               onClick={handleDeleteClick}
-              title="Delete"
+              title={t("delete")}
               style={btnIcon}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background =

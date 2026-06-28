@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import type { EntryTreeNode, SessionEntry } from "@/lib/types";
 
 interface Props {
@@ -51,7 +53,7 @@ function compress(node: EntryTreeNode): { node: EntryTreeNode; skipped: number }
   return { node: current, skipped };
 }
 
-function getLabel(entry: SessionEntry): string {
+function getLabel(entry: SessionEntry, t?: (key: string) => string): string {
   if (entry.type === "message" && "message" in entry) {
     const msg = entry.message as { role: string; content: unknown };
     const content = msg.content;
@@ -66,7 +68,7 @@ function getLabel(entry: SessionEntry): string {
     }
     if (text.length > 40) text = text.slice(0, 40) + "…";
     if (text) return text;
-    if (msg.role === "assistant") return "[assistant]";
+    if (msg.role === "assistant") return t ? t("assistantFallback") : "[assistant]";
   }
   return entry.type;
 }
@@ -102,9 +104,10 @@ function TreeNodeView({
   disabled,
 }: TreeNodeProps) {
   const { node: rep, skipped } = compress(node);
+  const t = useTranslations("BranchNavigator");
   const isActive = activePathIds.has(rep.entry.id);
   const isOnPath = activePathIds.has(node.entry.id) || activePathIds.has(rep.entry.id);
-  const label = getLabel(rep.entry);
+  const label = getLabel(rep.entry, t);
   const role =
     rep.entry.type === "message" && "message" in rep.entry
       ? (rep.entry.message as { role: string }).role
@@ -114,7 +117,7 @@ function TreeNodeView({
     <div>
       {/* This node row */}
       <div
-        title={`Switch branch path inside this .jsonl: ${label}`}
+        title={t("switchBranch", { label })}
         style={{
           display: "flex",
           alignItems: "center",
@@ -319,6 +322,7 @@ export function BranchNavigator({
   disabled = false,
   hideWhenEmpty = false,
 }: Props) {
+  const t = useTranslations("BranchNavigator");
   const [openInternal, setOpenInternal] = useState(false);
   const open = openProp !== undefined ? openProp : openInternal;
   const [panelMounted, setPanelMounted] = useState(open);
@@ -368,9 +372,9 @@ export function BranchNavigator({
   }, [activeLeafId]);
 
   const noBranchReason = !hasSession
-    ? "No active .jsonl session"
+    ? t("noActiveSession")
     : !hasBranch(tree)
-      ? "This .jsonl session has no branch paths"
+      ? t("noBranchPaths")
       : null;
 
   // Find first meaningful node (skip pure linear prefix)
@@ -393,9 +397,9 @@ export function BranchNavigator({
   }, [tree, previewLeafId, activeLeafId, firstNode]);
   const previewEntries = previewPath.filter((node) => node.entry.type === "message").slice(-6);
   const activeLabel =
-    currentPath.length > 0 ? getLabel(currentPath[currentPath.length - 1].entry) : null;
+    currentPath.length > 0 ? getLabel(currentPath[currentPath.length - 1].entry, t) : null;
   const previewLabel =
-    previewPath.length > 0 ? getLabel(previewPath[previewPath.length - 1].entry) : null;
+    previewPath.length > 0 ? getLabel(previewPath[previewPath.length - 1].entry, t) : null;
 
   if (hideWhenEmpty && !hasContent) return null;
 
@@ -447,9 +451,9 @@ export function BranchNavigator({
           disabled={disabled}
           title={
             disabled
-              ? "Branch path switching is disabled while streaming"
+              ? t("disabledWhileStreaming")
               : hasContent
-                ? `${branchCount} branch path${branchCount > 1 ? "s" : ""}`
+                ? t("branchCount", { count: branchCount })
                 : (noBranchReason ?? "")
           }
           style={{
@@ -562,11 +566,7 @@ export function BranchNavigator({
         <button
           onClick={() => setOpenInternal((v) => !v)}
           disabled={disabled}
-          title={
-            disabled
-              ? "Branch path switching is disabled while streaming"
-              : "Preview and switch branch paths inside this .jsonl session"
-          }
+          title={disabled ? t("disabledWhileStreaming") : t("previewSwitchBranch")}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -585,7 +585,7 @@ export function BranchNavigator({
           }}
         >
           {branchIcon}
-          <span style={{ fontSize: 12, fontWeight: 500, flexShrink: 0 }}>Branch paths</span>
+          <span style={{ fontSize: 12, fontWeight: 500, flexShrink: 0 }}>{t("branchPaths")}</span>
           <span
             style={{
               height: 18,
@@ -664,10 +664,10 @@ export function BranchNavigator({
                 style={{ padding: "14px 16px 10px 16px", borderBottom: "1px solid var(--border)" }}
               >
                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
-                  Branch paths
+                  {t("branchPaths")}
                 </div>
                 <div style={{ marginTop: 4, fontSize: 11.5, color: "var(--text-dim)" }}>
-                  Select a path inside the current .jsonl session
+                  {t("selectBranchPath")}
                 </div>
               </div>
               <div style={{ padding: "8px 10px 12px 10px", overflowY: "auto" }}>
@@ -687,7 +687,7 @@ export function BranchNavigator({
                   ))
                 ) : (
                   <div style={{ padding: 12, fontSize: 12, color: "var(--text-muted)" }}>
-                    {noBranchReason ?? "This .jsonl session has no branch paths"}
+                    {noBranchReason ?? t("noBranchPaths")}
                   </div>
                 )}
               </div>
@@ -724,11 +724,11 @@ export function BranchNavigator({
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {previewLabel ?? "Preview"}
+                    {previewLabel ?? t("preview")}
                   </div>
                   <div style={{ marginTop: 4, fontSize: 11.5, color: "var(--text-dim)" }}>
-                    {previewEntries.length} visible message{previewEntries.length !== 1 ? "s" : ""}
-                    {previewLeafId === activeLeafId ? " · current path" : ""}
+                    {t("visibleMessages", { count: previewEntries.length })}
+                    {previewLeafId === activeLeafId ? ` · ${t("currentPath")}` : ""}
                   </div>
                 </div>
               </div>
@@ -784,14 +784,14 @@ export function BranchNavigator({
                             WebkitBoxOrient: "vertical",
                           }}
                         >
-                          {getLabel(node.entry)}
+                          {getLabel(node.entry, t)}
                         </div>
                       </div>
                     </div>
                   ))
                 ) : (
                   <div style={{ color: "var(--text-dim)", fontSize: 12 }}>
-                    Hover a branch path to preview its message trail.
+                    {t("hoverToPreview")}
                   </div>
                 )}
               </div>
