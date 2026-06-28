@@ -1,6 +1,6 @@
 {
   "name": "@minuque/no-pi-no-gang",
-  "version": "0.0.5",
+  "version": "0.0.7",
   "description": "Web UI for the pi coding agent",
   "license": "MIT",
   "bin": {
