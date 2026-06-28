@@ -181,3 +181,7 @@ pi SDK extension 与 MCP server 之间的治理层：
 - **不要**用 "Branch" 指 Navigate——说 "Navigate" 或 "路径切换"
 - **不要**用 "Fork" 指 Navigate——Fork 永远是创建新文件
 - v0.0.2 引入 TaskSession 后，现有 `AgentSessionWrapper` 相关的 "session" 应逐步迁移为 "task"
+
+### 会话文件侧栏（Conversation File sidebar）
+
+用于浏览、筛选和选择 Conversation File 的导航区域。它呈现的是持久化会话文件及其项目归属，不代表 AgentRuntime、TaskSession 或正在运行的 agent loop。

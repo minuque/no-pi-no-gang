@@ -2,6 +2,8 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { createPortal } from "react-dom";
+
 import { type AgentPhase, useAgentSession } from "@/hooks/useAgentSession";
 import { useChatScroll } from "@/hooks/useChatScroll";
 import { useDragDrop } from "@/hooks/useDragDrop";
@@ -422,14 +424,10 @@ export const ChatWindow = memo(function ChatWindow({
       setSelectionToolbar(null);
       return;
     }
-    // 紧贴选中文本右下角：collapsed-to-end 获取选区结束精确位置
-    //（rect.right 是容器块右边界，Markdown 块级元素下会偏右）
-    const endRange = range.cloneRange();
-    endRange.collapse(false);
-    const endRect = endRange.getBoundingClientRect();
-    // 按钮顶边 = 选区底边（0px 间隙）；左边 = 选区结束位置 + 6px 间距
-    const toolbarTop = Math.max(0, rect.bottom);
-    const toolbarLeft = Math.min(window.innerWidth - 144, Math.max(4, endRect.left + 6));
+    const selectionRects = Array.from(range.getClientRects()).filter((r) => r.width || r.height);
+    const targetRect = selectionRects[selectionRects.length - 1] ?? rect;
+    const toolbarTop = Math.max(4, targetRect.bottom);
+    const toolbarLeft = Math.min(window.innerWidth - 144, Math.max(4, targetRect.right + 6));
     setSelectionToolbar({
       text,
       top: toolbarTop,
@@ -935,63 +933,66 @@ export const ChatWindow = memo(function ChatWindow({
               </div>
             </div>
 
-            {selectionToolbar && (
-              <div
-                style={{
-                  position: "fixed",
-                  top: selectionToolbar.top,
-                  left: selectionToolbar.left,
-                  zIndex: 30,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  padding: 3,
-                  background: "var(--surface-raised, var(--bg-hover))",
-                  border: "1px solid var(--border)",
-                  borderRadius: 9999,
-                  boxShadow: "var(--shadow-md, 0 4px 12px rgba(0,0,0,0.45))",
-                  color: "var(--text-muted)",
-                  animation: "fade-in-up 0.12s ease both",
-                }}
-                onMouseDown={(e) => e.preventDefault()}
-              >
-                <button
-                  onClick={addSelectionToChat}
-                  title="添加选中文本到对话"
-                  className="selection-toolbar-btn"
+            {selectionToolbar &&
+              typeof document !== "undefined" &&
+              createPortal(
+                <div
                   style={{
-                    display: "inline-flex",
+                    position: "fixed",
+                    top: selectionToolbar.top,
+                    left: selectionToolbar.left,
+                    zIndex: 30,
+                    display: "flex",
                     alignItems: "center",
-                    gap: 5,
-                    height: 26,
-                    padding: "0 9px",
-                    background: "transparent",
-                    border: "none",
+                    gap: 1,
+                    padding: 3,
+                    background: "var(--surface-raised, var(--bg-hover))",
+                    border: "1px solid var(--border)",
                     borderRadius: 9999,
-                    color: "inherit",
-                    cursor: "pointer",
-                    fontSize: 12,
-                    whiteSpace: "nowrap",
+                    boxShadow: "var(--shadow-md, 0 4px 12px rgba(0,0,0,0.45))",
+                    color: "var(--text-muted)",
+                    animation: "fade-in-up 0.12s ease both",
                   }}
+                  onMouseDown={(e) => e.preventDefault()}
                 >
-                  <svg
-                    width="13"
-                    height="13"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                  <button
+                    onClick={addSelectionToChat}
+                    title="添加选中文本到对话"
+                    className="selection-toolbar-btn"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      height: 26,
+                      padding: "0 9px",
+                      background: "transparent",
+                      border: "none",
+                      borderRadius: 9999,
+                      color: "inherit",
+                      cursor: "pointer",
+                      fontSize: 12,
+                      whiteSpace: "nowrap",
+                    }}
                   >
-                    <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
-                    <path d="M12 8v6" />
-                    <path d="M9 11h6" />
-                  </svg>
-                  添加到对话
-                </button>
-              </div>
-            )}
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+                      <path d="M12 8v6" />
+                      <path d="M9 11h6" />
+                    </svg>
+                    添加到对话
+                  </button>
+                </div>,
+                document.body,
+              )}
 
             {userAnchors.length > 1 && (
               <UserMessageNav

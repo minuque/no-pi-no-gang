@@ -18,6 +18,7 @@ interface Props {
   selectedCwd?: string | null;
   onCwdChange?: (cwd: string | null) => void;
   onSessionsChange?: (sessions: SessionInfo[]) => void;
+  onToggleSidebar: () => void;
 }
 
 function formatRelativeTime(
@@ -267,7 +268,7 @@ function IconPlus() {
   );
 }
 
-function IconRefresh() {
+function IconSearch() {
   return (
     <svg
       width="14"
@@ -279,12 +280,13 @@ function IconRefresh() {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
   );
 }
 
-function IconCheck() {
+function IconSidebar() {
   return (
     <svg
       width="14"
@@ -292,11 +294,12 @@ function IconCheck() {
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2.5"
+      strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <polyline points="20 6 9 17 4 12" />
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <line x1="9" y1="3" x2="9" y2="21" />
     </svg>
   );
 }
@@ -334,6 +337,16 @@ function IconTrash() {
       <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
       <path d="M10 11v6M14 11v6" />
       <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </svg>
+  );
+}
+
+function IconMore() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="5" cy="12" r="2" />
+      <circle cx="12" cy="12" r="2" />
+      <circle cx="19" cy="12" r="2" />
     </svg>
   );
 }
@@ -394,44 +407,44 @@ export function SessionSidebar({
   selectedCwd: selCwd,
   onCwdChange,
   onSessionsChange,
+  onToggleSidebar,
 }: Props) {
   const t = useTranslations("SessionSidebar");
+  const tc = useTranslations("Common");
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sessionRefreshDone, setSessionRefreshDone] = useState(false);
   const [expandedCwds, setExpandedCwds] = useState<Set<string>>(() => new Set());
+  const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const sessionRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const acRef = useRef<AbortController | null>(null);
-  const loadSessions = useCallback(async (showLoading = false) => {
-    // Abort any in-flight request before starting a new one
-    acRef.current?.abort();
-    const ac = new AbortController();
-    acRef.current = ac;
-    try {
-      if (showLoading) setLoading(true);
-      const res = await fetch("/api/sessions", { signal: ac.signal });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { sessions: SessionInfo[] };
-      setAllSessions(data.sessions);
-      onSessionsChange?.(data.sessions);
-      setError(null);
-      if (!showLoading) {
-        setSessionRefreshDone(true);
-        if (sessionRefreshTimerRef.current) clearTimeout(sessionRefreshTimerRef.current);
-        sessionRefreshTimerRef.current = setTimeout(() => setSessionRefreshDone(false), 2000);
+  const loadSessions = useCallback(
+    async (showLoading = false) => {
+      // Abort any in-flight request before starting a new one
+      acRef.current?.abort();
+      const ac = new AbortController();
+      acRef.current = ac;
+      try {
+        if (showLoading) setLoading(true);
+        const res = await fetch("/api/sessions", { signal: ac.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as { sessions: SessionInfo[] };
+        setAllSessions(data.sessions);
+        onSessionsChange?.(data.sessions);
+        setError(null);
+      } catch (e) {
+        // Ignore AbortError — caused by React Strict Mode double-mount
+        // or component remount cancelling the previous in-flight request.
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        setError(String(e));
+      } finally {
+        if (showLoading) setLoading(false);
       }
-    } catch (e) {
-      // Ignore AbortError — caused by React Strict Mode double-mount
-      // or component remount cancelling the previous in-flight request.
-      if (e instanceof DOMException && e.name === "AbortError") return;
-      setError(String(e));
-    } finally {
-      if (showLoading) setLoading(false);
-    }
-  }, []);
+    },
+    [onSessionsChange],
+  );
 
   const initialLoadDone = useRef(false);
   useEffect(() => {
@@ -529,18 +542,25 @@ export function SessionSidebar({
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const isSearching = normalizedSearchQuery.length > 0;
 
-  const visibleCwdGroups = useMemo(() => {
-    if (!isSearching) return cwdGroups;
-    return cwdGroups
+  const searchCwdGroups = useMemo(() => {
+    const groups = [...cwdGroups].sort((a, b) => {
+      if (a.cwd === selCwd && b.cwd !== selCwd) return -1;
+      if (b.cwd === selCwd && a.cwd !== selCwd) return 1;
+      return b.modified.localeCompare(a.modified);
+    });
+
+    return groups
       .map((group) => {
         const cwdMatches = [getCwdLabel(group.cwd, t), group.cwd].some((value) =>
           value.toLowerCase().includes(normalizedSearchQuery),
         );
-        const sessions = cwdMatches
-          ? group.sessions
-          : group.sessions.filter((session) =>
-              matchesSessionSearch(session, normalizedSearchQuery),
-            );
+        const sessions = [
+          ...(!isSearching || cwdMatches
+            ? group.sessions
+            : group.sessions.filter((session) =>
+                matchesSessionSearch(session, normalizedSearchQuery),
+              )),
+        ].sort((a, b) => b.modified.localeCompare(a.modified));
         return {
           ...group,
           sessions,
@@ -548,7 +568,26 @@ export function SessionSidebar({
         };
       })
       .filter((group) => group.sessions.length > 0);
-  }, [cwdGroups, isSearching, normalizedSearchQuery]);
+  }, [cwdGroups, isSearching, normalizedSearchQuery, selCwd, t]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const frame = requestAnimationFrame(() => searchInputRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSearchOpen(true);
+        return;
+      }
+      if (event.key === "Escape") setSearchOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   useEffect(() => {
     if (!selectedSessionId) return;
@@ -584,116 +623,81 @@ export function SessionSidebar({
     });
   }, []);
 
+  const handleSearchSelectSession = useCallback(
+    (session: SessionInfo) => {
+      setSearchOpen(false);
+      setSearchQuery("");
+      onCwdChange?.(session.cwd);
+      setExpandedCwds((prev) => {
+        if (prev.has(session.cwd)) return prev;
+        const next = new Set(prev);
+        next.add(session.cwd);
+        return next;
+      });
+      onSelectSession(session);
+    },
+    [onCwdChange, onSelectSession],
+  );
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-      {/* Header — logo + search + actions in one row */}
+      {/* Header — logo + app name + actions */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           height: 44,
-          padding: "0 8px 0 10px",
+          padding: "0 10px",
           borderBottom: "1px solid var(--border)",
           flexShrink: 0,
-          gap: 6,
+          gap: 8,
         }}
       >
         <AppLogo />
+        <span
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: "var(--accent)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          {tc("appName")}
+        </span>
         <div
           style={{
-            flex: 1,
-            minWidth: 0,
+            marginLeft: "auto",
             display: "flex",
             alignItems: "center",
-            gap: 4,
-            height: 28,
-            padding: "0 8px",
+            gap: 2,
+            height: 32,
+            padding: 2,
             background: "var(--bg)",
             border: "1px solid var(--border)",
             borderRadius: 6,
-            transition: "border-color 0.15s, background 0.15s",
           }}
         >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--text-dim)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ flexShrink: 0, opacity: 0.5 }}
+          <HeaderBtn onClick={onToggleSidebar} title={t("hideFileSidebar")}>
+            <IconSidebar />
+          </HeaderBtn>
+          <HeaderBtn
+            onClick={() => setSearchOpen(true)}
+            title={t("openSearch")}
+            active={searchOpen}
           >
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            aria-label={t("searchAriaLabel")}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              height: 26,
-              padding: 0,
-              border: "none",
-              outline: "none",
-              background: "none",
-              color: "var(--text)",
-              fontSize: 12,
-              fontFamily: "inherit",
-            }}
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              title={t("clearSearch")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 16,
-                height: 16,
-                padding: 0,
-                background: "none",
-                border: "none",
-                color: "var(--text-dim)",
-                cursor: "pointer",
-                flexShrink: 0,
-                opacity: 0.5,
-              }}
-            >
-              <svg
-                width="10"
-                height="10"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              >
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
-          )}
+            <IconSearch />
+          </HeaderBtn>
+          <HeaderBtn
+            onClick={handleNewSession}
+            disabled={!selCwd}
+            title={selCwd ? t("newSessionFile") : t("selectProjectFirst")}
+          >
+            <IconPlus />
+          </HeaderBtn>
         </div>
-        <HeaderBtn
-          onClick={handleNewSession}
-          disabled={!selCwd}
-          title={selCwd ? t("newSessionFile") : t("selectProjectFirst")}
-        >
-          <IconPlus />
-        </HeaderBtn>
-        <HeaderBtn
-          onClick={() => loadSessions(false)}
-          title={t("refreshSessions")}
-          active={sessionRefreshDone}
-        >
-          {sessionRefreshDone ? <IconCheck /> : <IconRefresh />}
-        </HeaderBtn>
       </div>
 
       {/* Session list */}
@@ -718,22 +722,13 @@ export function SessionSidebar({
             {t("noSessions")}
           </div>
         )}
-        {!loading &&
-          !error &&
-          isSearching &&
-          cwdGroups.length > 0 &&
-          visibleCwdGroups.length === 0 && (
-            <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 12 }}>
-              {t("noMatchingSessions")}
-            </div>
-          )}
-        {visibleCwdGroups.map((group) => (
+        {cwdGroups.map((group) => (
           <CwdGroupSection
             key={group.cwd}
             group={group}
             selectedSessionId={selectedSessionId}
             isActive={group.cwd === selCwd}
-            isCollapsed={!isSearching && !expandedCwds.has(group.cwd)}
+            isCollapsed={!expandedCwds.has(group.cwd)}
             onSelectCwd={handleSelectCwd}
             onToggleCwd={handleToggleCwd}
             onSelectSession={onSelectSession}
@@ -745,6 +740,216 @@ export function SessionSidebar({
           />
         ))}
       </div>
+      {searchOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("searchDialogTitle")}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSearchOpen(false);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: "var(--z-modal)",
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "center",
+            padding: "12dvh 16px 16px",
+            background: "rgba(0,0,0,0.38)",
+          }}
+        >
+          <div
+            style={{
+              width: "min(720px, calc(100vw - 32px))",
+              maxHeight: "min(760px, calc(100dvh - 32px))",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border)",
+              borderRadius: 6,
+              boxShadow: "var(--shadow-lg)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                height: 48,
+                padding: "0 12px",
+                flexShrink: 0,
+                borderBottom: "1px solid var(--border)",
+                background: "var(--bg-hover)",
+              }}
+            >
+              <IconSearch />
+              <input
+                ref={searchInputRef}
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder={t("searchPlaceholder")}
+                aria-label={t("searchAriaLabel")}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  height: 34,
+                  padding: 0,
+                  border: "none",
+                  outline: "none",
+                  background: "none",
+                  color: "var(--text)",
+                  fontSize: 15,
+                  fontFamily: "inherit",
+                }}
+              />
+              <button
+                onClick={() => setSearchOpen(false)}
+                title={t("closeSearch")}
+                aria-label={t("closeSearch")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 28,
+                  height: 28,
+                  padding: 0,
+                  background: "none",
+                  border: "none",
+                  borderRadius: 4,
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div style={{ overflowY: "auto", padding: "8px 0 12px" }}>
+              {searchCwdGroups.length === 0 ? (
+                <div style={{ padding: "24px 16px", color: "var(--text-dim)", fontSize: 13 }}>
+                  {t("noMatchingSessions")}
+                </div>
+              ) : (
+                searchCwdGroups.map((group) => (
+                  <section key={group.cwd} style={{ padding: "8px 10px 2px" }}>
+                    <div
+                      title={group.cwd}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 7,
+                        padding: "0 8px 6px",
+                        color: group.cwd === selCwd ? "var(--text)" : "var(--text-dim)",
+                        fontSize: 12,
+                        fontWeight: group.cwd === selCwd ? 600 : 500,
+                      }}
+                    >
+                      <IconFolder active={group.cwd === selCwd} />
+                      <span
+                        style={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {getCwdLabel(group.cwd, t)}
+                      </span>
+                      {group.cwd === selCwd && (
+                        <span style={{ color: "var(--accent)", fontSize: 11 }}>
+                          {t("currentProject")}
+                        </span>
+                      )}
+                    </div>
+                    {group.sessions.map((session) => {
+                      const title =
+                        session.name ||
+                        session.firstMessage.slice(0, 60) ||
+                        session.id.slice(0, 12);
+                      return (
+                        <button
+                          key={session.id}
+                          onClick={() => handleSearchSelectSession(session)}
+                          style={{
+                            width: "100%",
+                            display: "grid",
+                            gridTemplateColumns: "minmax(0, 1fr) auto",
+                            gap: 10,
+                            padding: "8px 10px",
+                            border: "none",
+                            borderLeft:
+                              session.id === selectedSessionId
+                                ? "2px solid var(--accent)"
+                                : "2px solid transparent",
+                            borderRadius: 4,
+                            background:
+                              session.id === selectedSessionId
+                                ? "var(--bg-selected)"
+                                : "transparent",
+                            color: "var(--text)",
+                            textAlign: "left",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <span style={{ minWidth: 0 }}>
+                            <span
+                              style={{
+                                display: "block",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                fontSize: 13,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {title}
+                            </span>
+                            <span
+                              style={{
+                                display: "block",
+                                marginTop: 2,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                color: "var(--text-muted)",
+                                fontSize: 12,
+                              }}
+                            >
+                              {session.firstMessage || session.id}
+                            </span>
+                          </span>
+                          <span
+                            title={session.modified}
+                            style={{
+                              color: "var(--text-dim)",
+                              fontSize: 12,
+                              fontVariantNumeric: "tabular-nums",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {formatRelativeTime(session.modified, t)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </section>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1002,8 +1207,9 @@ function SessionItem({
 }) {
   const t = useTranslations("SessionSidebar");
   const [hovered, setHovered] = useState(false);
-  const [actionsFocused, setActionsFocused] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
   const [renameValue, setRenameValue] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -1069,6 +1275,18 @@ function SessionItem({
     setConfirmDelete(false);
   }, []);
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (moreBtnRef.current && !moreBtnRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
   const rowH = 48;
 
   // Depth thread color — fades with depth, forms vertical line when same-depth items stack
@@ -1080,19 +1298,13 @@ function SessionItem({
         : "color-mix(in oklab, var(--accent), transparent 95%)";
 
   const borderColor = confirmDelete ? "var(--danger)" : isSelected ? "var(--accent)" : depthColor;
-  const showRowActions = hovered || actionsFocused;
+  const showRowActions = hovered || menuOpen;
 
   return (
     <div
       onClick={confirmDelete || renaming ? undefined : onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onFocusCapture={() => setActionsFocused(true)}
-      onBlurCapture={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-          setActionsFocused(false);
-        }
-      }}
       style={{
         position: "relative",
         height: rowH,
@@ -1114,7 +1326,7 @@ function SessionItem({
         transition: "background 0.15s, border-color 0.15s",
         opacity: deleting ? 0.4 : 1,
         gap: 8,
-        overflow: "hidden",
+        overflow: menuOpen ? "visible" : "hidden",
         marginBottom: 2,
       }}
     >
@@ -1256,56 +1468,83 @@ function SessionItem({
             </button>
           )}
 
-          {/* Hover action buttons */}
-          <div
-            style={{
-              display: "flex",
-              gap: 5,
-              position: "absolute",
-              right: 8,
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 2,
-              padding: 3,
-              borderRadius: 8,
-              background: "color-mix(in oklab, var(--bg-panel), transparent 4%)",
-              boxShadow: "0 1px 4px rgba(0,0,0,0.10), 0 0 0 1px var(--border)",
-              opacity: showRowActions ? 1 : 0,
-              pointerEvents: showRowActions ? "auto" : "none",
-              transition: "opacity 0.15s",
-            }}
-          >
+          {/* More actions button + dropdown */}
+          <div style={{ position: "relative", flexShrink: 0 }}>
             <button
-              onClick={startRename}
-              title={t("rename")}
-              style={btnIcon}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--bg-selected)";
-                e.currentTarget.style.color = "var(--accent)";
+              ref={moreBtnRef}
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen((v) => !v);
               }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "var(--bg-hover)";
-                e.currentTarget.style.color = "var(--text-muted)";
+              title={t("moreActions")}
+              style={{
+                ...btnIcon,
+                opacity: showRowActions ? 1 : 0,
+                pointerEvents: showRowActions ? "auto" : "none",
+                transition: "opacity 0.12s",
               }}
             >
-              <IconEdit />
+              <IconMore />
             </button>
-            <button
-              onClick={handleDeleteClick}
-              title={t("delete")}
-              style={btnIcon}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background =
-                  "color-mix(in oklab, var(--danger), transparent 90%)";
-                e.currentTarget.style.color = "var(--danger)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "var(--bg-hover)";
-                e.currentTarget.style.color = "var(--text-muted)";
-              }}
-            >
-              <IconTrash />
-            </button>
+            {menuOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "100%",
+                  marginTop: 4,
+                  minWidth: 130,
+                  padding: 4,
+                  background: "var(--bg-panel)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 6,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.18)",
+                  zIndex: 10,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                }}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                    startRename(e);
+                  }}
+                  style={menuItemStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--bg-selected)";
+                    e.currentTarget.style.color = "var(--accent)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "none";
+                    e.currentTarget.style.color = "var(--text)";
+                  }}
+                >
+                  <IconEdit />
+                  <span>{t("rename")}</span>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                    handleDeleteClick(e);
+                  }}
+                  style={menuItemStyle}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--bg-hover)";
+                    e.currentTarget.style.color = "var(--danger)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "none";
+                    e.currentTarget.style.color = "var(--text)";
+                  }}
+                >
+                  <IconTrash />
+                  <span>{t("delete")}</span>
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -1370,6 +1609,23 @@ const btnIcon: React.CSSProperties = {
   cursor: "pointer",
   flexShrink: 0,
   transition: "background 0.12s, color 0.12s, border-color 0.12s",
+};
+
+const menuItemStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  width: "100%",
+  height: 30,
+  padding: "0 8px",
+  background: "none",
+  border: "none",
+  borderRadius: 4,
+  color: "var(--text)",
+  fontSize: 13,
+  cursor: "pointer",
+  textAlign: "left",
+  transition: "background 0.1s, color 0.1s",
 };
 
 const btnDanger: React.CSSProperties = {

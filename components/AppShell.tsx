@@ -476,6 +476,7 @@ export function AppShell() {
         selectedCwd={selectedSession?.cwd ?? newSessionCwd ?? activeCwd ?? null}
         onCwdChange={handleCwdChange}
         onSessionsChange={setAllSessions}
+        onToggleSidebar={() => setSidebarOpen(false)}
       />
       <div style={{ padding: "8px", flexShrink: 0, position: "relative" }}>
         <button
@@ -720,36 +721,22 @@ export function AppShell() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 4,
+              gap: 8,
               flexShrink: 0,
               borderBottom: "1px solid var(--border)",
               height: 44,
-              padding: "0 8px",
+              padding: "0 12px",
               background: "var(--bg)",
             }}
           >
-            <button
-              onClick={() => setSidebarOpen((v) => !v)}
-              title={t(sidebarOpen ? "hideSidebar" : "showSidebar")}
-              aria-label={t(sidebarOpen ? "hideSidebar" : "showSidebar")}
-              className="tb-btn"
-              style={{ color: "var(--text-muted)" }}
-            >
-              {sidebarOpen ? (
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <line x1="9" y1="3" x2="9" y2="21" />
-                </svg>
-              ) : (
+            {!sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                title={t("showSidebar")}
+                aria-label={t("showSidebar")}
+                className="tb-btn"
+                style={{ color: "var(--text-muted)" }}
+              >
                 <svg
                   width="14"
                   height="14"
@@ -763,8 +750,53 @@ export function AppShell() {
                   <line x1="3" y1="12" x2="21" y2="12" />
                   <line x1="3" y1="18" x2="21" y2="18" />
                 </svg>
-              )}
-            </button>
+              </button>
+            )}
+            {showChat && sseStatus && (
+              <div
+                title={`SSE: ${sseStatus.label}`}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  height: 22,
+                  padding: "0 8px",
+                  borderRadius: 4,
+                  background:
+                    sseStatus.tone === "danger"
+                      ? "color-mix(in oklab, var(--danger), transparent 88%)"
+                      : sseStatus.tone === "warn"
+                        ? "color-mix(in oklab, var(--warn), transparent 88%)"
+                        : sseStatus.tone === "success"
+                          ? "color-mix(in oklab, var(--success), transparent 90%)"
+                          : "var(--bg-hover)",
+                  border: "1px solid var(--border)",
+                  color:
+                    sseStatus.tone === "danger"
+                      ? "var(--danger)"
+                      : sseStatus.tone === "warn"
+                        ? "var(--warn)"
+                        : sseStatus.tone === "success"
+                          ? "var(--success)"
+                          : "var(--text-muted)",
+                  fontSize: 11.5,
+                  fontFamily: "var(--font-mono)",
+                  lineHeight: "22px",
+                  flexShrink: 0,
+                }}
+              >
+                <span
+                  style={{
+                    width: 5,
+                    height: 5,
+                    borderRadius: "50%",
+                    background: "currentColor",
+                    flexShrink: 0,
+                  }}
+                />
+                {sseStatus.label}
+              </div>
+            )}
             {showChat && (
               <BranchNavigator
                 tree={branchTree}
@@ -779,53 +811,7 @@ export function AppShell() {
             )}
             {/* Right-side toolbar — SSE status + actions */}
             {showChat && (
-              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
-                {/* SSE status — inline in top bar */}
-                {sseStatus && (
-                  <div
-                    title={`SSE: ${sseStatus.label}`}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 5,
-                      height: 22,
-                      padding: "0 8px",
-                      borderRadius: 4,
-                      background:
-                        sseStatus.tone === "danger"
-                          ? "color-mix(in oklab, var(--danger), transparent 88%)"
-                          : sseStatus.tone === "warn"
-                            ? "color-mix(in oklab, var(--warn), transparent 88%)"
-                            : sseStatus.tone === "success"
-                              ? "color-mix(in oklab, var(--success), transparent 90%)"
-                              : "var(--bg-hover)",
-                      border: "1px solid var(--border)",
-                      color:
-                        sseStatus.tone === "danger"
-                          ? "var(--danger)"
-                          : sseStatus.tone === "warn"
-                            ? "var(--warn)"
-                            : sseStatus.tone === "success"
-                              ? "var(--success)"
-                              : "var(--text-muted)",
-                      fontSize: 11.5,
-                      fontFamily: "var(--font-mono)",
-                      lineHeight: "22px",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 5,
-                        height: 5,
-                        borderRadius: "50%",
-                        background: "currentColor",
-                        flexShrink: 0,
-                      }}
-                    />
-                    {sseStatus.label}
-                  </div>
-                )}
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
                 <LocaleSwitcher />
                 <button
                   onClick={(e) => {

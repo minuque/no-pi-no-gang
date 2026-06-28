@@ -65,9 +65,6 @@ export const metadata: Metadata = {
     title: APP_NAME,
     description: APP_DESCRIPTION,
   },
-  icons: {
-    icon: { url: "/favicon.ico", type: "image/x-icon" },
-  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
