@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, memo, useEffect, useMemo, useState } from "react";
 
 import dynamic from "next/dynamic";
 
@@ -30,32 +30,42 @@ function copyText(text: string): Promise<void> {
   return Promise.resolve();
 }
 
-export function RichMarkdownBlock({ text, isStreaming }: { text: string; isStreaming?: boolean }) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        code({ className, children, ...props }) {
-          const lang = className?.replace("language-", "").toLowerCase() ?? "";
-          const raw = String(children);
-          const isBlock = className?.includes("language-") || raw.includes("\n");
-          if (isBlock) {
-            if (lang === "mermaid") {
-              return <MermaidBlock code={raw.replace(/\n$/, "")} isStreaming={isStreaming} />;
-            }
-            return <CodeBlock code={raw.replace(/\n$/, "")} lang={lang} />;
+export const RichMarkdownBlock = memo(function RichMarkdownBlock({
+  text,
+  isStreaming,
+}: {
+  text: string;
+  isStreaming?: boolean;
+}) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const components = useMemo<any>(
+    () => ({
+      code({ className, children, ...props }: { className?: string; children?: ReactNode }) {
+        const lang = className?.replace("language-", "").toLowerCase() ?? "";
+        const raw = String(children);
+        const isBlock = className?.includes("language-") || raw.includes("\n");
+        if (isBlock) {
+          if (lang === "mermaid") {
+            return <MermaidBlock code={raw.replace(/\n$/, "")} isStreaming={isStreaming} />;
           }
-          return <code {...props}>{children}</code>;
-        },
-        pre({ children }) {
-          return <>{children}</>;
-        },
-      }}
-    >
+          return <CodeBlock code={raw.replace(/\n$/, "")} lang={lang} />;
+        }
+        return <code {...props}>{children}</code>;
+      },
+      pre({ children }: { children?: ReactNode }) {
+        return <>{children}</>;
+      },
+    }),
+    [isStreaming],
+  );
+  const remarkPlugins = useMemo(() => [remarkGfm], []);
+
+  return (
+    <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
       {text}
     </ReactMarkdown>
   );
-}
+});
 
 function MermaidBlock({ code, isStreaming }: { code: string; isStreaming?: boolean }) {
   const { isDark } = useTheme();
