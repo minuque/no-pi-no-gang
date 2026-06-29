@@ -1,17 +1,12 @@
 # CLAUDE.md
 
-## 快速开始
-
-类型检查：`node_modules/.bin/tsc --noEmit`
-代码检查：`node node_modules/next/dist/bin/next lint`
-
-### 验收标准
+## 验收标准
 
 提交前必须通过：
 
-```bash
-bun run build
-```
+类型检查：`node_modules/.bin/tsc --noEmit`
+代码检查：`node node_modules/next/dist/bin/next lint`
+Dev 验证：使用 dev 模式并固定 7788 端口，避免和其他工具冲突：`node node_modules/next/dist/bin/next dev -p 7788 --hostname 127.0.0.1`
 
 ## Agent skills
 
