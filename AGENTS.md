@@ -6,7 +6,7 @@
 
 类型检查：`node_modules/.bin/tsc --noEmit`
 代码检查：`node node_modules/next/dist/bin/next lint`
-Dev 验证：使用 dev 模式并固定 7788 端口，避免和其他工具冲突：`node node_modules/next/dist/bin/next dev -p 7788 --hostname 127.0.0.1`
+Dev 验证：使用 dev 模式并固定 7788 端口（项目的默认 dev 端口为 7777，验收时改用 7788 避免冲突）：`node node_modules/next/dist/bin/next dev -p 7788 --hostname 127.0.0.1`
 
 ## Agent skills
 

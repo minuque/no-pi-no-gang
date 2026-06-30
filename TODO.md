@@ -70,34 +70,34 @@ useAgentSession.ts
   = 当前过重的前端状态机，需要拆分
 ```
 
-建议重构目录：
+建议重构目录（目标结构，不必首次全部建，按阶段增量引入）：
 
 ```txt
 lib/pi/
-  pi-session-controller.ts
-  pi-session-registry.ts
-  pi-command-dispatcher.ts
-  pi-session-factory.ts
-  pi-extension-bridge.ts
-  pi-compat.ts
+  pi-session-controller.ts    // Phase 3: AgentSession 治理包装
+  pi-session-registry.ts      // Phase 3: 全局 registry（从 rpc-manager.ts 抽出）
+  pi-command-dispatcher.ts    // Phase 3: 命令路由（从 rpc-manager.ts 抽出）
+  pi-session-factory.ts       // Phase 3: 创建/恢复/重连
+  pi-extension-bridge.ts      // Phase 3: 接 Pi extension hooks
+  pi-compat.ts                // Phase 2: Pi 内部 state hack 收口
 
 lib/projection/
-  pi-session-projector.ts
-  pi-context-projector.ts
-  pi-event-projector.ts
-  pi-message-normalizer.ts
+  pi-session-projector.ts     // Phase 2: 从 .jsonl 到 UI 模型
+  pi-context-projector.ts     // Phase 2: 分支上下文投影
+  pi-event-projector.ts       // Phase 1: Pi 事件 → WorkbenchEvent 映射
+  pi-message-normalizer.ts    // 现有 normalize.ts 搬迁，Phase 1
 
 lib/workbench/
-  workbench-event.ts
-  event-buffer.ts
-  timeline-builder.ts
-  policy-event.ts
+  workbench-event.ts          // Phase 1: 事件类型定义
+  event-buffer.ts             // Phase 1: 内存 ring buffer + seq
+  timeline-builder.ts         // Phase 2: Timeline 面板数据构建
+  policy-event.ts             // Phase 3: Policy/Approval 事件定义
 
 hooks/
-  usePiSessionData.ts
-  usePiEventStream.ts
-  usePiAgentController.ts
-  useAgentSession.ts
+  usePiSessionData.ts         // Phase 2: useAgentSession → loadSession/loadContext
+  usePiEventStream.ts         // Phase 2: SSE 连接/重连/seq
+  usePiAgentController.ts     // Phase 2: send/command/fork/compact
+  useAgentSession.ts          // Phase 2: facade
 ```
 
 `useAgentSession.ts` 拆分目标：
@@ -133,18 +133,26 @@ type WorkbenchEvent =
   | { type: "run_started"; sessionId: string }
   | { type: "assistant_delta"; message: unknown }
   | { type: "message_completed"; message: unknown }
+  // ----- Tool execution (observability) -----
   | { type: "tool_started"; toolCallId: string; toolName: string; input?: unknown }
   | { type: "tool_updated"; toolCallId: string; update: unknown }
   | { type: "tool_finished"; toolCallId: string; result?: unknown; isError?: boolean }
-  | { type: "compaction_started" }
-  | { type: "compaction_finished"; errorMessage?: string }
+  // ----- Compaction -----
+  | { type: "compaction_started"; reason?: "manual" | "threshold" | "overflow" }
+  | { type: "compaction_finished"; aborted?: boolean; willRetry?: boolean; errorMessage?: string }
+  // ----- Auto-retry -----
   | { type: "retry_started"; attempt: number; maxAttempts: number; errorMessage?: string }
-  | { type: "retry_finished" }
+  | { type: "retry_finished"; success?: boolean; finalError?: string }
+  // ----- Queue / run state -----
   | { type: "run_finished" }
-  | { type: "run_failed"; error: string };
+  | { type: "run_failed"; error: string }
+  | { type: "queue_update"; steering: string[]; followUp: string[] }
+  // ----- Config change -----
+  | { type: "thinking_level_changed"; level: string }
+  | { type: "session_info_changed"; name: string | undefined };
 ```
 
-服务端事件 envelope：
+服务端事件 envelope（`raw` 兜底确保向前兼容）：
 
 ```ts
 interface WorkbenchEventEnvelope {
@@ -152,6 +160,8 @@ interface WorkbenchEventEnvelope {
   sessionId: string;
   timestamp: string;
   event: WorkbenchEvent;
+  /** 当 event type 不在 WorkbenchEvent union 中时保留原始 Pi 事件 */
+  raw?: unknown;
 }
 ```
 
@@ -215,16 +225,29 @@ tool_result
   - audit finish
 ```
 
+> **重要区分**：`tool_call`（extension hook）和 `tool_execution_start`（observability event）不同。
+> - `tool_call` 是 Pi extension hook，工具执行**前**触发，可拦截/修改参数/阻断——适合 Policy / Approval。
+> - `tool_execution_start / update / end` 是 Pi 的 observability 事件，仅报告工具执行状态——适合 Timeline / Inspector。
+> WorkbenchEvent 中的 `tool_started / tool_finished` 映射的是 observability 侧，不要混入 policy 逻辑。
+
 Pi Extension Bridge 目标：
 
 ```txt
-Pi extension hook
+Pi extension hook (拦截/修改)
   ↓
 policy decision / observability event
   ↓
 WorkbenchEvent / PolicyEvent
   ↓
 Web approval UI / audit / timeline
+
+Observability event (仅报告)
+  ↓
+pi-event-projector.ts
+  ↓
+WorkbenchEvent + envelope
+  ↓
+SSE → Timeline / Tool Inspector
 ```
 
 当前代码中直接改 Pi 内部 state 的逻辑要收口到 `pi-compat.ts`：
@@ -234,14 +257,26 @@ Web approval UI / audit / timeline
 - no-tools mode clear systemPrompt
 ```
 
-短期最高优先级：
+> **注意**：event-buffer + `after=seq` 只能解决 SSE 断线期间的**实时补偿**，不等同于 Audit / Replay。
+> 真正的 Replay 需要从 `.jsonl` 重建或写入额外 audit log，属于后续 Milestone，不在首批范围内。
+
+## 实施阶段
 
 ```txt
-1. 拆 useAgentSession.ts
-2. 抽 pi-event-projector.ts
-3. 加 seq + memory ring buffer
-4. SSE 支持 after=seq 补事件
-5. 做 Timeline / Tool Call Inspector
-6. 把 Pi 内部 state hack 收口到 pi-compat.ts
-7. 建 pi-extension-bridge.ts，先接 tool_call / tool_result
+Phase 1 — 事件底座
+  1. 抽 pi-event-projector.ts（Pi 事件 → WorkbenchEvent 映射）
+  2. 加 seq + event-buffer（内存 ring buffer）
+  3. SSE 支持 ?after=seq 补事件
+  ✅ 完成标志：SSE 断线重连后自动补齐缺失事件
+
+Phase 2 — 观测 UI
+  4. 拆 useAgentSession.ts（usePiSessionData / usePiEventStream / usePiAgentController + facade）
+  5. 做 Timeline / Tool Call Inspector
+  ✅ 完成标志：Timeline 面板展示完整事件流水，Tool Inspector 展示每次 tool call 的入参/结果
+
+Phase 3 — 治理适配
+  6. 把 Pi 内部 state hack 收口到 pi-compat.ts
+  7. 建 pi-extension-bridge.ts，先接 tool_call → PolicyEvent，tool_execution → WorkbenchEvent
+  8. Policy / Approval 审批流 UI
+  ✅ 完成标志：写操作可经过审批流程，所有 Pi 内部 hack 集中在 pi-compat.ts 中
 ```

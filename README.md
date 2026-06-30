@@ -6,7 +6,7 @@
 
 **<a href="https://github.com/badlogic/pi-mono">pi.dev</a> Web UI**
 
-<img src="https://img.shields.io/badge/version-0.0.1-blue" alt="version" />
+<img src="https://img.shields.io/badge/version-0.0.7-blue" alt="version" />
 <img src="https://img.shields.io/badge/license-MIT-green" alt="license" />
 <img src="https://img.shields.io/badge/Bun-≥1.0-fbf0df?logo=bun&logoColor=000" alt="Bun" />
 <img src="https://img.shields.io/badge/Next.js-16-black" alt="Next.js 16" />
@@ -43,6 +43,8 @@ bun run dev                     # → http://localhost:7777
 bun run build
 bun run start                   # → http://localhost:7777
 ```
+
+> **端口说明**：默认 dev server 使用 7777 端口。AI 验收验证时请使用 7788 端口（`-p 7788`）避免与其他工具冲突。
 
 ## Architecture
 
@@ -118,7 +120,6 @@ bun run build && bun run start
 
 ## Related Docs
 
-- [ROADMAP.md](ROADMAP.md) — System architecture, data flow, iteration roadmap
 - [TODO.md](TODO.md) — Priority-organized task packages
 - [Pi_SDK.md](Pi_SDK.md) — pi SDK interface reference
 - [AGENTS.md](AGENTS.md) — Collaboration, verification, and documentation conventions
