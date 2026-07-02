@@ -1,1 +1,2 @@
+node -e "require('fs').copyFileSync('AGENTS.md','CLAUDE.md')"
 npx lint-staged

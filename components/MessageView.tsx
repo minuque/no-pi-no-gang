@@ -84,49 +84,6 @@ interface StructuredToolError {
   detail?: string;
 }
 
-const FILE_REF_RE =
-  /(?:[a-zA-Z]:[\\/][^\s"'`<>|]+|\.{0,2}[\\/][^\s"'`<>|]+|[\w@.-]+(?:[\\/][\w@ .-]+)+\.[A-Za-z0-9]{1,8})/g;
-
-function sanitizeFileRef(value: string): string {
-  return value.replace(/[),.;\]]+$/g, "").replace(/[:#]\d+(?::\d+)?$/g, "");
-}
-
-function extractFileRefs(text: string): string[] {
-  const matches = text.match(FILE_REF_RE) ?? [];
-  return Array.from(new Set(matches.map(sanitizeFileRef).filter((p) => p.length > 1))).slice(0, 8);
-}
-
-function collectStrings(value: unknown, out: string[] = []): string[] {
-  if (typeof value === "string") {
-    out.push(value);
-  } else if (Array.isArray(value)) {
-    for (const item of value) collectStrings(item, out);
-  } else if (value && typeof value === "object") {
-    for (const item of Object.values(value)) collectStrings(item, out);
-  }
-  return out;
-}
-
-function getToolFilePath(block: ToolCallContent): string | null {
-  const input = block.input;
-  const preferredKeys = ["file_path", "path", "cwd", "dir", "directory", "target_file"];
-  for (const key of preferredKeys) {
-    const value = input[key];
-    if (typeof value === "string" && extractFileRefs(value).length > 0)
-      return sanitizeFileRef(value);
-  }
-  for (const value of collectStrings(input)) {
-    const refs = extractFileRefs(value);
-    if (refs.length > 0) return refs[0];
-  }
-  return null;
-}
-
-function openWorkspaceFile(path: string): void {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent("pi-open-workspace-file", { detail: { path } }));
-}
-
 function objectString(value: unknown): string | undefined {
   if (typeof value === "string") return value;
   if (value === undefined || value === null) return undefined;
@@ -240,6 +197,51 @@ function ToolStateDot({ state }: { state: ToolCallState }) {
         ...(state === "running" ? { animation: "pulse 1.8s ease-in-out infinite" } : {}),
       }}
     />
+  );
+}
+
+const LINE_COLOR = "color-mix(in oklab, var(--text-dim), transparent 78%)";
+
+function BlockLine({
+  children,
+  isLast,
+  dot,
+  isStreaming,
+}: {
+  children: ReactNode;
+  isLast?: boolean;
+  dot: ReactNode;
+  isStreaming?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        paddingLeft: 20,
+        paddingBottom: isLast ? 0 : 10,
+        ...(isStreaming ? { animation: "block-enter 0.35s ease both" } : {}),
+      }}
+    >
+      {/* Dot with background to hide the parent line behind it */}
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: 3,
+          top: 10,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 9,
+          height: 9,
+          background: "var(--bg)",
+          borderRadius: "50%",
+        }}
+      >
+        {dot}
+      </span>
+      {children}
+    </div>
   );
 }
 
@@ -898,7 +900,7 @@ function AssistantMessageView({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", flexDirection: "column", paddingTop: 4 }}>
         <BlockView
           blocks={blocks}
           toolResults={toolResults}
@@ -921,7 +923,7 @@ function AssistantMessageView({
           display: "flex",
           alignItems: "center",
           gap: 8,
-          marginTop: 4,
+          marginTop: 8,
         }}
       >
         {time && !isStreaming && (
@@ -1100,50 +1102,78 @@ function BlockView({
   toolCallDurations: Map<string, number>;
 }) {
   const elements: ReactNode[] = [];
-  let toolCallRun: { block: ToolCallContent; idx: number }[] = [];
-
-  const flushToolCalls = () => {
-    if (toolCallRun.length === 0) return;
-    elements.push(
-      <ToolCallsGroup
-        key={`tools-${toolCallRun[0].idx}`}
-        blocks={toolCallRun.map((tc) => tc.block)}
-        toolResults={toolResults}
-        isStreaming={isStreaming}
-        entryId={entryId}
-        toolCallDurations={toolCallDurations}
-      />,
-    );
-    toolCallRun = [];
-  };
 
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
+    const isLast = i === blocks.length - 1;
+
     if (block.type === "toolCall") {
-      toolCallRun.push({ block: block as ToolCallContent, idx: i });
-    } else {
-      flushToolCalls();
-      if (block.type === "text") {
-        elements.push(<TextBlock key={i} block={block as TextContent} isStreaming={isStreaming} />);
-      } else if (block.type === "thinking") {
-        const dur = streamingDurations.get(i) ?? thinkingDurationFromFile;
-        elements.push(
-          <ThinkingBlock
-            key={i}
-            block={block as ThinkingContent}
-            duration={dur}
-            isStreaming={isStreaming}
-          />,
-        );
-      }
+      const toolBlock = block as ToolCallContent;
+      const result = toolResults?.get(toolBlock.toolCallId);
+      elements.push(
+        <ToolCallBlock
+          key={i}
+          block={toolBlock}
+          result={result}
+          isRunning={isStreaming && !result}
+          duration={toolCallDurations?.get(toolBlock.toolCallId)}
+          entryId={entryId}
+          isLast={isLast}
+        />,
+      );
+    } else if (block.type === "text") {
+      elements.push(
+        <TextBlock
+          key={i}
+          block={block as TextContent}
+          isStreaming={isStreaming}
+          isLast={isLast}
+        />,
+      );
+    } else if (block.type === "thinking") {
+      const dur = streamingDurations.get(i) ?? thinkingDurationFromFile;
+      elements.push(
+        <ThinkingBlock
+          key={i}
+          block={block as ThinkingContent}
+          duration={dur}
+          isStreaming={isStreaming}
+          isLast={isLast}
+        />,
+      );
     }
   }
-  flushToolCalls();
 
-  return <>{elements}</>;
+  if (elements.length === 0) return null;
+
+  return (
+    <div style={{ position: "relative" }}>
+      {/* One continuous line for ALL blocks in this message */}
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          left: 7,
+          top: 12,
+          bottom: -2,
+          width: 1,
+          background: LINE_COLOR,
+        }}
+      />
+      {elements}
+    </div>
+  );
 }
 
-function TextBlock({ block, isStreaming }: { block: TextContent; isStreaming?: boolean }) {
+function TextBlock({
+  block,
+  isStreaming,
+  isLast,
+}: {
+  block: TextContent;
+  isStreaming?: boolean;
+  isLast?: boolean;
+}) {
   // ── 60fps smooth streaming reveal ──
   // Decouples irregular SSE arrival from visual display.
   // Incoming chunks accumulate in a ref; a RAF loop pulls characters
@@ -1213,16 +1243,79 @@ function TextBlock({ block, isStreaming }: { block: TextContent; isStreaming?: b
 
   if (process.env.NEXT_PUBLIC_PI_WEB_LIGHT_RENDER === "1") {
     return (
-      <div className="markdown-body">
-        <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{displayText}</div>
-      </div>
+      <BlockLine
+        isLast={isLast}
+        isStreaming={isStreaming}
+        dot={
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: "var(--text-dim)",
+              boxShadow: "0 0 0 2px color-mix(in oklab, var(--text-dim), transparent 92%)",
+              flexShrink: 0,
+            }}
+          />
+        }
+      >
+        <div className="markdown-body">
+          <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+            {displayText}
+            {isStreaming && isLast && (
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 2,
+                  height: "1.05em",
+                  background: "var(--accent)",
+                  marginLeft: 1,
+                  verticalAlign: "text-bottom",
+                  animation: "cursor-blink 1s step-end infinite",
+                }}
+              />
+            )}
+          </div>
+        </div>
+      </BlockLine>
     );
   }
 
   return (
-    <div className="markdown-body">
-      <RichMarkdownBlock text={displayText} isStreaming={isStreaming} />
-    </div>
+    <BlockLine
+      isLast={isLast}
+      isStreaming={isStreaming}
+      dot={
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: "var(--text-dim)",
+            boxShadow: "0 0 0 2px color-mix(in oklab, var(--text-dim), transparent 92%)",
+            flexShrink: 0,
+          }}
+        />
+      }
+    >
+      <div className="markdown-body">
+        <RichMarkdownBlock text={displayText} isStreaming={isStreaming} />
+        {isStreaming && isLast && (
+          <span
+            className="streaming-cursor"
+            style={{
+              display: "inline-block",
+              width: 2,
+              height: "1.05em",
+              background: "var(--accent)",
+              marginLeft: 1,
+              verticalAlign: "text-bottom",
+              animation: "cursor-blink 1s step-end infinite",
+            }}
+          />
+        )}
+      </div>
+    </BlockLine>
   );
 }
 
@@ -1230,14 +1323,20 @@ function ThinkingBlock({
   block,
   duration,
   isStreaming,
+  isLast,
 }: {
   block: ThinkingContent;
   duration?: number;
   isStreaming?: boolean;
+  isLast?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const t = useTranslations("MessageView");
-  const label = isStreaming ? t("thinking") : t("reasoning");
+  const label = isStreaming
+    ? t("thinking")
+    : duration !== undefined
+      ? t("thoughtFor", { seconds: duration })
+      : t("reasoning");
 
   useEffect(() => {
     if (!document.getElementById("think-pulse-style")) {
@@ -1253,32 +1352,38 @@ function ThinkingBlock({
   }, []);
 
   return (
-    <div style={{ margin: "2px 0" }}>
+    <BlockLine
+      isLast={isLast}
+      isStreaming={isStreaming}
+      dot={
+        <span
+          style={{
+            width: 6,
+            height: 6,
+            borderRadius: "50%",
+            background: "var(--text-dim)",
+            boxShadow: "0 0 0 2px color-mix(in oklab, var(--text-dim), transparent 92%)",
+            flexShrink: 0,
+          }}
+        />
+      }
+    >
       {/* ── Thin trigger row ── */}
-      <button
+      <span
         onClick={() => setExpanded((v) => !v)}
         style={{
           display: "inline-flex",
           alignItems: "center",
           gap: 6,
-          padding: "2px 8px",
+          padding: 0,
+          paddingLeft: 5,
           background: "none",
           border: "none",
-          borderRadius: 6,
           color: "var(--text-dim)",
           cursor: "pointer",
-          fontSize: 12,
+          fontSize: 14,
           lineHeight: "20px",
-          transition: "color 0.15s, background 0.15s",
           ...(isStreaming ? { animation: "think-pulse 1.8s ease-in-out infinite" } : {}),
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.color = "var(--text-muted)";
-          e.currentTarget.style.background = "var(--bg-subtle)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.color = "var(--text-dim)";
-          e.currentTarget.style.background = "none";
         }}
       >
         <span>{label}</span>
@@ -1316,9 +1421,6 @@ function ThinkingBlock({
             />
           </span>
         )}
-        {duration !== undefined && (
-          <span style={{ fontSize: 12, fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
-        )}
         <svg
           width="10"
           height="10"
@@ -1332,7 +1434,7 @@ function ThinkingBlock({
         >
           <polyline points="2 3.5 5 6.5 8 3.5" />
         </svg>
-      </button>
+      </span>
 
       {/* ── Expandable thinking content ── */}
       {expanded && (
@@ -1354,7 +1456,7 @@ function ThinkingBlock({
           {block.thinking}
         </div>
       )}
-    </div>
+    </BlockLine>
   );
 }
 
@@ -1363,18 +1465,14 @@ function ToolCallBlock({
   result,
   isRunning,
   duration,
-  elapsed,
   entryId,
-  isFirst,
   isLast,
 }: {
   block: ToolCallContent;
   result?: ToolResultMessage;
   isRunning?: boolean;
   duration?: number;
-  elapsed?: number;
   entryId?: string;
-  isFirst?: boolean;
   isLast?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -1384,50 +1482,48 @@ function ToolCallBlock({
   const isError = result?.isError ?? false;
   const state = getToolState(result, isRunning);
   const resultPreview = getToolResultPreview(result);
-  const toolFilePath = getToolFilePath(block);
   const errorInfo = getStructuredToolError(result);
   const t = useTranslations("MessageView");
+  const mountRef = useRef(0);
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (mountRef.current === 0) mountRef.current = Date.now();
+    if (!isRunning) {
+      setElapsed(Math.round((Date.now() - mountRef.current) / 1000));
+      return;
+    }
+    const tick = () => setElapsed(Math.round((Date.now() - mountRef.current) / 1000));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [isRunning]);
+
   const shownDuration = duration ?? (isRunning && elapsed ? elapsed : undefined);
 
   return (
-    <div style={{ position: "relative", paddingLeft: 14, paddingBottom: isLast ? 0 : 3 }}>
-      {!isFirst && (
-        <span
-          aria-hidden
-          style={{
-            position: "absolute",
-            left: 4,
-            top: 0,
-            height: 10,
-            width: 1,
-            background: "var(--border)",
-          }}
-        />
-      )}
-      {!isLast && (
-        <span
-          aria-hidden
-          style={{
-            position: "absolute",
-            left: 4,
-            top: 18,
-            bottom: -3,
-            width: 1,
-            background: "var(--border)",
-          }}
-        />
-      )}
+    <div
+      style={{
+        position: "relative",
+        paddingLeft: 20,
+        paddingBottom: isLast ? 0 : 10,
+        ...(isRunning ? { animation: "block-enter 0.35s ease both" } : {}),
+      }}
+    >
+      {/* Dot with background to cover parent line behind it */}
       <span
         aria-hidden
         style={{
           position: "absolute",
-          left: 1,
+          left: 3,
           top: 10,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          width: 7,
-          height: 7,
+          width: 9,
+          height: 9,
+          background: "var(--bg)",
+          borderRadius: "50%",
         }}
       >
         <ToolStateDot state={state} />
@@ -1498,35 +1594,6 @@ function ToolCallBlock({
         >
           {resultPreview || " "}
         </span>
-        {toolFilePath && (
-          <span
-            role="button"
-            tabIndex={0}
-            title={`Open ${toolFilePath}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              openWorkspaceFile(toolFilePath);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                e.stopPropagation();
-                openWorkspaceFile(toolFilePath);
-              }
-            }}
-            style={{
-              color: "var(--text-dim)",
-              flexShrink: 0,
-              padding: "1px 4px",
-              borderRadius: 4,
-              border: "1px solid var(--border)",
-              fontFamily: "inherit",
-              fontSize: 11,
-            }}
-          >
-            {t("open")}
-          </span>
-        )}
         <span
           style={{
             width: 34,
@@ -1595,162 +1662,6 @@ function ToolCallBlock({
             <PairedResult text={resultText ?? ""} isEmpty={resultIsEmpty} isError={isError} />
           )}
         </div>
-      )}
-    </div>
-  );
-}
-
-function ToolCallsGroup({
-  blocks,
-  toolResults,
-  isStreaming,
-  entryId,
-  toolCallDurations,
-}: {
-  blocks: ToolCallContent[];
-  toolResults?: Map<string, ToolResultMessage>;
-  isStreaming?: boolean;
-  entryId?: string;
-  toolCallDurations?: Map<string, number>;
-}) {
-  const [showAll, setShowAll] = useState(false);
-  const t = useTranslations("MessageView");
-  const mountRef = useRef(0);
-  const [elapsed, setElapsed] = useState(0);
-
-  // Real-time timer during streaming
-  useEffect(() => {
-    if (mountRef.current === 0) mountRef.current = Date.now();
-    if (!isStreaming) {
-      setElapsed(Math.round((Date.now() - mountRef.current) / 1000));
-      return;
-    }
-    const tick = () => setElapsed(Math.round((Date.now() - mountRef.current) / 1000));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [isStreaming]);
-
-  const allDone = blocks.every((b) => toolResults?.has(b.toolCallId));
-  const showTimer = elapsed > 0;
-  const states = blocks.map((block) =>
-    getToolState(
-      toolResults?.get(block.toolCallId),
-      isStreaming && !toolResults?.has(block.toolCallId),
-    ),
-  );
-  const failedCount = states.filter((state) => state === "error").length;
-  const runningCount = states.filter((state) => state === "running").length;
-  const summaryColor =
-    failedCount > 0 ? "var(--danger)" : runningCount > 0 ? "var(--accent)" : "var(--text-dim)";
-  const summaryLabel =
-    failedCount > 0
-      ? t("reasoningError")
-      : runningCount > 0
-        ? t("thinkingToolsRunning", { count: blocks.length })
-        : t("reasoningTools", { count: blocks.length });
-  const defaultVisibleCount = 3;
-  const visibleBlocks = showAll ? blocks : blocks.slice(0, defaultVisibleCount);
-  const hiddenCount = blocks.length - visibleBlocks.length;
-
-  return (
-    <div
-      style={{
-        margin: "6px 0 4px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          paddingLeft: 14,
-          paddingBottom: 2,
-          color: "var(--text-dim)",
-          fontSize: 12,
-          fontFamily: "var(--font-mono)",
-        }}
-      >
-        <span
-          style={{
-            color: summaryColor,
-            fontWeight: 600,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            minWidth: 0,
-            transition: "color 220ms ease",
-          }}
-        >
-          {summaryLabel}
-        </span>
-        <span
-          style={{
-            width: 34,
-            flexShrink: 0,
-            textAlign: "right",
-            fontVariantNumeric: "tabular-nums",
-            color: "var(--text-dim)",
-            opacity: showTimer ? 0.55 : 0,
-            transition: "opacity 180ms ease",
-            ...(isStreaming && !allDone && showTimer
-              ? { animation: "pulse 1.8s ease-in-out infinite" }
-              : {}),
-          }}
-        >
-          {elapsed}s
-        </span>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", transition: "opacity 180ms ease" }}>
-        {visibleBlocks.map((block, i) => {
-          const result = toolResults?.get(block.toolCallId);
-          return (
-            <ToolCallBlock
-              key={block.toolCallId}
-              block={block}
-              result={result}
-              isRunning={isStreaming && !result}
-              duration={toolCallDurations?.get(block.toolCallId)}
-              elapsed={elapsed}
-              entryId={entryId}
-              isFirst={i === 0}
-              isLast={i === visibleBlocks.length - 1 && hiddenCount === 0}
-            />
-          );
-        })}
-      </div>
-
-      {hiddenCount > 0 && (
-        <button
-          onClick={() => setShowAll(true)}
-          style={{
-            alignSelf: "flex-start",
-            marginLeft: 14,
-            marginTop: 2,
-            padding: "2px 6px",
-            background: "none",
-            border: "none",
-            borderRadius: 5,
-            color: "var(--text-dim)",
-            cursor: "pointer",
-            fontSize: 12,
-            fontFamily: "var(--font-mono)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--bg-subtle)";
-            e.currentTarget.style.color = "var(--text-muted)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "none";
-            e.currentTarget.style.color = "var(--text-dim)";
-          }}
-        >
-          {t("showMore", { count: hiddenCount })}
-        </button>
       )}
     </div>
   );
@@ -1831,18 +1742,12 @@ function PairedResult({
 }
 
 function getToolPreview(block: ToolCallContent): string {
+  const name = block.toolName?.toLowerCase() ?? "";
+  // Only show file path preview for file-oriented tools
+  if (!/^(edit|write|read)$/i.test(name)) return "";
   const input = block.input;
   if (!input || typeof input !== "object") return "";
-  const keys = Object.keys(input);
-  if (keys.length === 0) return "";
-
-  // Common tool input patterns
-  if ("command" in input) return String(input.command).slice(0, 120);
-  if ("path" in input) return String(input.path).slice(0, 120);
   if ("file_path" in input) return String(input.file_path).slice(0, 120);
-  if ("pattern" in input) return String(input.pattern).slice(0, 120);
-  if ("query" in input) return String(input.query).slice(0, 120);
-
-  const first = input[keys[0]];
-  return String(first).slice(0, 120);
+  if ("path" in input) return String(input.path).slice(0, 120);
+  return "";
 }

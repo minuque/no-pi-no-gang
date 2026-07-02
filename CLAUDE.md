@@ -2,25 +2,24 @@
 
 ## 验收标准
 
-提交前必须通过：
+### 每次改动后（快速循环，<10s）
 
-类型检查：`node_modules/.bin/tsc --noEmit`
-代码检查：`node node_modules/next/dist/bin/next lint`
-Dev 验证：使用 dev 模式并固定 7788 端口（项目的默认 dev 端口为 7777，验收时改用 7788 避免冲突）：`node node_modules/next/dist/bin/next dev -p 7788 --hostname 127.0.0.1`
+```
+node_modules/.bin/tsc --noEmit          # 零 error
+node node_modules/next/dist/bin/next lint  # 零 error + warning
+bun run dev:watchdog                     # 启动（堆 3GB，超 2.25GB 自动重启）
+```
 
-## Agent skills
+截图验证：
+- 导航到改动页面，截图确认 UI 正确
+- `evaluate` 检查 `console.error` 无新增错误
+- Chrome 每 30 次截图后重启
 
-### Issue tracker
+### 提交前（最终闸门）
 
-GitHub Issues (`gh` CLI)，不 triage 外部 PR。See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-默认五标签：`needs-triage` / `needs-info` / `ready-for-agent` / `ready-for-human` / `wontfix`。See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-单上下文：`CONTEXT.md` + `docs/adr/`。See `docs/agents/domain.md`.
+```
+node node_modules/next/dist/bin/next build  # 生产构建，捕获 dev 模式遗漏的 SSR/动态 import 错误
+```
 
 ### 设计约束
 

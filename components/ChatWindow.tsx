@@ -8,7 +8,13 @@ import { type AgentPhase, useAgentSession } from "@/hooks/useAgentSession";
 import { useChatScroll } from "@/hooks/useChatScroll";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import { useTheme } from "@/hooks/useTheme";
-import type { AgentMessage, EntryTreeNode, SessionInfo, ToolResultMessage } from "@/lib/types";
+import type {
+  AgentMessage,
+  AssistantMessage,
+  EntryTreeNode,
+  SessionInfo,
+  ToolResultMessage,
+} from "@/lib/types";
 
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { MessageView } from "./MessageView";
@@ -471,6 +477,24 @@ export const ChatWindow = memo(function ChatWindow({
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i];
       if (msg.role === "toolResult") continue;
+
+      // Merge consecutive assistant messages so one turn = one line
+      if (msg.role === "assistant" && items.length > 0) {
+        const last = items[items.length - 1];
+        if (last.msg.role === "assistant") {
+          const lastAssist = last.msg as AssistantMessage;
+          const curAssist = msg as AssistantMessage;
+          last.msg = {
+            ...lastAssist,
+            content: [...lastAssist.content, ...curAssist.content],
+            stopReason: curAssist.stopReason ?? lastAssist.stopReason,
+            timestamp: curAssist.timestamp ?? lastAssist.timestamp,
+            usage: curAssist.usage ?? lastAssist.usage,
+          } as AssistantMessage;
+          continue;
+        }
+      }
+
       items.push({ msg, entryId: entryIds[i], originalIndex: i });
     }
 

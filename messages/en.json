@@ -107,7 +107,7 @@
     "creatingSession": "Creating new session…",
     "forkAction": "Fork — create a new independent .jsonl session file",
     "thinking": "Thinking...",
-    "reasoning": "Reasoning",
+    "thoughtFor": "Thought for {seconds}s",
     "open": "Open",
     "openFile": "Open {path}",
     "reasoningError": "Reasoning · Error",
