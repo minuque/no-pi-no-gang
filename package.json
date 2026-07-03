@@ -24,7 +24,8 @@
     "build": "next build",
     "postbuild": "node scripts/generate-external-modules-manifest.js",
     "start": "next start -p 7777",
-    "prebuild": "npm run build && npm run start",
+    "prebuild": "next build && next start",
+    "test": "vitest run",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
@@ -65,7 +66,8 @@
     "postcss": "^8",
     "prettier": "^3.8.4",
     "tailwindcss": "^4.2.2",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^4.1.9"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs}": [

@@ -1,5 +1,7 @@
 # TODO.md
 
+> 已完成变更记录在 [`CHANGELOG.md`](./CHANGELOG.md)。
+
 项目：`minuque/no-pi-no-gang`
 
 基于 Pi SDK 做一个 **可观测、透明、可扩展的 Agent Workbench**。
@@ -261,6 +263,11 @@ SSE → Timeline / Tool Inspector
 > 真正的 Replay 需要从 `.jsonl` 重建或写入额外 audit log，属于后续 Milestone，不在首批范围内。
 
 ## 实施阶段
+
+完成备注（2026-07-03）：
+- 已完成类型域拆分：`lib/types.ts` 保持 barrel 兼容，新增 session/message/rpc 类型模块。
+- 已完成 RPC 命令路由抽取：`lib/pi/pi-command-dispatcher.ts` 承载 17 个 handler，`send()` 改为查表分发。
+- 已完成 Vitest 测试底座：新增 `vitest.config.ts`、`test` 脚本，覆盖 types、npx、pi-resources、skills search parser。
 
 ```txt
 Phase 1 — 事件底座

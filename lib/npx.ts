@@ -16,7 +16,7 @@ const execFileAsync = promisify(execFile);
  * directly via the current `node` binary, which works identically on every
  * platform and needs no shell.
  */
-function findNpxCli(): string | null {
+export function findNpxCli(): string | null {
   const nodeDir = dirname(execPath);
   const candidates = [
     // Windows MSI installer layout: node.exe and node_modules share a dir

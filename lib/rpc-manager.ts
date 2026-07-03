@@ -1,7 +1,8 @@
-import { SessionManager, createAgentSession } from "@earendil-works/pi-coding-agent";
+import { createAgentSession } from "@earendil-works/pi-coding-agent";
 
-import { dedupeSlashCommands, getProjectResourceLoaderOptions } from "./pi-resources";
-import type { AgentSessionLike, SlashCommandInfoLike, ToolInfo } from "./pi-types";
+import { getProjectResourceLoaderOptions } from "./pi-resources";
+import type { AgentSessionLike } from "./pi-types";
+import { piCommandHandlers } from "./pi/pi-command-dispatcher";
 import { cacheSessionPath } from "./session-reader";
 import type { RpcSessionState, SessionInfo, SessionNodeAgentState } from "./types";
 
@@ -16,26 +17,6 @@ export interface AgentEvent {
 
 type EventListener = (event: AgentEvent) => void;
 
-function getSlashCommands(inner: AgentSessionLike): SlashCommandInfoLike[] {
-  return dedupeSlashCommands([
-    ...(inner.extensionRunner?.getRegisteredCommands().map((command) => ({
-      name: command.invocationName,
-      description: command.description ?? "",
-      source: "extension" as const,
-    })) ?? []),
-    ...(inner.promptTemplates?.map((template) => ({
-      name: template.name,
-      description: template.description ?? "",
-      source: "prompt" as const,
-    })) ?? []),
-    ...(inner.resourceLoader?.getSkills().skills.map((skill) => ({
-      name: `skill:${skill.name}`,
-      description: skill.description ?? "",
-      source: "skill" as const,
-    })) ?? []),
-  ]);
-}
-
 // ============================================================================
 // AgentSessionWrapper
 // Wraps AgentSession with the same interface the rest of the app expects
@@ -48,6 +29,11 @@ export class AgentSessionWrapper {
   private onDestroyCallback: (() => void) | null = null;
   private lastUpdatedAt = Date.now();
   private _alive = true;
+
+  private _ctx = {
+    getSnapshotState: () => this.getSnapshotState(),
+    destroySession: () => this.destroy(),
+  };
 
   constructor(public readonly inner: AgentSessionLike) {}
 
@@ -93,199 +79,9 @@ export class AgentSessionWrapper {
     this.resetIdleTimer();
     this.lastUpdatedAt = Date.now();
     const type = command.type as string;
-
-    switch (type) {
-      case "prompt": {
-        // Fire and forget — events come via subscribe
-        const promptImages = command.images as
-          | Array<{ type: "image"; data: string; mimeType: string }>
-          | undefined;
-        this.inner
-          .prompt(
-            command.message as string,
-            promptImages?.length ? { images: promptImages } : undefined,
-          )
-          .catch(() => {});
-        return null;
-      }
-
-      case "abort":
-        await this.inner.abort();
-        return null;
-
-      case "get_state": {
-        return this.getSnapshotState();
-      }
-
-      case "set_model": {
-        const { provider, modelId } = command as { provider: string; modelId: string };
-        const registry = this.inner.modelRegistry;
-        const model = registry.find(provider, modelId);
-        if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
-        await this.inner.setModel(model);
-        return { id: model.id, provider: model.provider };
-      }
-
-      case "fork": {
-        const entryId = command.entryId as string;
-        const sessionManager = this.inner.sessionManager;
-        const currentSessionFile = this.inner.sessionFile;
-
-        if (!sessionManager.isPersisted()) return { cancelled: true };
-        if (!currentSessionFile) throw new Error("Persisted session is missing a session file");
-
-        const entry = sessionManager.getEntry(entryId);
-        if (!entry) throw new Error("Invalid entry ID for forking");
-
-        const sessionDir = sessionManager.getSessionDir();
-        let newSessionFile: string;
-
-        if (!entry.parentId) {
-          // Fork before the first message: create an empty session linked to this one
-          const newManager = SessionManager.create(sessionManager.getCwd(), sessionDir);
-          newManager.newSession({ parentSession: currentSessionFile });
-          newSessionFile = newManager.getSessionFile() as string;
-        } else {
-          // Fork after some history: copy path up to (but not including) the fork point
-          const sourceManager = SessionManager.open(currentSessionFile, sessionDir);
-          const forkedPath = sourceManager.createBranchedSession(entry.parentId);
-          if (!forkedPath) throw new Error("Failed to create forked session");
-          newSessionFile = forkedPath;
-        }
-
-        const newSessionId = SessionManager.open(newSessionFile, sessionDir).getSessionId();
-        cacheSessionPath(newSessionId, newSessionFile);
-        this.destroy();
-        return { cancelled: false, newSessionId };
-      }
-
-      case "navigate_tree": {
-        const result = await this.inner.navigateTree(command.targetId as string, {});
-        return { cancelled: result.cancelled };
-      }
-
-      case "set_thinking_level": {
-        const level = command.level as string;
-        this.inner.setThinkingLevel(level);
-        // setThinkingLevel clamps xhigh→high for models where supportsXhigh()===false.
-        // If the model has DeepSeek thinking compat (reasoningEffortMap maps xhigh→max),
-        // force the state back so the compat layer can use it correctly.
-        if (
-          level === "xhigh" &&
-          (this.inner.model as { compat?: { thinkingFormat?: string } } | null)?.compat
-            ?.thinkingFormat === "deepseek" &&
-          this.inner.agent?.state
-        ) {
-          this.inner.agent.state.thinkingLevel = "xhigh";
-        }
-        return null;
-      }
-
-      case "compact": {
-        // pi's compact() does not guard against empty messagesToSummarize — use findCutPoint
-        // to pre-check and throw a clean error instead of generating a useless empty summary.
-        const { findCutPoint, DEFAULT_COMPACTION_SETTINGS } =
-          await import("@earendil-works/pi-coding-agent");
-        const pathEntries = this.inner.sessionManager.getBranch() as Array<{ type: string }>;
-        const settings = {
-          ...DEFAULT_COMPACTION_SETTINGS,
-          ...this.inner.settingsManager.getCompactionSettings(),
-        };
-        let prevCompactionIndex = -1;
-        for (let i = pathEntries.length - 1; i >= 0; i--) {
-          if (pathEntries[i].type === "compaction") {
-            prevCompactionIndex = i;
-            break;
-          }
-        }
-        const boundaryStart = prevCompactionIndex + 1;
-        const cutPoint = findCutPoint(
-          pathEntries as never,
-          boundaryStart,
-          pathEntries.length,
-          settings.keepRecentTokens,
-        );
-        const historyEnd = cutPoint.isSplitTurn
-          ? cutPoint.turnStartIndex
-          : cutPoint.firstKeptEntryIndex;
-        if (historyEnd <= boundaryStart) {
-          throw new Error("Conversation too short to compact");
-        }
-        const result = await this.inner.compact(command.customInstructions as string | undefined);
-        return result;
-      }
-
-      case "set_auto_compaction": {
-        this.inner.setAutoCompactionEnabled(command.enabled as boolean);
-        return null;
-      }
-
-      case "steer": {
-        const steerImages = command.images as
-          | Array<{ type: "image"; data: string; mimeType: string }>
-          | undefined;
-        await this.inner.steer(
-          command.message as string,
-          steerImages?.length ? steerImages : undefined,
-        );
-        return null;
-      }
-
-      case "follow_up": {
-        const followImages = command.images as
-          | Array<{ type: "image"; data: string; mimeType: string }>
-          | undefined;
-        await this.inner.followUp(
-          command.message as string,
-          followImages?.length ? followImages : undefined,
-        );
-        return null;
-      }
-
-      case "get_tools": {
-        const all: ToolInfo[] = this.inner.getAllTools();
-        const active = new Set<string>(this.inner.getActiveToolNames());
-        return all.map((t) => ({
-          name: t.name,
-          description: t.description,
-          active: active.has(t.name),
-        }));
-      }
-
-      case "set_tools": {
-        this.inner.setActiveToolsByName(command.toolNames as string[]);
-        return null;
-      }
-
-      case "abort_compaction": {
-        this.inner.abortCompaction();
-        return null;
-      }
-
-      case "set_auto_retry": {
-        this.inner.setAutoRetryEnabled(command.enabled as boolean);
-        return null;
-      }
-
-      case "get_commands":
-        return getSlashCommands(this.inner);
-
-      case "command": {
-        const commandName = command.command as string;
-        const userMessage = command.message as string;
-        const promptImages = command.images as
-          | Array<{ type: "image"; data: string; mimeType: string }>
-          | undefined;
-        const text = userMessage?.trim() ? `/${commandName} ${userMessage}` : `/${commandName}`;
-        this.inner
-          .prompt(text, promptImages?.length ? { images: promptImages } : undefined)
-          .catch(() => {});
-        return null;
-      }
-
-      default:
-        throw new Error(`Unsupported command: ${type}`);
-    }
+    const handler = piCommandHandlers[type];
+    if (!handler) throw new Error(`Unsupported command: ${type}`);
+    return handler(this.inner, command, this._ctx);
   }
 
   destroy(): void {

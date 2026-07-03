@@ -1271,7 +1271,6 @@ function TextBlock({
                   background: "var(--accent)",
                   marginLeft: 1,
                   verticalAlign: "text-bottom",
-                  animation: "cursor-blink 1s step-end infinite",
                 }}
               />
             )}
@@ -1302,7 +1301,6 @@ function TextBlock({
         <RichMarkdownBlock text={displayText} isStreaming={isStreaming} />
         {isStreaming && isLast && (
           <span
-            className="streaming-cursor"
             style={{
               display: "inline-block",
               width: 2,
@@ -1310,7 +1308,6 @@ function TextBlock({
               background: "var(--accent)",
               marginLeft: 1,
               verticalAlign: "text-bottom",
-              animation: "cursor-blink 1s step-end infinite",
             }}
           />
         )}
@@ -1337,19 +1334,6 @@ function ThinkingBlock({
     : duration !== undefined
       ? t("thoughtFor", { seconds: duration })
       : t("reasoning");
-
-  useEffect(() => {
-    if (!document.getElementById("think-pulse-style")) {
-      const style = document.createElement("style");
-      style.id = "think-pulse-style";
-      style.innerHTML = [
-        `@keyframes think-pulse { 0%,100%{opacity:.45} 50%{opacity:1} }`,
-        `@keyframes think-collapse-in { from{opacity:0;max-height:0;margin-top:0} to{opacity:1;max-height:600px;margin-top:8px} }`,
-        `@keyframes fadeInUp { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }`,
-      ].join("");
-      document.head.appendChild(style);
-    }
-  }, []);
 
   return (
     <BlockLine
@@ -1502,32 +1486,7 @@ function ToolCallBlock({
   const shownDuration = duration ?? (isRunning && elapsed ? elapsed : undefined);
 
   return (
-    <div
-      style={{
-        position: "relative",
-        paddingLeft: 20,
-        paddingBottom: isLast ? 0 : 10,
-        ...(isRunning ? { animation: "block-enter 0.35s ease both" } : {}),
-      }}
-    >
-      {/* Dot with background to cover parent line behind it */}
-      <span
-        aria-hidden
-        style={{
-          position: "absolute",
-          left: 3,
-          top: 10,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 9,
-          height: 9,
-          background: "var(--bg)",
-          borderRadius: "50%",
-        }}
-      >
-        <ToolStateDot state={state} />
-      </span>
+    <BlockLine isLast={isLast} isStreaming={isRunning} dot={<ToolStateDot state={state} />}>
       <button
         onClick={() => setExpanded((v) => !v)}
         style={{
@@ -1663,7 +1622,7 @@ function ToolCallBlock({
           )}
         </div>
       )}
-    </div>
+    </BlockLine>
   );
 }
 

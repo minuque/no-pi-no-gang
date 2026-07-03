@@ -476,7 +476,7 @@ export function AppShell() {
         selectedCwd={selectedSession?.cwd ?? newSessionCwd ?? activeCwd ?? null}
         onCwdChange={handleCwdChange}
         onSessionsChange={setAllSessions}
-        onToggleSidebar={() => setSidebarOpen(false)}
+        onToggleSidebar={() => vtTransition(() => setSidebarOpen(false))}
       />
       <div style={{ padding: "8px", flexShrink: 0, position: "relative" }}>
         <button
@@ -661,7 +661,7 @@ export function AppShell() {
         {/* Mobile overlay backdrop */}
         <div
           className="sidebar-overlay-backdrop"
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => vtTransition(() => setSidebarOpen(false))}
           style={{
             position: "fixed",
             inset: 0,
@@ -731,7 +731,7 @@ export function AppShell() {
           >
             {!sidebarOpen && (
               <button
-                onClick={() => setSidebarOpen(true)}
+                onClick={() => vtTransition(() => setSidebarOpen(true))}
                 title={t("showSidebar")}
                 aria-label={t("showSidebar")}
                 className="tb-btn"
@@ -939,6 +939,7 @@ export function AppShell() {
             overflow: "hidden",
             opacity: workspacePanelOpen ? 1 : 0,
             transition: "opacity 0.15s ease",
+            viewTransitionName: "workspace-panel",
           }}
         >
           <SessionOverviewPanel

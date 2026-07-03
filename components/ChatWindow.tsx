@@ -816,7 +816,7 @@ export const ChatWindow = memo(function ChatWindow({
         <>
           <div
             className="flex-1 overflow-hidden relative"
-            style={{ animation: "fade-in-up 0.35s ease both" }}
+            style={{ viewTransitionName: "chat-content", animation: "fade-in-up 0.35s ease both" }}
           >
             {/* ── Native scroll viewport ── */}
             <div

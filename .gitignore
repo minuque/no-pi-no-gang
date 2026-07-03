@@ -44,3 +44,6 @@ graphify-out/*
 *.tsbuildinfo
 next-env.d.ts
 .factoryminuque-no-pi-no-gang-0.0.1.tgz
+.codeidx/codeidx-mcp-stdio.js
+.codeidx/mcp-control.json
+.codeidx/mcp-server.json
