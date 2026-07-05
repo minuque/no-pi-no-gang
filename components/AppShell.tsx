@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -10,6 +10,7 @@ import NProgress from "nprogress";
 import "nprogress/nprogress.css";
 import { Toaster } from "sonner";
 
+import { useResizablePanel } from "@/hooks/useResizablePanel";
 import { useTheme } from "@/hooks/useTheme";
 import { useViewTransition } from "@/hooks/useViewTransition";
 import type { EntryTreeNode, SessionInfo } from "@/lib/types";
@@ -38,7 +39,7 @@ export function AppShell() {
   const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(null);
   const selectedSessionRef = useRef(selectedSession);
   selectedSessionRef.current = selectedSession;
-  // When user clicks +, we only store the cwd — no fake session id
+  // When user clicks +, we only store the cwd 鈥?no fake session id
   const [newSessionCwd, setNewSessionCwd] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sessionKey, setSessionKey] = useState(0);
@@ -48,50 +49,63 @@ export function AppShell() {
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [workspacePanelOpen, setWorkspacePanelOpen] = useState(true);
   const SIDEBAR_MIN = 180;
   const SIDEBAR_MAX = 480;
-  const [sidebarWidth, setSidebarWidth] = useState(260);
-  const sidebarRef = useRef<HTMLDivElement>(null);
-  const sidebarWidthRef = useRef(sidebarWidth);
-  // Restore saved sidebar width from localStorage after hydration (avoids SSR mismatch)
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("pi-sidebar-width");
-      if (saved) {
-        const w = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, parseInt(saved, 10)));
-        setSidebarWidth(w);
-      }
-    } catch {}
-  }, []);
-  // Chat area minimum width — both drag handles must respect this
   const CHAT_MIN_WIDTH = 320;
   const EDGE_HANDLE_WIDTH = 12;
   const EDGE_HANDLE_INSET = EDGE_HANDLE_WIDTH - 1;
-  // Right panel drag-to-resize
   const RIGHT_PANEL_MIN = 300;
-  const [rightPanelWidth, setRightPanelWidth] = useState(RIGHT_PANEL_MIN);
-  const rightPanelRef = useRef<HTMLDivElement>(null);
-  const rightPanelWidthRef = useRef(rightPanelWidth);
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("pi-right-panel-width");
-      if (saved) {
-        setRightPanelWidth(Math.max(RIGHT_PANEL_MIN, parseInt(saved, 10)));
-      } else {
-        setRightPanelWidth(Math.round(window.innerWidth * 0.42));
-      }
-    } catch {
-      setRightPanelWidth(Math.round(window.innerWidth * 0.42));
-    }
-  }, []);
-  const [workspacePanelOpen, setWorkspacePanelOpen] = useState(true);
+  const sidebarMaxWidth = useCallback(
+    (viewportWidth: number, _reservedLeft: number, reservedRight: number) =>
+      Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, viewportWidth - CHAT_MIN_WIDTH - reservedRight)),
+    [],
+  );
+  const rightPanelMaxWidth = useCallback(
+    (viewportWidth: number, reservedLeft: number) => Math.max(0, viewportWidth - reservedLeft),
+    [],
+  );
+  const sidebarPanel = useResizablePanel({
+    minWidth: SIDEBAR_MIN,
+    maxWidth: sidebarMaxWidth,
+    storageKey: "pi-sidebar-width",
+    defaultWidth: 260,
+    reservedRight: () => (workspacePanelOpen ? rightPanel.widthRef.current : 0),
+    handleLeft: (width) => `${width - EDGE_HANDLE_INSET}px`,
+  });
+  const rightPanel = useResizablePanel({
+    minWidth: RIGHT_PANEL_MIN,
+    maxWidth: rightPanelMaxWidth,
+    storageKey: "pi-right-panel-width",
+    defaultWidth: () =>
+      typeof window === "undefined" ? RIGHT_PANEL_MIN : Math.round(window.innerWidth * 0.42),
+    direction: "grow-left",
+    reservedLeft: () => (sidebarOpen ? sidebarPanel.widthRef.current : 0) + CHAT_MIN_WIDTH,
+    handleLeft: (width) => `calc(100% - ${width}px)`,
+  });
+  const {
+    panelRef: sidebarRef,
+    handleRef: sidebarHandleRef,
+    width: sidebarWidth,
+    onPointerDown: handleDragStart,
+    onPointerMove: handleDragMove,
+    onPointerUp: handleDragEnd,
+  } = sidebarPanel;
+  const {
+    panelRef: rightPanelRef,
+    handleRef: rightPanelHandleRef,
+    width: rightPanelWidth,
+    onPointerDown: handleRightDragStart,
+    onPointerMove: handleRightDragMove,
+    onPointerUp: handleRightDragEnd,
+  } = rightPanel;
   const chatInputRef = useRef<ChatInputHandle | null>(null);
   const topBarRef = useRef<HTMLDivElement>(null);
 
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
   const [toolPreset, setToolPreset] = useState<"none" | "default" | "full">("default");
 
-  // Branch navigator state — populated by ChatWindow, rendered in top bar
+  // Branch navigator state 鈥?populated by ChatWindow, rendered in top bar
   const [branchTree, setBranchTree] = useState<EntryTreeNode[]>([]);
   const [branchActiveLeafId, setBranchActiveLeafId] = useState<string | null>(null);
   const branchOnLeafChangeRef = useRef<((leafId: string | null) => void) | null>(null);
@@ -111,7 +125,7 @@ export function AppShell() {
     [],
   );
 
-  // SSE status from ChatWindow → displayed in top bar
+  // SSE status from ChatWindow 鈫?displayed in top bar
   const [sseStatus, setSseStatus] = useState<{
     label: string;
     tone: "muted" | "success" | "warn" | "danger";
@@ -135,7 +149,7 @@ export function AppShell() {
     setToolPreset(preset);
   }, []);
 
-  // Session stats (tokens + cost) — populated by ChatWindow, displayed in top bar
+  // Session stats (tokens + cost) 鈥?populated by ChatWindow, displayed in top bar
   const [sessionStats, setSessionStats] = useState<{
     tokens: { input: number; output: number; cacheRead: number; cacheWrite: number };
     cost?: number;
@@ -152,7 +166,7 @@ export function AppShell() {
     [],
   );
 
-  // Context usage — populated by ChatWindow, displayed in top bar
+  // Context usage 鈥?populated by ChatWindow, displayed in top bar
   const [contextUsage, setContextUsage] = useState<{
     percent: number | null;
     contextWindow: number;
@@ -165,7 +179,7 @@ export function AppShell() {
     [],
   );
 
-  // NProgress — global top loading bar driven by ChatWindow loading state
+  // NProgress 鈥?global top loading bar driven by ChatWindow loading state
   useEffect(() => {
     NProgress.configure({ showSpinner: false, speed: 400, trickleSpeed: 200, minimum: 0.08 });
   }, []);
@@ -176,98 +190,6 @@ export function AppShell() {
     } else {
       NProgress.done();
     }
-  }, []);
-
-  // Sidebar drag-to-resize
-  useEffect(() => {
-    sidebarWidthRef.current = sidebarWidth;
-  }, [sidebarWidth]);
-
-  const dragState = useRef({ active: false, startX: 0, startWidth: 0 });
-  const handleDragStart = useCallback((e: React.PointerEvent) => {
-    e.preventDefault();
-    document.body.classList.add("is-dragging");
-    e.currentTarget.setPointerCapture(e.pointerId);
-    dragState.current = { active: true, startX: e.clientX, startWidth: sidebarWidthRef.current };
-    if (sidebarRef.current) sidebarRef.current.style.transition = "none";
-  }, []);
-  const handleDragMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!dragState.current.active) return;
-      // Reserve space for chat minimum + workspace panel (if open)
-      const reservedRight = workspacePanelOpen ? rightPanelWidthRef.current : 0;
-      const maxW = Math.max(SIDEBAR_MIN, window.innerWidth - CHAT_MIN_WIDTH - reservedRight);
-      const w = Math.min(
-        SIDEBAR_MAX,
-        maxW,
-        Math.max(SIDEBAR_MIN, dragState.current.startWidth + e.clientX - dragState.current.startX),
-      );
-      const el = sidebarRef.current;
-      if (el) {
-        el.style.width = `${w}px`;
-        el.style.minWidth = `${w}px`;
-      }
-      (e.currentTarget as HTMLElement).style.left = `${w - EDGE_HANDLE_INSET}px`;
-      sidebarWidthRef.current = w;
-    },
-    [workspacePanelOpen],
-  );
-  const handleDragEnd = useCallback(() => {
-    if (!dragState.current.active) return;
-    dragState.current.active = false;
-    document.body.classList.remove("is-dragging");
-    if (sidebarRef.current) sidebarRef.current.style.transition = "";
-    setSidebarWidth(sidebarWidthRef.current);
-    try {
-      localStorage.setItem("pi-sidebar-width", String(sidebarWidthRef.current));
-    } catch {}
-  }, []);
-
-  // Right panel drag-to-resize
-  useEffect(() => {
-    rightPanelWidthRef.current = rightPanelWidth;
-  }, [rightPanelWidth]);
-
-  const rightDragState = useRef({ active: false, startX: 0, startWidth: 0 });
-  const handleRightDragStart = useCallback((e: React.PointerEvent) => {
-    e.preventDefault();
-    document.body.classList.add("is-dragging");
-    e.currentTarget.setPointerCapture(e.pointerId);
-    rightDragState.current = {
-      active: true,
-      startX: e.clientX,
-      startWidth: rightPanelWidthRef.current,
-    };
-    if (rightPanelRef.current) rightPanelRef.current.style.transition = "none";
-  }, []);
-  const handleRightDragMove = useCallback(
-    (e: React.PointerEvent) => {
-      if (!rightDragState.current.active) return;
-      // Reserve space for sidebar + chat minimum
-      const reservedLeft = (sidebarOpen ? sidebarWidthRef.current : 0) + CHAT_MIN_WIDTH;
-      const maxW = Math.max(0, window.innerWidth - reservedLeft);
-      const delta = rightDragState.current.startX - e.clientX;
-      const minW = Math.min(RIGHT_PANEL_MIN, maxW);
-      const w = Math.min(maxW, Math.max(minW, rightDragState.current.startWidth + delta));
-      const el = rightPanelRef.current;
-      if (el) {
-        el.style.width = `${w}px`;
-        el.style.minWidth = `${w}px`;
-      }
-      (e.currentTarget as HTMLElement).style.left = `calc(100% - ${w}px)`;
-      rightPanelWidthRef.current = w;
-    },
-    [sidebarOpen],
-  );
-  const handleRightDragEnd = useCallback(() => {
-    if (!rightDragState.current.active) return;
-    rightDragState.current.active = false;
-    document.body.classList.remove("is-dragging");
-    if (rightPanelRef.current) rightPanelRef.current.style.transition = "";
-    setRightPanelWidth(rightPanelWidthRef.current);
-    try {
-      localStorage.setItem("pi-right-panel-width", String(rightPanelWidthRef.current));
-    } catch {}
   }, []);
 
   const handleAtMention = useCallback((relativePath: string) => {
@@ -336,7 +258,7 @@ export function AppShell() {
       // Skip if cwd is null (initial mount) or during the initial URL restore.
       if (!cwd || suppressCwdBumpRef.current) return;
       if (selectedSessionRef.current?.cwd === cwd) return;
-      // Close any session that belongs to a different cwd — it no longer
+      // Close any session that belongs to a different cwd 鈥?it no longer
       // matches the selected project directory.
       setSelectedSession((prev) => {
         if (prev && prev.cwd !== cwd) return null;
@@ -366,7 +288,7 @@ export function AppShell() {
 
   const handleSelectSession = useCallback(
     (session: SessionInfo, isRestore = false) => {
-      // Skip if already viewing this session — prevent unnecessary ChatWindow remount + loading
+      // Skip if already viewing this session 鈥?prevent unnecessary ChatWindow remount + loading
       if (!isRestore && selectedSessionRef.current?.id === session.id) return;
       setNewSessionCwd(null);
       setSelectedSession(session);
@@ -381,7 +303,7 @@ export function AppShell() {
           suppressCwdBumpRef.current = false;
         }, 0);
       }
-      // Skip router.replace when restoring from URL — the param is already correct
+      // Skip router.replace when restoring from URL 鈥?the param is already correct
       // and calling replace in production Next.js triggers a Suspense remount loop
       if (!isRestore) {
         router.replace(`?session=${encodeURIComponent(session.id)}`, { scroll: false });
@@ -690,8 +612,9 @@ export function AppShell() {
           {sidebarContent}
         </div>
 
-        {/* Left resize handle — between sidebar and chat */}
+        {/* Left resize handle 鈥?between sidebar and chat */}
         <div
+          ref={sidebarHandleRef}
           className="resize-handle-overlay resize-handle-overlay-left"
           style={{
             display: sidebarOpen ? "block" : "none",
@@ -809,7 +732,7 @@ export function AppShell() {
                 hideWhenEmpty
               />
             )}
-            {/* Right-side toolbar — SSE status + actions */}
+            {/* Right-side toolbar 鈥?SSE status + actions */}
             {showChat && (
               <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
                 <LocaleSwitcher />
@@ -885,7 +808,7 @@ export function AppShell() {
             )}
           </div>
 
-          {/* Chat content — always render ChatWindow; it handles empty/loading/error states internally */}
+          {/* Chat content 鈥?always render ChatWindow; it handles empty/loading/error states internally */}
           <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
             <ChatWindow
               key={sessionKey}
@@ -911,8 +834,9 @@ export function AppShell() {
           </div>
         </div>
 
-        {/* Right resize handle — between chat and workspace panel */}
+        {/* Right resize handle 鈥?between chat and workspace panel */}
         <div
+          ref={rightPanelHandleRef}
           className="resize-handle-overlay resize-handle-overlay-right"
           style={{
             display: workspacePanelOpen ? "block" : "none",
