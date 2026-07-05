@@ -64,5 +64,11 @@ export interface TraceSpan {
 
 export type AgentEvent = SdkEvent | ViewEvent;
 
+export type StreamAction =
+  | { type: "start" }
+  | { type: "update"; message: Partial<AgentMessage> }
+  | { type: "end" }
+  | { type: "reset" };
+
 // Runtime streams can still carry unknown events such as lightweight handshakes.
 export type AnyAgentEvent = AgentEvent | { type: string; [key: string]: unknown };

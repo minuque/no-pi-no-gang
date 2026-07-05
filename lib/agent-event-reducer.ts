@@ -1,17 +1,12 @@
-import type { AgentEventStatus, AnyAgentEvent } from "./events/event-types";
+import type { AgentEventStatus, AnyAgentEvent, StreamAction } from "./events/event-types";
 import { normalizeToolCalls } from "./normalize";
 import type { AgentMessage, AssistantMessage, ToolCallContent } from "./types";
 
-export type { AnyAgentEvent as AgentEvent, AgentEventStatus } from "./events/event-types";
-
-// Mirror of streamReducer's StreamAction.  Kept here so the hook can re-dispatch
-// onto its existing useReducer(streamReducer) without us merging streaming into
-// the agent-event state (which would broaden the diff and risk behavior drift).
-export type StreamAction =
-  | { type: "start" }
-  | { type: "update"; message: Partial<AgentMessage> }
-  | { type: "end" }
-  | { type: "reset" };
+export type {
+  AnyAgentEvent as AgentEvent,
+  AgentEventStatus,
+  StreamAction,
+} from "./events/event-types";
 
 export interface AgentEventState {
   messages: AgentMessage[];
@@ -135,6 +130,39 @@ function applyThinkingDurations(msg: AgentMessage, durations: Map<number, number
   return changed ? { ...msg, content: nextContent } : msg;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isMessagePatch(value: unknown): value is Partial<AgentMessage> {
+  return isRecord(value);
+}
+
+function isAgentMessage(value: unknown): value is AgentMessage {
+  if (!isRecord(value)) return false;
+  const role = value.role;
+  return role === "user" || role === "assistant" || role === "toolResult" || role === "custom";
+}
+
+function eventValue(event: AnyAgentEvent, key: string): unknown {
+  return key in event ? event[key as keyof typeof event] : undefined;
+}
+
+function eventString(event: AnyAgentEvent, key: string): string {
+  const value = eventValue(event, key);
+  return typeof value === "string" ? value : "";
+}
+
+function eventOptionalString(event: AnyAgentEvent, key: string): string | undefined {
+  const value = eventValue(event, key);
+  return typeof value === "string" ? value : undefined;
+}
+
+function eventNumber(event: AnyAgentEvent, key: string): number {
+  const value = eventValue(event, key);
+  return typeof value === "number" ? value : 0;
+}
+
 export function initialAgentEventState(): AgentEventState {
   return {
     messages: [],
@@ -237,7 +265,7 @@ export function agentEventReducer(
     }
     case "message_start":
     case "message_update": {
-      const msg = event.message as Partial<AgentMessage> | undefined;
+      const msg = isMessagePatch(event.message) ? event.message : undefined;
       if (msg?.role === "user") {
         return { state, effects };
       }
@@ -268,7 +296,7 @@ export function agentEventReducer(
       };
     }
     case "message_end": {
-      const completed = event.message as AgentMessage | undefined;
+      const completed = isAgentMessage(event.message) ? event.message : undefined;
       let messages = state.messages;
       if (completed && completed.role !== "user") {
         const contentLength = completed.role === "assistant" ? completed.content.length : 0;
@@ -295,8 +323,8 @@ export function agentEventReducer(
       };
     }
     case "tool_execution_start": {
-      const id = event.toolCallId as string;
-      const name = event.toolName as string;
+      const id = eventString(event, "toolCallId");
+      const name = eventString(event, "toolName");
       const prevTools =
         state.agentPhase?.kind === "running_tools" ? [...state.agentPhase.tools] : [];
       if (!prevTools.some((t) => t.id === id)) prevTools.push({ id, name });
@@ -306,7 +334,7 @@ export function agentEventReducer(
       };
     }
     case "tool_execution_end": {
-      const id = event.toolCallId as string;
+      const id = eventString(event, "toolCallId");
       if (state.agentPhase?.kind !== "running_tools") return { state, effects };
       const tools = state.agentPhase.tools.filter((t) => t.id !== id);
       return {
@@ -323,9 +351,9 @@ export function agentEventReducer(
         state: {
           ...state,
           retryInfo: {
-            attempt: event.attempt as number,
-            maxAttempts: event.maxAttempts as number,
-            errorMessage: event.errorMessage as string | undefined,
+            attempt: eventNumber(event, "attempt"),
+            maxAttempts: eventNumber(event, "maxAttempts"),
+            errorMessage: eventOptionalString(event, "errorMessage"),
           },
         },
         effects,
@@ -349,14 +377,15 @@ export function agentEventReducer(
     }
     case "auto_compaction_end":
     case "compaction_end": {
-      if (event.errorMessage) {
+      const errorMessage = eventOptionalString(event, "errorMessage");
+      if (errorMessage) {
         return {
           state: {
             ...state,
             isCompacting: false,
             agentStateCompacting: false,
             lastEventAt: eventAt,
-            compactError: event.errorMessage as string,
+            compactError: errorMessage,
           },
           effects,
         };
