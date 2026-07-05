@@ -234,7 +234,6 @@ export const ChatWindow = memo(function ChatWindow({
     handleLeafChange,
     handleModelChange,
     handleThinkingLevelChange,
-    handleAgentEventRef,
   } = useAgentSession({
     session,
     newSessionCwd,

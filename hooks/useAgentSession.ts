@@ -5,7 +5,6 @@ import { startTransition, useCallback, useEffect, useReducer, useRef, useState }
 import { toast } from "sonner";
 
 import type { ToolEntry } from "@/components/ToolPanel";
-import { sendAgentCommand } from "@/lib/agent-client";
 import {
   type AgentEventState,
   agentEventReducer,
@@ -16,21 +15,10 @@ import type { AnyAgentEvent as AgentEvent, AgentEventStatus } from "@/lib/events
 import type { SlashCommandItem } from "@/lib/pi-resources";
 import type { AgentMessage, AssistantMessage, EntryTreeNode, SessionInfo } from "@/lib/types";
 
-export type { AgentEventStatus } from "@/lib/events/event-types";
+import { type SessionData, useTransport } from "./useTransport";
 
-export interface SessionData {
-  sessionId: string;
-  filePath: string;
-  info?: SessionInfo | null;
-  tree: EntryTreeNode[];
-  leafId: string | null;
-  context: {
-    messages: AgentMessage[];
-    entryIds: string[];
-    thinkingLevel: string;
-    model: { provider: string; modelId: string; contextWindow?: number } | null;
-  };
-}
+export type { AgentEventStatus } from "@/lib/events/event-types";
+export type { SessionData } from "./useTransport";
 
 interface StreamingState {
   isStreaming: boolean;
@@ -330,10 +318,29 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setEventStatus,
   } = settersRef.current;
 
-  const eventSourceRef = useRef<EventSource | null>(null);
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
   const agentRunningRef = useRef(false);
-  const handleAgentEventRef = useRef<((event: AgentEvent) => void) | null>(null);
+  const {
+    eventSourceRef,
+    onEventRef: handleAgentEventRef,
+    connectEvents: connectTransportEvents,
+    disconnectEvents,
+    sendAgentCommand,
+  } = useTransport(session?.id ?? null, {
+    isAgentRunning: () => agentRunningRef.current,
+    onStatusChange: setEventStatus,
+    onDestroyed: () => {
+      setSessionExists(false);
+      setSessionDestroyed(true);
+      setAgentRunning(false);
+      setAgentPhase(null);
+      setAgentStateRunning(false);
+      setAgentStateStreaming(false);
+      setAgentStateCompacting(false);
+      setAgentLastUpdated(new Date().toISOString());
+      dispatch({ type: "end" });
+    },
+  });
   const loadGenRef = useRef(0);
   const modelListRef = useRef(modelList);
   modelListRef.current = modelList;
@@ -512,7 +519,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const loadTools = useCallback(
     async (sid: string) => {
       try {
-        const tools = await sendAgentCommand<ToolEntry[]>(sid, { type: "get_tools" });
+        const tools = await sendAgentCommand<ToolEntry[]>({ type: "get_tools" }, sid);
         if (tools) {
           const { getPresetFromTools } = await import("@/components/ToolPanel");
           setToolPresetState(getPresetFromTools(tools));
@@ -521,80 +528,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         console.error("Failed to load tools:", e);
       }
     },
-    [setToolPresetState],
+    [sendAgentCommand, setToolPresetState],
   );
 
   const connectEvents = useCallback(
     (sid: string) => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
-      setEventStatus("connecting");
-      const es = new EventSource(`/api/agent/${encodeURIComponent(sid)}/events`);
-      eventSourceRef.current = es;
-      es.onopen = () => {
-        if (eventSourceRef.current === es) setEventStatus("connected");
-      };
-      es.onmessage = (e) => {
-        if (eventSourceRef.current === es) setEventStatus("connected");
-        try {
-          const event = JSON.parse(e.data) as AgentEvent;
-          handleAgentEventRef.current?.(event);
-        } catch {
-          // ignore
-        }
-      };
-      es.onerror = () => {
-        if (eventSourceRef.current !== es) return;
-        es.close();
-        eventSourceRef.current = null;
-        fetch(`/api/sessions/${encodeURIComponent(sid)}`, { cache: "no-store" })
-          .then((res) => {
-            if (res.status === 404) {
-              setSessionExists(false);
-              setSessionDestroyed(true);
-              setAgentRunning(false);
-              setAgentPhase(null);
-              setAgentStateRunning(false);
-              setAgentStateStreaming(false);
-              setAgentStateCompacting(false);
-              setAgentLastUpdated(new Date().toISOString());
-              dispatch({ type: "end" });
-              setEventStatus("destroyed");
-              return;
-            }
-            setSessionExists(true);
-            setSessionDestroyed(false);
-            if (agentRunningRef.current) {
-              setEventStatus("reconnecting");
-              setTimeout(() => {
-                if (agentRunningRef.current) connectEvents(sid);
-              }, 1000);
-            } else {
-              setEventStatus("readonly");
-            }
-          })
-          .catch(() => {
-            if (agentRunningRef.current) {
-              setEventStatus("reconnecting");
-              setTimeout(() => {
-                if (agentRunningRef.current) connectEvents(sid);
-              }, 1000);
-            } else {
-              setEventStatus("readonly");
-            }
-          });
-      };
+      sessionIdRef.current = sid;
+      connectTransportEvents(sid);
     },
-    [
-      setAgentPhase,
-      setAgentRunning,
-      setAgentStateCompacting,
-      setAgentStateRunning,
-      setAgentStateStreaming,
-      setEventStatus,
-    ],
+    [connectTransportEvents],
   );
 
   useEffect(() => {
@@ -791,12 +733,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           setSessionExists(true);
           setSessionDestroyed(false);
           connectEvents(session.id);
-          await sendAgentCommand(session.id, {
-            type: "command",
-            command: commandName,
-            message,
-            ...(piImages?.length ? { images: piImages } : {}),
-          });
+          await sendAgentCommand(
+            {
+              type: "command",
+              command: commandName,
+              message,
+              ...(piImages?.length ? { images: piImages } : {}),
+            },
+            session.id,
+          );
         }
         if (commandInfo?.source === "extension") {
           setAgentRunning(false);
@@ -831,6 +776,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setAgentStateRunning,
       setAgentStateStreaming,
       setMessages,
+      sendAgentCommand,
     ],
   );
 
@@ -930,11 +876,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           setSessionExists(true);
           setSessionDestroyed(false);
           connectEvents(session.id);
-          await sendAgentCommand(session.id, {
-            type: "prompt",
-            message,
-            ...(piImages?.length ? { images: piImages } : {}),
-          });
+          await sendAgentCommand(
+            {
+              type: "prompt",
+              message,
+              ...(piImages?.length ? { images: piImages } : {}),
+            },
+            session.id,
+          );
         }
       } catch (e) {
         console.error("Failed to send message:", e);
@@ -963,6 +912,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setAgentStateRunning,
       setAgentStateStreaming,
       setMessages,
+      sendAgentCommand,
     ],
   );
 
@@ -970,11 +920,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const sid = sessionIdRef.current;
     if (!sid) return;
     try {
-      await sendAgentCommand(sid, { type: "abort" });
+      await sendAgentCommand({ type: "abort" }, sid);
     } catch (e) {
       console.error("Failed to abort:", e);
     }
-  }, []);
+  }, [sendAgentCommand]);
 
   const handleFork = useCallback(
     async (entryId: string) => {
@@ -982,10 +932,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (!sid) return;
       setForkingEntryId(entryId);
       try {
-        const result = await sendAgentCommand<{ cancelled?: boolean; newSessionId?: string }>(sid, {
-          type: "fork",
-          entryId,
-        });
+        const result = await sendAgentCommand<{ cancelled?: boolean; newSessionId?: string }>(
+          { type: "fork", entryId },
+          sid,
+        );
         const { cancelled, newSessionId } = result ?? {};
         if (!cancelled && newSessionId) {
           onSessionForked?.(newSessionId);
@@ -996,7 +946,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         setForkingEntryId(null);
       }
     },
-    [onSessionForked],
+    [onSessionForked, sendAgentCommand],
   );
 
   const handleNavigate = useCallback(
@@ -1004,10 +954,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const sid = sessionIdRef.current;
       if (!sid) return;
       loadGenRef.current += 1;
-      sendAgentCommand(sid, { type: "navigate_tree", targetId: entryId }).catch(() => {});
+      sendAgentCommand({ type: "navigate_tree", targetId: entryId }, sid).catch(() => {});
       await loadContext(sid, entryId);
     },
-    [loadContext],
+    [loadContext, sendAgentCommand],
   );
 
   const handleLeafChange = useCallback(
@@ -1019,10 +969,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         loadContext(sid, leafId);
       });
       if (leafId) {
-        sendAgentCommand(sid, { type: "navigate_tree", targetId: leafId }).catch(() => {});
+        sendAgentCommand({ type: "navigate_tree", targetId: leafId }, sid).catch(() => {});
       }
     },
-    [loadContext],
+    [loadContext, sendAgentCommand],
   );
 
   const handleModelChange = useCallback(
@@ -1034,13 +984,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const sid = sessionIdRef.current;
       if (!sid) return;
       try {
-        await sendAgentCommand(sid, { type: "set_model", provider, modelId });
+        await sendAgentCommand({ type: "set_model", provider, modelId }, sid);
         setCurrentModelOverride({ provider, modelId });
       } catch (e) {
         console.error("Failed to set model:", e);
       }
     },
-    [isNew, setNewSessionModel],
+    [isNew, sendAgentCommand, setNewSessionModel],
   );
 
   const handleCompact = useCallback(async () => {
@@ -1049,14 +999,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setIsCompacting(true);
     setCompactError(null);
     try {
-      await sendAgentCommand(sid, { type: "compact" });
+      await sendAgentCommand({ type: "compact" }, sid);
       await loadSession(sid, true);
     } catch (e) {
       setCompactError(e instanceof Error ? e.message : String(e));
     } finally {
       setIsCompacting(false);
     }
-  }, [isCompacting, loadSession, setCompactError, setIsCompacting]);
+  }, [isCompacting, loadSession, sendAgentCommand, setCompactError, setIsCompacting]);
 
   const handleSteer = useCallback(
     async (message: string, images?: AttachedImage[]) => {
@@ -1072,16 +1022,19 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         mimeType: img.mimeType,
       }));
       try {
-        await sendAgentCommand(sid, {
-          type: "steer",
-          message,
-          ...(piImages?.length ? { images: piImages } : {}),
-        });
+        await sendAgentCommand(
+          {
+            type: "steer",
+            message,
+            ...(piImages?.length ? { images: piImages } : {}),
+          },
+          sid,
+        );
       } catch (e) {
         console.error("Failed to steer:", e);
       }
     },
-    [setMessages],
+    [sendAgentCommand, setMessages],
   );
 
   const handleFollowUp = useCallback(
@@ -1098,39 +1051,45 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         mimeType: img.mimeType,
       }));
       try {
-        await sendAgentCommand(sid, {
-          type: "follow_up",
-          message,
-          ...(piImages?.length ? { images: piImages } : {}),
-        });
+        await sendAgentCommand(
+          {
+            type: "follow_up",
+            message,
+            ...(piImages?.length ? { images: piImages } : {}),
+          },
+          sid,
+        );
       } catch (e) {
         console.error("Failed to follow up:", e);
       }
     },
-    [setMessages],
+    [sendAgentCommand, setMessages],
   );
 
   const handleAbortCompaction = useCallback(async () => {
     const sid = sessionIdRef.current;
     if (!sid) return;
     try {
-      await sendAgentCommand(sid, { type: "abort_compaction" });
+      await sendAgentCommand({ type: "abort_compaction" }, sid);
     } catch (e) {
       console.error("Failed to abort compaction:", e);
     }
-  }, []);
+  }, [sendAgentCommand]);
 
-  const handleThinkingLevelChange = useCallback(async (level: ThinkingLevelOption) => {
-    setThinkingLevel(level);
-    if (level === "auto") return; // "auto" leaves pi's current setting untouched
-    const sid = sessionIdRef.current;
-    if (!sid) return;
-    try {
-      await sendAgentCommand(sid, { type: "set_thinking_level", level });
-    } catch (e) {
-      console.error("Failed to set thinking level:", e);
-    }
-  }, []);
+  const handleThinkingLevelChange = useCallback(
+    async (level: ThinkingLevelOption) => {
+      setThinkingLevel(level);
+      if (level === "auto") return; // "auto" leaves pi's current setting untouched
+      const sid = sessionIdRef.current;
+      if (!sid) return;
+      try {
+        await sendAgentCommand({ type: "set_thinking_level", level }, sid);
+      } catch (e) {
+        console.error("Failed to set thinking level:", e);
+      }
+    },
+    [sendAgentCommand],
+  );
 
   const handleToolPresetChange = useCallback(
     async (preset: "none" | "default" | "full") => {
@@ -1141,12 +1100,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const sid = sessionIdRef.current;
       if (!sid) return;
       try {
-        await sendAgentCommand(sid, { type: "set_tools", toolNames });
+        await sendAgentCommand({ type: "set_tools", toolNames }, sid);
       } catch (e) {
         console.error("Failed to set tools:", e);
       }
     },
-    [setToolPresetState],
+    [sendAgentCommand, setToolPresetState],
   );
 
   // Load session on mount
@@ -1175,8 +1134,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       });
     }
     return () => {
-      eventSourceRef.current?.close();
-      eventSourceRef.current = null;
+      disconnectEvents();
       setEventStatus("idle");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
