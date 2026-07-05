@@ -11,16 +11,12 @@ import type { SlashCommandItem } from "@/lib/pi-resources";
 import type { AgentMessage, AssistantMessage, EntryTreeNode, SessionInfo } from "@/lib/types";
 
 import { type ModelListItem, deriveContextUsage, useAgentState } from "./useAgentState";
+import { useSessionCreator } from "./useSessionCreator";
 import { type SessionData, useTransport } from "./useTransport";
 
 export type { AgentEventStatus } from "@/lib/events/event-types";
 export type { AgentPhase } from "./useAgentState";
 export type { SessionData } from "./useTransport";
-
-async function responseError(res: Response): Promise<string> {
-  const data = (await res.json().catch(() => ({}))) as { error?: string };
-  return data.error ?? `HTTP ${res.status}`;
-}
 
 export interface AgentSessionStatus {
   exists: boolean;
@@ -119,6 +115,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   // need to list these setters in their dependency arrays — same guarantee
   const setNewSessionModel = opts.setNewSessionModel ?? setNewSessionModelState;
   const setToolPresetState = opts.setToolPreset ?? setToolPreset;
+  const { createSession } = useSessionCreator();
 
   const currentModel = currentModelOverride ?? data?.context.model ?? pendingModel ?? null;
   const displayModel = isNew ? newSessionModel : currentModel;
@@ -495,32 +492,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (isNew && newSessionCwd) {
           const selectedModel = newSessionModel;
           if (selectedModel) setPendingModel(selectedModel);
-          const { PRESET_NONE, PRESET_DEFAULT, PRESET_FULL } =
-            await import("@/components/ToolPanel");
-          const toolNames =
-            toolPreset === "none"
-              ? PRESET_NONE
-              : toolPreset === "default"
-                ? PRESET_DEFAULT
-                : PRESET_FULL;
-          const res = await fetch("/api/agent/new", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              cwd: newSessionCwd,
-              type: "command",
-              command: commandName,
-              message,
-              toolNames,
-              ...(piImages?.length ? { images: piImages } : {}),
-              ...(selectedModel
-                ? { provider: selectedModel.provider, modelId: selectedModel.modelId }
-                : {}),
-              ...(thinkingLevel !== "auto" ? { thinkingLevel } : {}),
-            }),
+          const result = await createSession({
+            cwd: newSessionCwd,
+            message,
+            commandName,
+            toolPreset,
+            thinkingLevel,
+            model: selectedModel,
+            images,
           });
-          if (!res.ok) throw new Error(await responseError(res));
-          const result = (await res.json()) as { sessionId: string };
           sessionIdRef.current = result.sessionId;
           setSessionExists(true);
           setSessionDestroyed(false);
@@ -577,6 +557,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       connectEvents,
       onSessionCreated,
       commands,
+      createSession,
       dispatch,
       setAgentPhase,
       setAgentRunning,
@@ -639,31 +620,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (isNew && newSessionCwd) {
           const selectedModel = newSessionModel;
           if (selectedModel) setPendingModel(selectedModel);
-          const { PRESET_NONE, PRESET_DEFAULT, PRESET_FULL } =
-            await import("@/components/ToolPanel");
-          const toolNames =
-            toolPreset === "none"
-              ? PRESET_NONE
-              : toolPreset === "default"
-                ? PRESET_DEFAULT
-                : PRESET_FULL;
-          const res = await fetch("/api/agent/new", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              cwd: newSessionCwd,
-              type: "prompt",
-              message,
-              toolNames,
-              ...(piImages?.length ? { images: piImages } : {}),
-              ...(selectedModel
-                ? { provider: selectedModel.provider, modelId: selectedModel.modelId }
-                : {}),
-              ...(thinkingLevel !== "auto" ? { thinkingLevel } : {}),
-            }),
+          const result = await createSession({
+            cwd: newSessionCwd,
+            message,
+            toolPreset,
+            thinkingLevel,
+            model: selectedModel,
+            images,
           });
-          if (!res.ok) throw new Error(await responseError(res));
-          const result = (await res.json()) as { sessionId: string };
           const realId = result.sessionId;
           sessionIdRef.current = realId;
           setSessionExists(true);
@@ -713,6 +677,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       connectEvents,
       onSessionCreated,
       commands,
+      createSession,
       handleCommand,
       dispatch,
       setAgentPhase,
