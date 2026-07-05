@@ -6,7 +6,7 @@
 
 ```
 node_modules/.bin/tsc --noEmit          # 零 error
-node_modules/.bin/eslint .              # 零 error + warning
+node node_modules/next/dist/bin/next lint  # 零 error + warning
 ```
 ### 提交前（最终闸门）
 

@@ -1160,7 +1160,7 @@ function BlockView({
           block={thinkingBlock}
           duration={dur}
           isSharedTotalDuration={isSharedTotalDuration}
-          isStreaming={isStreaming}
+          isStreaming={blockIsStreaming}
           isLast={isLast}
         />,
       );

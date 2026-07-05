@@ -91,12 +91,46 @@ function updateStreamingBlockTimings(
     if (nextStart.has(i) && !nextDurations.has(i)) {
       const start = nextStart.get(i)!;
       const end = nextStart.get(i + 1) ?? eventAtMs;
+      // Skip if both blocks share the same start time — they arrived in the
+      // same event and we can't distinguish individual durations yet.
+      if (start === end) continue;
       const secs = Math.round((end - start) / 1000);
       if (secs > 0) nextDurations.set(i, secs);
     }
   }
 
   return { startTimes: nextStart, durations: nextDurations };
+}
+
+/**
+ * Distribute the time window [runStart, followingStart) among a run of
+ * same-start-time blocks by assigning a proportional share to each.
+ *
+ * Example: 3 blocks all starting at T0, with the next block at T6 total
+ * 6s to split → 2s per block. Each gets _duration=2.
+ */
+function distributeSameStartDurations(
+  runFrom: number,
+  runTo: number,        // exclusive end — blocks [runFrom, runTo) share start time
+  nextStart: number | undefined,  // the following block's start, or undefined
+  startTimes: Map<number, number>,
+  durations: Map<number, number>,
+  eventAtMs: number,
+): void {
+  const n = runTo - runFrom;
+  if (n <= 1) return; // singleton — handled by caller
+  const runStart = startTimes.get(runFrom);
+  if (runStart === undefined) return;
+  const winEnd = nextStart ?? eventAtMs;
+  const winMs = winEnd - runStart;
+  if (winMs <= 0) return;
+
+  // Divide ms evenly among n blocks, rounding down so each gets at least 1s
+  const perBlockMs = winMs / n;
+  for (let k = runFrom; k < runTo; k++) {
+    const secs = Math.round(perBlockMs / 1000);
+    if (secs > 0) durations.set(k, secs);
+  }
 }
 
 function finalizeStreamingBlockDurations(
@@ -106,13 +140,35 @@ function finalizeStreamingBlockDurations(
   eventAtMs: number,
 ): Map<number, number> {
   const next = new Map(durations);
-  for (let i = 0; i < contentLength; i++) {
-    if (next.has(i)) continue;
-    const start = startTimes.get(i);
-    if (start === undefined) continue;
-    const secs = Math.round((eventAtMs - start) / 1000);
-    if (secs > 0) next.set(i, secs);
+
+  // --- Pass 1: isolate same-start-time runs ---------------------------------
+  // Walk blocks and find runs where consecutive indices share a start time.
+  // Those runs need proportional distribution; singletons (blocks whose start
+  // differs from both neighbours) can use the simple duration formula.
+
+  let i = 0;
+  while (i < contentLength) {
+    if (!startTimes.has(i)) { i++; continue; }
+    const t = startTimes.get(i)!;
+    let j = i + 1;
+    while (j < contentLength && startTimes.get(j) === t) j++;
+
+    if (j - i > 1) {
+      // Run of 2+ blocks sharing the same start time → distribute proportionally
+      const nextStart = j < contentLength ? startTimes.get(j) : undefined;
+      distributeSameStartDurations(i, j, nextStart, startTimes, next, eventAtMs);
+    } else {
+      // Singleton — simple formula: from its start to the next block's start (or eventAtMs)
+      if (!next.has(i)) {
+        const start = t;
+        const end = j < contentLength ? startTimes.get(j)! : eventAtMs;
+        const secs = Math.round((end - start) / 1000);
+        if (secs > 0) next.set(i, secs);
+      }
+    }
+    i = j;
   }
+
   return next;
 }
 
