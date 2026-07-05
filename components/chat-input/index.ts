@@ -1,0 +1,10 @@
+export { ChatInput } from "./ChatInput";
+export { ChatInputArea } from "./ChatInputArea";
+export { CommandPalette } from "./CommandPalette";
+export { InputStatusBar } from "./InputStatusBar";
+export { InputToolbar } from "./InputToolbar";
+export type { AttachedImage, ChatInputHandle } from "./ChatInput";
+export type { ChatInputAreaProps } from "./ChatInputArea";
+export type { CommandPaletteProps } from "./CommandPalette";
+export type { InputStatusBarProps } from "./InputStatusBar";
+export type { InputToolbarProps } from "./InputToolbar";

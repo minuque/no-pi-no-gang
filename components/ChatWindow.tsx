@@ -16,10 +16,10 @@ import type {
   ToolResultMessage,
 } from "@/lib/types";
 
-import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { MessageView } from "./MessageView";
 import { SessionLoading } from "./SessionLoading";
 import { UserMessageNav } from "./UserMessageNav";
+import { ChatInput, type ChatInputHandle } from "./chat-input";
 
 interface Props {
   session: SessionInfo | null;

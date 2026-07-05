@@ -15,10 +15,10 @@ import { useViewTransition } from "@/hooks/useViewTransition";
 import type { EntryTreeNode, SessionInfo } from "@/lib/types";
 
 import { BranchNavigator } from "./BranchNavigator";
-import type { ChatInputHandle } from "./ChatInput";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 import { SessionOverviewPanel } from "./SessionOverviewPanel";
 import { SessionSidebar } from "./SessionSidebar";
+import type { ChatInputHandle } from "./chat-input";
 
 const ChatWindow = dynamic(() => import("./ChatWindow").then((m) => m.ChatWindow), { ssr: false });
 
