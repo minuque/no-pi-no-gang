@@ -472,6 +472,7 @@ export const ChatWindow = memo(function ChatWindow({
       msg: AgentMessage;
       entryId: string;
       originalIndex: number;
+      isStreaming?: boolean;
     }> = [];
 
     for (let i = 0; i < messages.length; i++) {
@@ -490,12 +491,42 @@ export const ChatWindow = memo(function ChatWindow({
             stopReason: curAssist.stopReason ?? lastAssist.stopReason,
             timestamp: curAssist.timestamp ?? lastAssist.timestamp,
             usage: curAssist.usage ?? lastAssist.usage,
+            model: curAssist.model ?? lastAssist.model,
+            provider: curAssist.provider ?? lastAssist.provider,
           } as AssistantMessage;
           continue;
         }
       }
 
       items.push({ msg, entryId: entryIds[i], originalIndex: i });
+    }
+
+    // Merge the live streaming message into the last assistant turn so blocks
+    // (thinking -> tool calls -> text) appear contiguous while still streaming.
+    if (streamState.isStreaming && streamState.streamingMessage) {
+      const s = streamState.streamingMessage as AgentMessage;
+      const last = items[items.length - 1];
+      if (s.role === "assistant" && last?.msg.role === "assistant") {
+        const lastAssist = last.msg as AssistantMessage;
+        const curAssist = s as AssistantMessage;
+        last.msg = {
+          ...lastAssist,
+          content: [...lastAssist.content, ...(curAssist.content ?? [])],
+          stopReason: curAssist.stopReason ?? lastAssist.stopReason,
+          timestamp: curAssist.timestamp ?? lastAssist.timestamp,
+          usage: curAssist.usage ?? lastAssist.usage,
+          model: curAssist.model ?? lastAssist.model,
+          provider: curAssist.provider ?? lastAssist.provider,
+        } as AssistantMessage;
+        last.isStreaming = true;
+      } else if (s.role) {
+        items.push({
+          msg: s,
+          entryId: `streaming-${items.length}`,
+          originalIndex: -1,
+          isStreaming: true,
+        });
+      }
     }
 
     let lastAssistantIdx = -1;
@@ -507,7 +538,7 @@ export const ChatWindow = memo(function ChatWindow({
     }
 
     return { items, lastAssistantIdx };
-  }, [messages, entryIds]);
+  }, [messages, entryIds, streamState.isStreaming, streamState.streamingMessage]);
 
   // Pre-compute turn dividers: elapsed time before each user message (except first)
   const turnDividers = useMemo(() => {
@@ -828,128 +859,120 @@ export const ChatWindow = memo(function ChatWindow({
             >
               <div ref={scrollContentRef} style={{ paddingTop: 16 }}>
                 {/* Completed messages */}
-                {renderedMessages.items.map(({ msg, entryId, originalIndex }, idx) => {
-                  const prevItem = idx > 0 ? renderedMessages.items[idx - 1] : undefined;
-                  const nextItem =
-                    idx < renderedMessages.items.length - 1
-                      ? renderedMessages.items[idx + 1]
-                      : undefined;
+                {renderedMessages.items.map(
+                  ({ msg, entryId, originalIndex, isStreaming: itemStreaming }, idx) => {
+                    const prevItem = idx > 0 ? renderedMessages.items[idx - 1] : undefined;
+                    const nextItem =
+                      idx < renderedMessages.items.length - 1
+                        ? renderedMessages.items[idx + 1]
+                        : undefined;
 
-                  const prevAssistantEntryId =
-                    msg.role === "user" && prevItem?.msg.role === "assistant"
-                      ? prevItem.entryId
-                      : undefined;
+                    const prevAssistantEntryId =
+                      msg.role === "user" && prevItem?.msg.role === "assistant"
+                        ? prevItem.entryId
+                        : undefined;
 
-                  let showTimestamp = false;
-                  if (msg.role === "assistant") {
-                    showTimestamp = true;
-                    // Suppress if the next rendered message before a user is also an assistant
-                    if (nextItem?.msg.role === "assistant") showTimestamp = false;
-                    if (
-                      showTimestamp &&
-                      streamState.isStreaming &&
-                      idx === renderedMessages.items.length - 1
-                    ) {
-                      showTimestamp = false;
-                    }
-                  }
-                  const isLastAssistant =
-                    msg.role === "assistant" &&
-                    idx === renderedMessages.lastAssistantIdx &&
-                    !streamState.isStreaming;
-                  const isCurrentPath = entryId
-                    ? activePathIds.size === 0 || activePathIds.has(entryId)
-                    : false;
-
-                  const messageAnchorId = entryId ?? `message-${originalIndex}`;
-                  const isUserMessage = msg.role === "user";
-                  const turnElapsed = turnDividers.get(idx);
-
-                  return (
-                    <div
-                      key={entryId ?? originalIndex}
-                      ref={
-                        isUserMessage
-                          ? (node) => {
-                              if (node) userMessageRefs.current.set(messageAnchorId, node);
-                              else userMessageRefs.current.delete(messageAnchorId);
-                            }
-                          : undefined
+                    let showTimestamp = false;
+                    if (msg.role === "assistant") {
+                      showTimestamp = true;
+                      // Suppress if the next rendered message before a user is also an assistant
+                      if (nextItem?.msg.role === "assistant") showTimestamp = false;
+                      if (
+                        showTimestamp &&
+                        streamState.isStreaming &&
+                        idx === renderedMessages.items.length - 1
+                      ) {
+                        showTimestamp = false;
                       }
-                      className="relative mx-auto max-w-[1148px] px-4"
-                    >
-                      {/* Turn divider — before user messages (except first) */}
-                      {isUserMessage && turnElapsed && (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 10,
-                            marginBottom: 10,
-                            paddingTop: 4,
-                          }}
-                        >
+                    }
+                    const isLastAssistant =
+                      msg.role === "assistant" &&
+                      idx === renderedMessages.lastAssistantIdx &&
+                      !streamState.isStreaming;
+                    const isCurrentPath = entryId
+                      ? activePathIds.size === 0 || activePathIds.has(entryId)
+                      : false;
+
+                    const messageAnchorId = entryId ?? `message-${originalIndex}`;
+                    const isUserMessage = msg.role === "user";
+                    const turnElapsed = turnDividers.get(idx);
+
+                    return (
+                      <div
+                        key={entryId ?? originalIndex}
+                        ref={
+                          isUserMessage
+                            ? (node) => {
+                                if (node) userMessageRefs.current.set(messageAnchorId, node);
+                                else userMessageRefs.current.delete(messageAnchorId);
+                              }
+                            : undefined
+                        }
+                        className="relative mx-auto max-w-[1148px] px-4"
+                      >
+                        {/* Turn divider — before user messages (except first) */}
+                        {isUserMessage && turnElapsed && (
                           <div
                             style={{
-                              flex: 1,
-                              height: 1,
-                              background: "var(--border)",
-                            }}
-                          />
-                          <span
-                            style={{
-                              fontFamily: "var(--font-mono)",
-                              fontSize: 11,
-                              color: "var(--text-dim)",
-                              whiteSpace: "nowrap",
-                              flexShrink: 0,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                              marginBottom: 10,
+                              paddingTop: 4,
                             }}
                           >
-                            {turnElapsed}
-                          </span>
-                          <div
-                            style={{
-                              flex: 1,
-                              height: 1,
-                              background: "var(--border)",
-                            }}
-                          />
-                        </div>
-                      )}
-                      <MessageView
-                        message={msg}
-                        toolResults={toolResultsMap}
-                        modelNames={modelNames}
-                        entryId={entryId}
-                        onFork={
-                          agentRunning || isNew || (idx === 0 && msg.role === "user")
-                            ? undefined
-                            : handleFork
-                        }
-                        forking={forkingEntryId === entryId}
-                        onNavigate={agentRunning ? undefined : handleNavigate}
-                        prevAssistantEntryId={agentRunning ? undefined : prevAssistantEntryId}
-                        onEditContent={(content) => chatInputRef?.current?.insertIfEmpty(content)}
-                        showTimestamp={showTimestamp}
-                        prevTimestamp={prevItem?.msg.timestamp as number | undefined}
-                        onRetry={isLastAssistant && !agentRunning ? handleRetry : undefined}
-                        onEditResend={
-                          msg.role === "user" && !agentRunning ? handleEditResend : undefined
-                        }
-                      />
-                    </div>
-                  );
-                })}
-
-                {/* Streaming content */}
-                {streamState.isStreaming && streamState.streamingMessage && (
-                  <div className="mx-auto max-w-[1148px] px-4">
-                    <MessageView
-                      message={streamState.streamingMessage as AgentMessage}
-                      isStreaming
-                      modelNames={modelNames}
-                    />
-                  </div>
+                            <div
+                              style={{
+                                flex: 1,
+                                height: 1,
+                                background: "var(--border)",
+                              }}
+                            />
+                            <span
+                              style={{
+                                fontFamily: "var(--font-mono)",
+                                fontSize: 11,
+                                color: "var(--text-dim)",
+                                whiteSpace: "nowrap",
+                                flexShrink: 0,
+                              }}
+                            >
+                              {turnElapsed}
+                            </span>
+                            <div
+                              style={{
+                                flex: 1,
+                                height: 1,
+                                background: "var(--border)",
+                              }}
+                            />
+                          </div>
+                        )}
+                        <MessageView
+                          message={msg}
+                          isStreaming={itemStreaming}
+                          toolResults={toolResultsMap}
+                          modelNames={modelNames}
+                          entryId={entryId}
+                          onFork={
+                            agentRunning || isNew || (idx === 0 && msg.role === "user")
+                              ? undefined
+                              : handleFork
+                          }
+                          forking={forkingEntryId === entryId}
+                          onNavigate={agentRunning ? undefined : handleNavigate}
+                          prevAssistantEntryId={agentRunning ? undefined : prevAssistantEntryId}
+                          onEditContent={(content) => chatInputRef?.current?.insertIfEmpty(content)}
+                          showTimestamp={showTimestamp}
+                          prevTimestamp={prevItem?.msg.timestamp as number | undefined}
+                          onRetry={isLastAssistant && !agentRunning ? handleRetry : undefined}
+                          onEditResend={
+                            msg.role === "user" && !agentRunning ? handleEditResend : undefined
+                          }
+                        />
+                      </div>
+                    );
+                  },
                 )}
 
                 {/* Bottom spacer — keeps last message from hugging the edge */}

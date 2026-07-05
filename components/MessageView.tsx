@@ -1333,7 +1333,7 @@ function ThinkingBlock({
     ? t("thinking")
     : duration !== undefined
       ? t("thoughtFor", { seconds: duration })
-      : t("reasoning");
+      : t("thinking");
 
   return (
     <BlockLine
