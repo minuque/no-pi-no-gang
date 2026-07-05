@@ -10,7 +10,8 @@ import type { AnyAgentEvent as AgentEvent, AgentEventStatus } from "@/lib/events
 import type { SlashCommandItem } from "@/lib/pi-resources";
 import type { AgentMessage, AssistantMessage, EntryTreeNode, SessionInfo } from "@/lib/types";
 
-import { type ModelListItem, deriveContextUsage, useAgentState } from "./useAgentState";
+import { deriveContextUsage, useAgentState } from "./useAgentState";
+import { useModelList } from "./useModelList";
 import { useSessionCreator } from "./useSessionCreator";
 import { type SessionData, useTransport } from "./useTransport";
 
@@ -86,16 +87,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [error, setError] = useState<string | null>(null);
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
   const [entryIds, setEntryIds] = useState<string[]>([]);
-  const [modelNames, setModelNames] = useState<Record<string, string>>({});
-  const [modelList, setModelList] = useState<ModelListItem[]>([]);
-  const [modelThinkingLevels, setModelThinkingLevels] = useState<Record<string, string[]>>({});
-  const [modelThinkingLevelMaps, setModelThinkingLevelMaps] = useState<
-    Record<string, Record<string, string | null>>
-  >({});
-  const [newSessionModel, setNewSessionModelState] = useState<{
-    provider: string;
-    modelId: string;
-  } | null>(null);
   const [toolPreset, setToolPreset] = useState<"none" | "default" | "full">("default");
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevelOption>("auto");
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
@@ -113,9 +104,20 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [commands, setCommands] = useState<SlashCommandItem[]>([]);
 
   // need to list these setters in their dependency arrays — same guarantee
-  const setNewSessionModel = opts.setNewSessionModel ?? setNewSessionModelState;
   const setToolPresetState = opts.setToolPreset ?? setToolPreset;
   const { createSession } = useSessionCreator();
+  const {
+    modelNames,
+    modelList,
+    modelThinkingLevels,
+    modelThinkingLevelMaps,
+    newSessionModel,
+    setNewSessionModel,
+  } = useModelList({
+    isNew,
+    onDefaultModel: opts.setNewSessionModel,
+    refreshKey: modelsRefreshKey,
+  });
 
   const currentModel = currentModelOverride ?? data?.context.model ?? pendingModel ?? null;
   const displayModel = isNew ? newSessionModel : currentModel;
@@ -921,38 +923,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (!onBranchDataChange) return;
     onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange, agentRunning);
   }, [data?.tree, activeLeafId, handleLeafChange, onBranchDataChange]);
-
-  // Load model list
-  useEffect(() => {
-    fetch("/api/models")
-      .then((r) => r.json())
-      .then(
-        (d: {
-          models: Record<string, string>;
-          modelList?: ModelListItem[];
-          defaultModel?: { provider: string; modelId: string } | null;
-          thinkingLevels?: Record<string, string[]>;
-          thinkingLevelMaps?: Record<string, Record<string, string | null>>;
-        }) => {
-          setModelNames(d.models);
-          if (d.thinkingLevels) setModelThinkingLevels(d.thinkingLevels);
-          if (d.thinkingLevelMaps) setModelThinkingLevelMaps(d.thinkingLevelMaps);
-          if (d.modelList) {
-            setModelList(d.modelList);
-            if (isNew && d.modelList.length > 0) {
-              const def = d.defaultModel;
-              const match =
-                def && d.modelList.find((m) => m.id === def.modelId && m.provider === def.provider);
-              const selected = match
-                ? { provider: match.provider, modelId: match.id }
-                : { provider: d.modelList[0].provider, modelId: d.modelList[0].id };
-              setNewSessionModel(selected);
-            }
-          }
-        },
-      )
-      .catch(() => {});
-  }, [isNew, modelsRefreshKey, setNewSessionModel]);
 
   // Compact error auto-dismiss
   useEffect(() => {
