@@ -1,22 +1,21 @@
-"use client";
+﻿"use client";
 
-import { startTransition, useCallback, useEffect, useRef, useState } from "react";
-
-import { toast } from "sonner";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ToolEntry } from "@/components/ToolPanel";
 import { agentEventReducer, mergeToolCallMessages } from "@/lib/agent-event-reducer";
 import type { AnyAgentEvent as AgentEvent, AgentEventStatus } from "@/lib/events/event-types";
-import type { SlashCommandItem } from "@/lib/pi-resources";
-import type { AgentMessage, AssistantMessage, EntryTreeNode, SessionInfo } from "@/lib/types";
+import type { AgentMessage, EntryTreeNode, SessionInfo } from "@/lib/types";
 
 import { deriveContextUsage, useAgentState } from "./useAgentState";
 import { useModelList } from "./useModelList";
+import { type ThinkingLevelOption, useSessionActions } from "./useSessionActions";
 import { useSessionCreator } from "./useSessionCreator";
 import { type SessionData, useTransport } from "./useTransport";
 
 export type { AgentEventStatus } from "@/lib/events/event-types";
 export type { AgentPhase } from "./useAgentState";
+export type { AttachedImage, ThinkingLevelOption } from "./useSessionActions";
 export type { SessionData } from "./useTransport";
 
 export interface AgentSessionStatus {
@@ -50,18 +49,10 @@ export interface UseAgentSessionOptions {
   setToolPreset?: (preset: "none" | "default" | "full") => void;
 }
 
-export type ThinkingLevelOption = "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
-
 export interface ChatInputHandle {
   insertText: (text: string) => void;
   insertIfEmpty: (content: string) => void;
   addImages: (files: File[]) => void;
-}
-
-export interface AttachedImage {
-  data: string;
-  mimeType: string;
-  previewUrl: string;
 }
 
 export function useAgentSession(opts: UseAgentSessionOptions) {
@@ -81,7 +72,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [data, setData] = useState<SessionData | null>(null);
   // Only autoload when we have a session to load.  If the user lands with no
   // session and no cwd, the UI must still render ChatInput so they can pick a
-  // project — loading=true would block it with a spinner forever.
+  // project 鈥?loading=true would block it with a spinner forever.
   const [loading, setLoading] = useState(session !== null);
   const [branchLoading, setBranchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +81,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [toolPreset, setToolPreset] = useState<"none" | "default" | "full">("default");
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevelOption>("auto");
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
-  const [forkingEntryId, setForkingEntryId] = useState<string | null>(null);
   const [currentModelOverride, setCurrentModelOverride] = useState<{
     provider: string;
     modelId: string;
@@ -101,9 +91,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [sessionExists, setSessionExists] = useState(session !== null);
   const [sessionDestroyed, setSessionDestroyed] = useState(false);
   const [agentLastUpdated, setAgentLastUpdated] = useState<string | null>(null);
-  const [commands, setCommands] = useState<SlashCommandItem[]>([]);
 
-  // need to list these setters in their dependency arrays — same guarantee
+  // need to list these setters in their dependency arrays 鈥?same guarantee
   const setToolPresetState = opts.setToolPreset ?? setToolPreset;
   const { createSession } = useSessionCreator();
   const {
@@ -189,7 +178,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           ? `/api/sessions/${encodeURIComponent(sid)}?includeState`
           : `/api/sessions/${encodeURIComponent(sid)}`;
         const res = await fetch(url);
-        // Discard stale responses — a newer send/command has started
+        // Discard stale responses 鈥?a newer send/command has started
         if (loadGenRef.current !== gen) return null;
         if (res.status === 404) {
           setSessionExists(false);
@@ -298,7 +287,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         const mergedMessages = mergeToolCallMessages(d.context.messages);
         // Set activeLeafId + messages + entryIds in the same synchronous block
         // so they all come from a single buildSessionContext() call.
-        // React batches them into one render — no intermediate inconsistent state.
+        // React batches them into one render 鈥?no intermediate inconsistent state.
         setActiveLeafId(leafId);
         setMessages(mergedMessages);
         setEntryIds(d.context.entryIds ?? []);
@@ -397,491 +386,57 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   );
   handleAgentEventRef.current = handleAgentEvent;
 
-  const fetchCommands = useCallback(async (cwd: string) => {
-    try {
-      const res = await fetch(`/api/skills?cwd=${encodeURIComponent(cwd)}`);
-      if (!res.ok) return;
-      const data = (await res.json()) as {
-        commands?: SlashCommandItem[];
-        skills?: { name: string; description: string }[];
-      };
-      setCommands(
-        data.commands ??
-          data.skills?.map((s) => ({
-            name: `skill:${s.name}`,
-            description: s.description,
-            source: "skill",
-          })) ??
-          [],
-      );
-    } catch (e) {
-      console.error("Failed to fetch commands:", e);
-    }
-  }, []);
-
-  const handleCommand = useCallback(
-    async (commandName: string, message: string, images?: AttachedImage[]) => {
-      if (agentRunning) return;
-      const commandInfo = commands.find((c) => c.name.toLowerCase() === commandName.toLowerCase());
-      // Require at least one model to be configured
-      if (modelListRef.current.length === 0) {
-        toast.error("No models configured. Add models in Settings → Models first.");
-        return;
-      }
-      loadGenRef.current += 1;
-      const imageBlocks = images?.map((img) => ({
-        type: "image" as const,
-        source: { type: "base64" as const, media_type: img.mimeType, data: img.data },
-      }));
-      const userMsg: AgentMessage = {
-        role: "user",
-        skillCommand: commandName,
-        content: imageBlocks?.length
-          ? [
-              ...(message.trim()
-                ? [{ type: "text" as const, text: `/${commandName} ${message}` }]
-                : [{ type: "text" as const, text: `/${commandName}` }]),
-              ...imageBlocks,
-            ]
-          : message.trim()
-            ? `/${commandName} ${message}`
-            : `/${commandName}`,
-        timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, userMsg]);
-      setAgentRunning(true);
-      setAgentStateRunning(true);
-      setAgentStateStreaming(true);
-      setAgentPhase(
-        commandInfo?.source === "extension"
-          ? { kind: "running_command", command: commandName }
-          : { kind: "running_skill", skill: commandName },
-      );
-      dispatch({ type: "start" });
-      const normalizedCommand = commandName.toLowerCase();
-      const normalizedArgs = message.trim().toLowerCase();
-      if (
-        commandInfo?.source === "extension" &&
-        normalizedCommand === "mcp" &&
-        (!normalizedArgs || normalizedArgs === "status")
-      ) {
-        const assistantMsg: AssistantMessage = {
-          role: "assistant",
-          content: [
-            {
-              type: "text",
-              text: "`/mcp` 状态面板目前只能在终端/TUI 里打开，Web UI 还不能渲染这个 extension 面板。请在终端里运行 `/mcp` 查看状态。",
-            },
-          ],
-          model: "",
-          provider: "",
-          timestamp: Date.now(),
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-        setAgentRunning(false);
-        setAgentStateRunning(false);
-        setAgentStateStreaming(false);
-        setAgentPhase(null);
-        dispatch({ type: "end" });
-        return;
-      }
-      const piImages = images?.map((img) => ({
-        type: "image" as const,
-        data: img.data,
-        mimeType: img.mimeType,
-      }));
-      try {
-        if (isNew && newSessionCwd) {
-          const selectedModel = newSessionModel;
-          if (selectedModel) setPendingModel(selectedModel);
-          const result = await createSession({
-            cwd: newSessionCwd,
-            message,
-            commandName,
-            toolPreset,
-            thinkingLevel,
-            model: selectedModel,
-            images,
-          });
-          sessionIdRef.current = result.sessionId;
-          setSessionExists(true);
-          setSessionDestroyed(false);
-          connectEvents(result.sessionId);
-          onSessionCreated?.({
-            id: result.sessionId,
-            path: "",
-            cwd: newSessionCwd,
-            name: undefined,
-            created: new Date().toISOString(),
-            modified: new Date().toISOString(),
-            messageCount: 1,
-            firstMessage: message,
-          });
-        } else if (session) {
-          setSessionExists(true);
-          setSessionDestroyed(false);
-          connectEvents(session.id);
-          await sendAgentCommand(
-            {
-              type: "command",
-              command: commandName,
-              message,
-              ...(piImages?.length ? { images: piImages } : {}),
-            },
-            session.id,
-          );
-        }
-        if (commandInfo?.source === "extension") {
-          setAgentRunning(false);
-          setAgentStateRunning(false);
-          setAgentStateStreaming(false);
-          setAgentPhase(null);
-          dispatch({ type: "end" });
-        }
-      } catch (e) {
-        console.error("Failed to send command:", e);
-        toast.error(e instanceof Error ? e.message : String(e));
-        setAgentRunning(false);
-        setAgentStateRunning(false);
-        setAgentStateStreaming(false);
-        setAgentPhase(null);
-        dispatch({ type: "end" });
-      }
-    },
-    [
-      isNew,
-      newSessionCwd,
-      newSessionModel,
-      toolPreset,
-      thinkingLevel,
-      session,
-      agentRunning,
-      connectEvents,
-      onSessionCreated,
-      commands,
-      createSession,
-      dispatch,
-      setAgentPhase,
-      setAgentRunning,
-      setAgentStateRunning,
-      setAgentStateStreaming,
-      setMessages,
-      sendAgentCommand,
-    ],
-  );
-
-  const handleSend = useCallback(
-    async (message: string, images?: AttachedImage[]) => {
-      if (!message.trim() && !images?.length) return;
-      if (agentRunning) return;
-      // Don't send when neither a session nor a project directory is selected
-      if (!session && !newSessionCwd) {
-        toast.error("Select a project directory before chatting.");
-        return;
-      }
-      // Require at least one model to be configured
-      if (modelListRef.current.length === 0) {
-        toast.error("No models configured. Add models in Settings → Models first.");
-        return;
-      }
-      loadGenRef.current += 1;
-      const cmdMatch = message.match(/^\/(\S+)\s*(.*)$/);
-      if (cmdMatch) {
-        const cmdName = cmdMatch[1];
-        const restMsg = cmdMatch[2];
-        if (commands.some((c) => c.name.toLowerCase() === cmdName.toLowerCase())) {
-          return handleCommand(cmdName, restMsg, images);
-        }
-      }
-
-      const imageBlocks = images?.map((img) => ({
-        type: "image" as const,
-        source: { type: "base64" as const, media_type: img.mimeType, data: img.data },
-      }));
-      const userMsg: AgentMessage = {
-        role: "user",
-        content: imageBlocks?.length
-          ? [...(message.trim() ? [{ type: "text" as const, text: message }] : []), ...imageBlocks]
-          : message,
-        timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, userMsg]);
-      setAgentRunning(true);
-      setAgentStateRunning(true);
-      setAgentStateStreaming(true);
-      setAgentPhase({ kind: "waiting_model" });
-      dispatch({ type: "start" });
-
-      const piImages = images?.map((img) => ({
-        type: "image" as const,
-        data: img.data,
-        mimeType: img.mimeType,
-      }));
-
-      try {
-        if (isNew && newSessionCwd) {
-          const selectedModel = newSessionModel;
-          if (selectedModel) setPendingModel(selectedModel);
-          const result = await createSession({
-            cwd: newSessionCwd,
-            message,
-            toolPreset,
-            thinkingLevel,
-            model: selectedModel,
-            images,
-          });
-          const realId = result.sessionId;
-          sessionIdRef.current = realId;
-          setSessionExists(true);
-          setSessionDestroyed(false);
-          connectEvents(realId);
-          onSessionCreated?.({
-            id: realId,
-            path: "",
-            cwd: newSessionCwd,
-            name: undefined,
-            created: new Date().toISOString(),
-            modified: new Date().toISOString(),
-            messageCount: 1,
-            firstMessage: message,
-          });
-        } else if (session) {
-          setSessionExists(true);
-          setSessionDestroyed(false);
-          connectEvents(session.id);
-          await sendAgentCommand(
-            {
-              type: "prompt",
-              message,
-              ...(piImages?.length ? { images: piImages } : {}),
-            },
-            session.id,
-          );
-        }
-      } catch (e) {
-        console.error("Failed to send message:", e);
-        toast.error(e instanceof Error ? e.message : String(e));
-        setAgentRunning(false);
-        setAgentStateRunning(false);
-        setAgentStateStreaming(false);
-        setAgentPhase(null);
-        dispatch({ type: "end" });
-      }
-    },
-    [
-      isNew,
-      newSessionCwd,
-      newSessionModel,
-      toolPreset,
-      thinkingLevel,
-      session,
-      agentRunning,
-      connectEvents,
-      onSessionCreated,
-      commands,
-      createSession,
-      handleCommand,
-      dispatch,
-      setAgentPhase,
-      setAgentRunning,
-      setAgentStateRunning,
-      setAgentStateStreaming,
-      setMessages,
-      sendAgentCommand,
-    ],
-  );
-
-  const handleAbort = useCallback(async () => {
-    const sid = sessionIdRef.current;
-    if (!sid) return;
-    try {
-      await sendAgentCommand({ type: "abort" }, sid);
-    } catch (e) {
-      console.error("Failed to abort:", e);
-    }
-  }, [sendAgentCommand]);
-
-  const handleFork = useCallback(
-    async (entryId: string) => {
-      const sid = sessionIdRef.current;
-      if (!sid) return;
-      setForkingEntryId(entryId);
-      try {
-        const result = await sendAgentCommand<{ cancelled?: boolean; newSessionId?: string }>(
-          { type: "fork", entryId },
-          sid,
-        );
-        const { cancelled, newSessionId } = result ?? {};
-        if (!cancelled && newSessionId) {
-          onSessionForked?.(newSessionId);
-        }
-      } catch (e) {
-        console.error("Fork failed:", e);
-      } finally {
-        setForkingEntryId(null);
-      }
-    },
-    [onSessionForked, sendAgentCommand],
-  );
-
-  const handleNavigate = useCallback(
-    async (entryId: string) => {
-      const sid = sessionIdRef.current;
-      if (!sid) return;
-      loadGenRef.current += 1;
-      sendAgentCommand({ type: "navigate_tree", targetId: entryId }, sid).catch(() => {});
-      await loadContext(sid, entryId);
-    },
-    [loadContext, sendAgentCommand],
-  );
-
-  const handleLeafChange = useCallback(
-    async (leafId: string | null) => {
-      const sid = sessionIdRef.current;
-      if (!sid) return;
-      loadGenRef.current += 1;
-      startTransition(() => {
-        loadContext(sid, leafId);
-      });
-      if (leafId) {
-        sendAgentCommand({ type: "navigate_tree", targetId: leafId }, sid).catch(() => {});
-      }
-    },
-    [loadContext, sendAgentCommand],
-  );
-
-  const handleModelChange = useCallback(
-    async (provider: string, modelId: string) => {
-      if (isNew) {
-        setNewSessionModel({ provider, modelId });
-        return;
-      }
-      const sid = sessionIdRef.current;
-      if (!sid) return;
-      try {
-        await sendAgentCommand({ type: "set_model", provider, modelId }, sid);
-        setCurrentModelOverride({ provider, modelId });
-      } catch (e) {
-        console.error("Failed to set model:", e);
-      }
-    },
-    [isNew, sendAgentCommand, setNewSessionModel],
-  );
-
-  const handleCompact = useCallback(async () => {
-    const sid = sessionIdRef.current;
-    if (!sid || isCompacting) return;
-    setIsCompacting(true);
-    setCompactError(null);
-    try {
-      await sendAgentCommand({ type: "compact" }, sid);
-      await loadSession(sid, true);
-    } catch (e) {
-      setCompactError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setIsCompacting(false);
-    }
-  }, [isCompacting, loadSession, sendAgentCommand, setCompactError, setIsCompacting]);
-
-  const handleSteer = useCallback(
-    async (message: string, images?: AttachedImage[]) => {
-      const sid = sessionIdRef.current;
-      if (!sid) return;
-      setMessages((prev) => [
-        ...prev,
-        { role: "user", content: `[steer] ${message}`, timestamp: Date.now() } as AgentMessage,
-      ]);
-      const piImages = images?.map((img) => ({
-        type: "image" as const,
-        data: img.data,
-        mimeType: img.mimeType,
-      }));
-      try {
-        await sendAgentCommand(
-          {
-            type: "steer",
-            message,
-            ...(piImages?.length ? { images: piImages } : {}),
-          },
-          sid,
-        );
-      } catch (e) {
-        console.error("Failed to steer:", e);
-      }
-    },
-    [sendAgentCommand, setMessages],
-  );
-
-  const handleFollowUp = useCallback(
-    async (message: string, images?: AttachedImage[]) => {
-      const sid = sessionIdRef.current;
-      if (!sid) return;
-      setMessages((prev) => [
-        ...prev,
-        { role: "user", content: message, timestamp: Date.now() } as AgentMessage,
-      ]);
-      const piImages = images?.map((img) => ({
-        type: "image" as const,
-        data: img.data,
-        mimeType: img.mimeType,
-      }));
-      try {
-        await sendAgentCommand(
-          {
-            type: "follow_up",
-            message,
-            ...(piImages?.length ? { images: piImages } : {}),
-          },
-          sid,
-        );
-      } catch (e) {
-        console.error("Failed to follow up:", e);
-      }
-    },
-    [sendAgentCommand, setMessages],
-  );
-
-  const handleAbortCompaction = useCallback(async () => {
-    const sid = sessionIdRef.current;
-    if (!sid) return;
-    try {
-      await sendAgentCommand({ type: "abort_compaction" }, sid);
-    } catch (e) {
-      console.error("Failed to abort compaction:", e);
-    }
-  }, [sendAgentCommand]);
-
-  const handleThinkingLevelChange = useCallback(
-    async (level: ThinkingLevelOption) => {
-      setThinkingLevel(level);
-      if (level === "auto") return; // "auto" leaves pi's current setting untouched
-      const sid = sessionIdRef.current;
-      if (!sid) return;
-      try {
-        await sendAgentCommand({ type: "set_thinking_level", level }, sid);
-      } catch (e) {
-        console.error("Failed to set thinking level:", e);
-      }
-    },
-    [sendAgentCommand],
-  );
-
-  const handleToolPresetChange = useCallback(
-    async (preset: "none" | "default" | "full") => {
-      const { PRESET_NONE, PRESET_DEFAULT, PRESET_FULL } = await import("@/components/ToolPanel");
-      const toolNames =
-        preset === "none" ? PRESET_NONE : preset === "default" ? PRESET_DEFAULT : PRESET_FULL;
-      setToolPresetState(preset);
-      const sid = sessionIdRef.current;
-      if (!sid) return;
-      try {
-        await sendAgentCommand({ type: "set_tools", toolNames }, sid);
-      } catch (e) {
-        console.error("Failed to set tools:", e);
-      }
-    },
-    [sendAgentCommand, setToolPresetState],
-  );
+  const {
+    commands,
+    forkingEntryId,
+    fetchCommands,
+    handleSend,
+    handleAbort,
+    handleFork,
+    handleNavigate,
+    handleLeafChange,
+    handleModelChange,
+    handleCompact,
+    handleSteer,
+    handleFollowUp,
+    handleAbortCompaction,
+    handleToolPresetChange,
+    handleThinkingLevelChange,
+  } = useSessionActions({
+    session,
+    isNew,
+    newSessionCwd,
+    newSessionModel,
+    toolPreset,
+    thinkingLevel,
+    agentRunning,
+    isCompacting,
+    modelListRef,
+    sessionIdRef,
+    loadGenRef,
+    createSession,
+    sendAgentCommand,
+    connectEvents,
+    loadSession,
+    loadContext,
+    onSessionCreated,
+    onSessionForked,
+    setPendingModel,
+    setCurrentModelOverride,
+    setNewSessionModel,
+    setToolPresetState,
+    setThinkingLevel,
+    setSessionExists,
+    setSessionDestroyed,
+    setMessages,
+    setAgentRunning,
+    setAgentStateRunning,
+    setAgentStateStreaming,
+    setAgentPhase,
+    setIsCompacting,
+    setCompactError,
+    dispatch,
+  });
 
   // Load session on mount
   useEffect(() => {
@@ -1011,7 +566,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setMessages,
     dispatch,
     setAgentRunning,
-    setForkingEntryId,
     // Subscriptions
     handleAgentEventRef,
   };
