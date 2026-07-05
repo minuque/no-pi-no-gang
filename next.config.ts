@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 import { readFileSync } from "fs";
-import { join } from "path";
+import path, { join } from "path";
 
 const { version } = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf8")) as {
   version: string;
@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
   experimental: {
     turbopackFileSystemCacheForDev: true,
     viewTransition: true,
+  },
+  turbopack: {
+    root: path.resolve(),
+    // root: process.cwd(),
   },
   // turbopack.root omitted — __dirname in git worktrees on Windows causes
   // EPERM scandir into protected directories from glob expansion. Next.js

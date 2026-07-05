@@ -29,6 +29,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
+    "lint:design": "node node_modules/@google/design.md/dist/index.js lint DESIGN.md",
     "sync:agents": "node -e \"require('fs').copyFileSync('AGENTS.md','CLAUDE.md')\"",
     "release": "npm version patch --no-git-tag-version && npm run build && npm publish --access public",
     "prepare": "husky"
@@ -52,6 +53,7 @@
     "sonner": "^2.0.7"
   },
   "devDependencies": {
+    "@google/design.md": "^0.3.0",
     "@tailwindcss/postcss": "^4.2.2",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@types/node": "^25",
@@ -76,6 +78,9 @@
     ],
     "*.{json,css,html,yaml,yml}": [
       "prettier --write"
+    ],
+    "DESIGN.md": [
+      "node node_modules/@google/design.md/dist/index.js lint"
     ]
   }
 }
