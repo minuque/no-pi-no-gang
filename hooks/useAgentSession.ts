@@ -6,15 +6,14 @@ import { toast } from "sonner";
 
 import type { ToolEntry } from "@/components/ToolPanel";
 import { sendAgentCommand } from "@/lib/agent-client";
-import { normalizeToolCalls } from "@/lib/normalize";
+import {
+  type AgentEventState,
+  agentEventReducer,
+  initialAgentEventState,
+  mergeToolCallMessages,
+} from "@/lib/agent-event-reducer";
 import type { SlashCommandItem } from "@/lib/pi-resources";
-import type {
-  AgentMessage,
-  AssistantMessage,
-  EntryTreeNode,
-  SessionInfo,
-  ToolCallContent,
-} from "@/lib/types";
+import type { AgentMessage, AssistantMessage, EntryTreeNode, SessionInfo } from "@/lib/types";
 
 export interface SessionData {
   sessionId: string;
@@ -189,13 +188,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [branchLoading, setBranchLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [entryIds, setEntryIds] = useState<string[]>([]);
   const [streamState, dispatch] = useReducer(streamReducer, {
     isStreaming: false,
     streamingMessage: null,
   });
-  const [agentRunning, setAgentRunning] = useState(false);
   const [modelNames, setModelNames] = useState<Record<string, string>>({});
   const [modelList, setModelList] = useState<ModelListItem[]>([]);
   const [modelThinkingLevels, setModelThinkingLevels] = useState<Record<string, string[]>>({});
@@ -208,11 +205,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   } | null>(null);
   const [toolPreset, setToolPreset] = useState<"none" | "default" | "full">("default");
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevelOption>("auto");
-  const [retryInfo, setRetryInfo] = useState<{
-    attempt: number;
-    maxAttempts: number;
-    errorMessage?: string;
-  } | null>(null);
   const [contextUsage, setContextUsage] = useState<ContextUsageState | null>(null);
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
   const [forkingEntryId, setForkingEntryId] = useState<string | null>(null);
@@ -223,17 +215,130 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [pendingModel, setPendingModel] = useState<{ provider: string; modelId: string } | null>(
     null,
   );
-  const [isCompacting, setIsCompacting] = useState(false);
-  const [compactError, setCompactError] = useState<string | null>(null);
-  const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
-  const [eventStatus, setEventStatus] = useState<AgentEventStatus>("idle");
   const [sessionExists, setSessionExists] = useState(session !== null);
   const [sessionDestroyed, setSessionDestroyed] = useState(false);
-  const [agentStateRunning, setAgentStateRunning] = useState(false);
-  const [agentStateStreaming, setAgentStateStreaming] = useState(false);
-  const [agentStateCompacting, setAgentStateCompacting] = useState(false);
   const [agentLastUpdated, setAgentLastUpdated] = useState<string | null>(null);
   const [commands, setCommands] = useState<SlashCommandItem[]>([]);
+
+  // Agent-event-driven state is computed by a pure reducer (lib/agent-event-reducer).
+  // agentEventStateRef mirrors the latest reducer state so non-render paths
+  // (applyAgentEvent / setMessages / setAgentRunning wrappers) can chain updates
+  // synchronously without waiting for React's commit, eliminating the
+  // "loadGenRef += 1 inside the event handler" race the old code had.
+  const agentEventStateRef = useRef<AgentEventState>(initialAgentEventState());
+  const [agentEventState, setAgentEventStateRaw] = useState<AgentEventState>(
+    agentEventStateRef.current,
+  );
+  const applyAgentEventState = useCallback(
+    (next: AgentEventState | ((prev: AgentEventState) => AgentEventState)) => {
+      const prev = agentEventStateRef.current;
+      const newState = typeof next === "function" ? next(prev) : next;
+      agentEventStateRef.current = newState;
+      setAgentEventStateRaw(newState);
+    },
+    [],
+  );
+
+  const messages: AgentMessage[] = agentEventState.messages;
+  const agentRunning: boolean = agentEventState.agentRunning;
+  const agentStateRunning: boolean = agentEventState.agentStateRunning;
+  const agentStateStreaming: boolean = agentEventState.agentStateStreaming;
+  const agentStateCompacting: boolean = agentEventState.agentStateCompacting;
+  const agentPhase: AgentPhase = agentEventState.agentPhase;
+  const eventStatus: AgentEventStatus = agentEventState.eventStatus;
+  const retryInfo: {
+    attempt: number;
+    maxAttempts: number;
+    errorMessage?: string;
+  } | null = agentEventState.retryInfo;
+  const isCompacting: boolean = agentEventState.isCompacting;
+  const compactError: string | null = agentEventState.compactError;
+
+  // Stable identity setters (one ref, lazily initialized) that funnel each
+  // partial update through applyAgentEventState.  useRef keeps identity stable
+  // across renders so existing useCallback consumers (handleSend etc.) don't
+  // need to list these setters in their dependency arrays — same guarantee
+  // React's built-in useState dispatch used to give them.
+  const settersRef = useRef<{
+    setMessages: React.Dispatch<React.SetStateAction<AgentMessage[]>>;
+    setAgentRunning: React.Dispatch<React.SetStateAction<boolean>>;
+    setAgentStateRunning: React.Dispatch<React.SetStateAction<boolean>>;
+    setAgentStateStreaming: React.Dispatch<React.SetStateAction<boolean>>;
+    setAgentStateCompacting: React.Dispatch<React.SetStateAction<boolean>>;
+    setIsCompacting: React.Dispatch<React.SetStateAction<boolean>>;
+    setCompactError: React.Dispatch<React.SetStateAction<string | null>>;
+    setAgentPhase: React.Dispatch<React.SetStateAction<AgentPhase>>;
+    setEventStatus: React.Dispatch<React.SetStateAction<AgentEventStatus>>;
+  } | null>(null);
+  if (settersRef.current === null) {
+    const mkBool =
+      (
+        field:
+          | "agentRunning"
+          | "agentStateRunning"
+          | "agentStateStreaming"
+          | "agentStateCompacting"
+          | "isCompacting",
+      ): React.Dispatch<React.SetStateAction<boolean>> =>
+      (action) =>
+        applyAgentEventState((prev) => ({
+          ...prev,
+          [field]:
+            typeof action === "function"
+              ? (action as (p: boolean) => boolean)(prev[field])
+              : action,
+        }));
+    settersRef.current = {
+      setMessages: (action) =>
+        applyAgentEventState((prev) => ({
+          ...prev,
+          messages:
+            typeof action === "function"
+              ? (action as (p: AgentMessage[]) => AgentMessage[])(prev.messages)
+              : action,
+        })),
+      setAgentRunning: mkBool("agentRunning"),
+      setAgentStateRunning: mkBool("agentStateRunning"),
+      setAgentStateStreaming: mkBool("agentStateStreaming"),
+      setAgentStateCompacting: mkBool("agentStateCompacting"),
+      setIsCompacting: mkBool("isCompacting"),
+      setCompactError: (action) =>
+        applyAgentEventState((prev) => ({
+          ...prev,
+          compactError:
+            typeof action === "function"
+              ? (action as (p: string | null) => string | null)(prev.compactError)
+              : action,
+        })),
+      setAgentPhase: (action) =>
+        applyAgentEventState((prev) => ({
+          ...prev,
+          agentPhase:
+            typeof action === "function"
+              ? (action as (p: AgentPhase) => AgentPhase)(prev.agentPhase)
+              : action,
+        })),
+      setEventStatus: (action) =>
+        applyAgentEventState((prev) => ({
+          ...prev,
+          eventStatus:
+            typeof action === "function"
+              ? (action as (p: AgentEventStatus) => AgentEventStatus)(prev.eventStatus)
+              : action,
+        })),
+    };
+  }
+  const {
+    setMessages,
+    setAgentRunning,
+    setAgentStateRunning,
+    setAgentStateStreaming,
+    setAgentStateCompacting,
+    setIsCompacting,
+    setCompactError,
+    setAgentPhase,
+    setEventStatus,
+  } = settersRef.current;
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
@@ -362,46 +467,57 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (showLoading) setLoading(false);
       }
     },
-    [],
+    [
+      setAgentStateCompacting,
+      setAgentStateRunning,
+      setAgentStateStreaming,
+      setEventStatus,
+      setMessages,
+    ],
   );
 
-  const loadContext = useCallback(async (sid: string, leafId: string | null) => {
-    const gen = loadGenRef.current;
-    const started = performance.now();
-    setBranchLoading(true);
-    try {
-      const url = leafId
-        ? `/api/sessions/${encodeURIComponent(sid)}/context?leafId=${encodeURIComponent(leafId)}`
-        : `/api/sessions/${encodeURIComponent(sid)}/context`;
-      const res = await fetch(url);
-      // Discard stale responses from rapid branch switches
-      if (loadGenRef.current !== gen) return;
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = (await res.json()) as { context: { messages: AgentMessage[]; entryIds: string[] } };
-      if (loadGenRef.current !== gen) return;
-      const mergedMessages = mergeToolCallMessages(d.context.messages);
-      // Set activeLeafId + messages + entryIds in the same synchronous block
-      // so they all come from a single buildSessionContext() call.
-      // React batches them into one render — no intermediate inconsistent state.
-      setActiveLeafId(leafId);
-      setMessages(mergedMessages);
-      setEntryIds(d.context.entryIds ?? []);
-      setContextUsage(
-        deriveContextUsage(mergedMessages, currentModelRef.current, modelListRef.current),
-      );
-    } catch (e) {
-      console.error("Failed to load context:", e);
-    } finally {
-      if (loadGenRef.current !== gen) return;
-      const elapsed = performance.now() - started;
-      const minDelay = Math.max(0, 500 - elapsed);
-      if (minDelay > 0) {
-        setTimeout(() => setBranchLoading(false), minDelay);
-      } else {
-        setBranchLoading(false);
+  const loadContext = useCallback(
+    async (sid: string, leafId: string | null) => {
+      const gen = loadGenRef.current;
+      const started = performance.now();
+      setBranchLoading(true);
+      try {
+        const url = leafId
+          ? `/api/sessions/${encodeURIComponent(sid)}/context?leafId=${encodeURIComponent(leafId)}`
+          : `/api/sessions/${encodeURIComponent(sid)}/context`;
+        const res = await fetch(url);
+        // Discard stale responses from rapid branch switches
+        if (loadGenRef.current !== gen) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const d = (await res.json()) as {
+          context: { messages: AgentMessage[]; entryIds: string[] };
+        };
+        if (loadGenRef.current !== gen) return;
+        const mergedMessages = mergeToolCallMessages(d.context.messages);
+        // Set activeLeafId + messages + entryIds in the same synchronous block
+        // so they all come from a single buildSessionContext() call.
+        // React batches them into one render — no intermediate inconsistent state.
+        setActiveLeafId(leafId);
+        setMessages(mergedMessages);
+        setEntryIds(d.context.entryIds ?? []);
+        setContextUsage(
+          deriveContextUsage(mergedMessages, currentModelRef.current, modelListRef.current),
+        );
+      } catch (e) {
+        console.error("Failed to load context:", e);
+      } finally {
+        if (loadGenRef.current !== gen) return;
+        const elapsed = performance.now() - started;
+        const minDelay = Math.max(0, 500 - elapsed);
+        if (minDelay > 0) {
+          setTimeout(() => setBranchLoading(false), minDelay);
+        } else {
+          setBranchLoading(false);
+        }
       }
-    }
-  }, []);
+    },
+    [setMessages],
+  );
 
   const loadTools = useCallback(
     async (sid: string) => {
@@ -418,224 +534,129 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     [setToolPresetState],
   );
 
-  const connectEvents = useCallback((sid: string) => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-    setEventStatus("connecting");
-    const es = new EventSource(`/api/agent/${encodeURIComponent(sid)}/events`);
-    eventSourceRef.current = es;
-    es.onopen = () => {
-      if (eventSourceRef.current === es) setEventStatus("connected");
-    };
-    es.onmessage = (e) => {
-      if (eventSourceRef.current === es) setEventStatus("connected");
-      try {
-        const event = JSON.parse(e.data) as AgentEvent;
-        handleAgentEventRef.current?.(event);
-      } catch {
-        // ignore
+  const connectEvents = useCallback(
+    (sid: string) => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
       }
-    };
-    es.onerror = () => {
-      if (eventSourceRef.current !== es) return;
-      es.close();
-      eventSourceRef.current = null;
-      fetch(`/api/sessions/${encodeURIComponent(sid)}`, { cache: "no-store" })
-        .then((res) => {
-          if (res.status === 404) {
-            setSessionExists(false);
-            setSessionDestroyed(true);
-            setAgentRunning(false);
-            setAgentPhase(null);
-            setAgentStateRunning(false);
-            setAgentStateStreaming(false);
-            setAgentStateCompacting(false);
-            setAgentLastUpdated(new Date().toISOString());
-            dispatch({ type: "end" });
-            setEventStatus("destroyed");
-            return;
-          }
-          setSessionExists(true);
-          setSessionDestroyed(false);
-          if (agentRunningRef.current) {
-            setEventStatus("reconnecting");
-            setTimeout(() => {
-              if (agentRunningRef.current) connectEvents(sid);
-            }, 1000);
-          } else {
-            setEventStatus("readonly");
-          }
-        })
-        .catch(() => {
-          if (agentRunningRef.current) {
-            setEventStatus("reconnecting");
-            setTimeout(() => {
-              if (agentRunningRef.current) connectEvents(sid);
-            }, 1000);
-          } else {
-            setEventStatus("readonly");
-          }
-        });
-    };
-  }, []);
+      setEventStatus("connecting");
+      const es = new EventSource(`/api/agent/${encodeURIComponent(sid)}/events`);
+      eventSourceRef.current = es;
+      es.onopen = () => {
+        if (eventSourceRef.current === es) setEventStatus("connected");
+      };
+      es.onmessage = (e) => {
+        if (eventSourceRef.current === es) setEventStatus("connected");
+        try {
+          const event = JSON.parse(e.data) as AgentEvent;
+          handleAgentEventRef.current?.(event);
+        } catch {
+          // ignore
+        }
+      };
+      es.onerror = () => {
+        if (eventSourceRef.current !== es) return;
+        es.close();
+        eventSourceRef.current = null;
+        fetch(`/api/sessions/${encodeURIComponent(sid)}`, { cache: "no-store" })
+          .then((res) => {
+            if (res.status === 404) {
+              setSessionExists(false);
+              setSessionDestroyed(true);
+              setAgentRunning(false);
+              setAgentPhase(null);
+              setAgentStateRunning(false);
+              setAgentStateStreaming(false);
+              setAgentStateCompacting(false);
+              setAgentLastUpdated(new Date().toISOString());
+              dispatch({ type: "end" });
+              setEventStatus("destroyed");
+              return;
+            }
+            setSessionExists(true);
+            setSessionDestroyed(false);
+            if (agentRunningRef.current) {
+              setEventStatus("reconnecting");
+              setTimeout(() => {
+                if (agentRunningRef.current) connectEvents(sid);
+              }, 1000);
+            } else {
+              setEventStatus("readonly");
+            }
+          })
+          .catch(() => {
+            if (agentRunningRef.current) {
+              setEventStatus("reconnecting");
+              setTimeout(() => {
+                if (agentRunningRef.current) connectEvents(sid);
+              }, 1000);
+            } else {
+              setEventStatus("readonly");
+            }
+          });
+      };
+    },
+    [
+      setAgentPhase,
+      setAgentRunning,
+      setAgentStateCompacting,
+      setAgentStateRunning,
+      setAgentStateStreaming,
+      setEventStatus,
+    ],
+  );
 
   useEffect(() => {
     agentRunningRef.current = agentRunning;
   }, [agentRunning]);
 
-  const isToolCallOnly = (
-    msg: AgentMessage,
-  ): msg is AssistantMessage & { content: ToolCallContent[] } => {
-    if (msg.role !== "assistant") return false;
-    const content = msg.content;
-    return (
-      Array.isArray(content) &&
-      content.length > 0 &&
-      content.every((b): b is ToolCallContent => b.type === "toolCall")
-    );
-  };
-
-  const mergeToolCallMessages = (msgs: AgentMessage[]): AgentMessage[] => {
-    return msgs.map((msg) =>
-      isToolCallOnly(msg)
-        ? { ...msg, content: msg.content.map((b) => ({ ...b, _sourceTs: msg.timestamp })) }
-        : msg,
-    );
-  };
-
   const handleAgentEvent = useCallback(
     (event: AgentEvent) => {
-      switch (event.type) {
-        case "agent_start":
-          setAgentRunning(true);
-          setAgentStateRunning(true);
-          setAgentStateStreaming(true);
-          setAgentLastUpdated(new Date().toISOString());
-          setAgentPhase((prev) => {
-            if (prev?.kind === "running_skill") return prev;
-            return { kind: "waiting_model" };
-          });
-          dispatch({ type: "start" });
-          break;
-        case "agent_end":
-          setAgentRunning(false);
-          setAgentStateRunning(false);
-          setAgentStateStreaming(false);
-          setAgentStateCompacting(false);
-          setAgentLastUpdated(new Date().toISOString());
-          setAgentPhase(null);
-          setEventStatus("idle");
-          setRetryInfo(null);
-          dispatch({ type: "end" });
-          // Bump gen so loadSession below captures a generation that any
-          // subsequent handleSend/handleCommand will invalidate.  Without
-          // this, a stale agent_end event (already queued when handleSend
-          // reconnects the SSE) would capture the same gen as handleSend
-          // and its loadSession would overwrite messages with stale data.
-          loadGenRef.current += 1;
-          if (sessionIdRef.current) {
-            fetch(`/api/agent/${encodeURIComponent(sessionIdRef.current)}`)
-              .then((r) => r.json())
-              .then(
-                (d: {
-                  state?: {
-                    contextUsage?: {
-                      percent: number | null;
-                      contextWindow: number;
-                      tokens: number | null;
-                    } | null;
-                    systemPrompt?: string;
-                  };
-                }) => {
-                  if (d.state?.contextUsage !== undefined)
-                    setContextUsage(d.state.contextUsage ?? null);
-                  if (d.state?.systemPrompt !== undefined)
-                    setSystemPrompt(d.state.systemPrompt ?? null);
-                },
-              )
-              .catch(() => {});
-            // Re-read session to pick up any messages missed by SSE (reconnect, lost message_end, etc.)
-            loadSession(sessionIdRef.current).catch(() => {});
-          }
-          onAgentEnd?.();
-          break;
-        case "message_start":
-        case "message_update": {
-          const msg = event.message as Partial<AgentMessage> | undefined;
-          if (msg?.role === "user") {
-            break;
-          }
-          if (msg) {
-            dispatch({ type: "update", message: normalizeToolCalls(msg as AgentMessage) });
-          }
-          setAgentPhase((prev) =>
-            prev?.kind === "running_skill" ? { kind: "waiting_model" } : null,
-          );
-          break;
+      const eventAt = new Date().toISOString();
+      const prev = agentEventStateRef.current;
+      const { state, effects } = agentEventReducer(prev, event, eventAt);
+      applyAgentEventState(state);
+      if (state.loadGen !== prev.loadGen) loadGenRef.current = state.loadGen;
+      // Agent-activity timestamps were `setAgentLastUpdated(new Date().toISOString())`
+      // in the old handler; reducer mirrors them into state.lastEventAt so the
+      // pure reducer never calls new Date.  Only the event types that touched
+      // lastUpdated in the old code write lastEventAt in the reducer.
+      if (state.lastEventAt === eventAt && prev.lastEventAt !== eventAt) {
+        setAgentLastUpdated(eventAt);
+      }
+      if (effects.streamAction) dispatch(effects.streamAction);
+      if (effects.agentEnded) {
+        if (sessionIdRef.current) {
+          fetch(`/api/agent/${encodeURIComponent(sessionIdRef.current)}`)
+            .then((r) => r.json())
+            .then(
+              (d: {
+                state?: {
+                  contextUsage?: {
+                    percent: number | null;
+                    contextWindow: number;
+                    tokens: number | null;
+                  } | null;
+                  systemPrompt?: string;
+                };
+              }) => {
+                if (d.state?.contextUsage !== undefined)
+                  setContextUsage(d.state.contextUsage ?? null);
+                if (d.state?.systemPrompt !== undefined)
+                  setSystemPrompt(d.state.systemPrompt ?? null);
+              },
+            )
+            .catch(() => {});
+          // Re-read session to pick up any messages missed by SSE (reconnect, lost message_end, etc.)
+          loadSession(sessionIdRef.current).catch(() => {});
         }
-        case "message_end": {
-          const completed = event.message as AgentMessage | undefined;
-          if (completed && completed.role !== "user") {
-            setMessages((prev) => mergeToolCallMessages([...prev, normalizeToolCalls(completed)]));
-          }
-          dispatch({ type: "reset" });
-          setAgentPhase({ kind: "waiting_model" });
-          break;
-        }
-        case "tool_execution_start": {
-          const id = event.toolCallId as string;
-          const name = event.toolName as string;
-          setAgentPhase((prev) => {
-            const tools = prev?.kind === "running_tools" ? [...prev.tools] : [];
-            if (!tools.some((t) => t.id === id)) tools.push({ id, name });
-            return { kind: "running_tools", tools };
-          });
-          break;
-        }
-        case "tool_execution_end": {
-          const id = event.toolCallId as string;
-          setAgentPhase((prev) => {
-            if (prev?.kind !== "running_tools") return prev;
-            const tools = prev.tools.filter((t) => t.id !== id);
-            if (tools.length === 0) return { kind: "waiting_model" };
-            return { kind: "running_tools", tools };
-          });
-          break;
-        }
-        case "auto_retry_start":
-          setRetryInfo({
-            attempt: event.attempt as number,
-            maxAttempts: event.maxAttempts as number,
-            errorMessage: event.errorMessage as string | undefined,
-          });
-          break;
-        case "auto_retry_end":
-          setRetryInfo(null);
-          break;
-        case "auto_compaction_start":
-        case "compaction_start":
-          setIsCompacting(true);
-          setAgentStateCompacting(true);
-          setAgentLastUpdated(new Date().toISOString());
-          setCompactError(null);
-          break;
-        case "auto_compaction_end":
-        case "compaction_end":
-          setIsCompacting(false);
-          setAgentStateCompacting(false);
-          setAgentLastUpdated(new Date().toISOString());
-          if (event.errorMessage) {
-            setCompactError(event.errorMessage as string);
-          } else if (!event.aborted) {
-            loadGenRef.current += 1;
-            if (sessionIdRef.current) loadSession(sessionIdRef.current);
-          }
-          break;
+        onAgentEnd?.();
+      } else if (effects.compactionEndedClean) {
+        if (sessionIdRef.current) loadSession(sessionIdRef.current).catch(() => {});
       }
     },
-    [loadSession, onAgentEnd],
+    [applyAgentEventState, loadSession, onAgentEnd],
   );
   handleAgentEventRef.current = handleAgentEvent;
 
@@ -815,6 +836,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       connectEvents,
       onSessionCreated,
       commands,
+      setAgentPhase,
+      setAgentRunning,
+      setAgentStateRunning,
+      setAgentStateStreaming,
+      setMessages,
     ],
   );
 
@@ -942,6 +968,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       onSessionCreated,
       commands,
       handleCommand,
+      setAgentPhase,
+      setAgentRunning,
+      setAgentStateRunning,
+      setAgentStateStreaming,
+      setMessages,
     ],
   );
 
@@ -1035,53 +1066,59 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     } finally {
       setIsCompacting(false);
     }
-  }, [isCompacting, loadSession]);
+  }, [isCompacting, loadSession, setCompactError, setIsCompacting]);
 
-  const handleSteer = useCallback(async (message: string, images?: AttachedImage[]) => {
-    const sid = sessionIdRef.current;
-    if (!sid) return;
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: `[steer] ${message}`, timestamp: Date.now() } as AgentMessage,
-    ]);
-    const piImages = images?.map((img) => ({
-      type: "image" as const,
-      data: img.data,
-      mimeType: img.mimeType,
-    }));
-    try {
-      await sendAgentCommand(sid, {
-        type: "steer",
-        message,
-        ...(piImages?.length ? { images: piImages } : {}),
-      });
-    } catch (e) {
-      console.error("Failed to steer:", e);
-    }
-  }, []);
+  const handleSteer = useCallback(
+    async (message: string, images?: AttachedImage[]) => {
+      const sid = sessionIdRef.current;
+      if (!sid) return;
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: `[steer] ${message}`, timestamp: Date.now() } as AgentMessage,
+      ]);
+      const piImages = images?.map((img) => ({
+        type: "image" as const,
+        data: img.data,
+        mimeType: img.mimeType,
+      }));
+      try {
+        await sendAgentCommand(sid, {
+          type: "steer",
+          message,
+          ...(piImages?.length ? { images: piImages } : {}),
+        });
+      } catch (e) {
+        console.error("Failed to steer:", e);
+      }
+    },
+    [setMessages],
+  );
 
-  const handleFollowUp = useCallback(async (message: string, images?: AttachedImage[]) => {
-    const sid = sessionIdRef.current;
-    if (!sid) return;
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: message, timestamp: Date.now() } as AgentMessage,
-    ]);
-    const piImages = images?.map((img) => ({
-      type: "image" as const,
-      data: img.data,
-      mimeType: img.mimeType,
-    }));
-    try {
-      await sendAgentCommand(sid, {
-        type: "follow_up",
-        message,
-        ...(piImages?.length ? { images: piImages } : {}),
-      });
-    } catch (e) {
-      console.error("Failed to follow up:", e);
-    }
-  }, []);
+  const handleFollowUp = useCallback(
+    async (message: string, images?: AttachedImage[]) => {
+      const sid = sessionIdRef.current;
+      if (!sid) return;
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: message, timestamp: Date.now() } as AgentMessage,
+      ]);
+      const piImages = images?.map((img) => ({
+        type: "image" as const,
+        data: img.data,
+        mimeType: img.mimeType,
+      }));
+      try {
+        await sendAgentCommand(sid, {
+          type: "follow_up",
+          message,
+          ...(piImages?.length ? { images: piImages } : {}),
+        });
+      } catch (e) {
+        console.error("Failed to follow up:", e);
+      }
+    },
+    [setMessages],
+  );
 
   const handleAbortCompaction = useCallback(async () => {
     const sid = sessionIdRef.current;
@@ -1201,7 +1238,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (!compactError) return;
     const t = setTimeout(() => setCompactError(null), 3000);
     return () => clearTimeout(t);
-  }, [compactError]);
+  }, [compactError, setCompactError]);
 
   // Fetch available commands (skills) when cwd changes
   useEffect(() => {
