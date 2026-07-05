@@ -145,7 +145,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
   const agentRunningRef = useRef(false);
   const {
-    eventSourceRef,
     onEventRef: handleAgentEventRef,
     connectEvents: connectTransportEvents,
     disconnectEvents,
@@ -545,7 +544,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     isNew,
     // Refs
     sessionIdRef,
-    eventSourceRef,
     // Actions
     handleSend,
     handleAbort,
@@ -566,7 +564,5 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setMessages,
     dispatch,
     setAgentRunning,
-    // Subscriptions
-    handleAgentEventRef,
   };
 }
