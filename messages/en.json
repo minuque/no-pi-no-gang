@@ -106,7 +106,7 @@
     "branchNavigate": "Branch — switch path within the same .jsonl session file",
     "creatingSession": "Creating new session…",
     "forkAction": "Fork — create a new independent .jsonl session file",
-    "thinking": "Thinking...",
+    "thinking": "Thinking",
     "thoughtFor": "Thought for {seconds}s",
     "open": "Open",
     "openFile": "Open {path}",
