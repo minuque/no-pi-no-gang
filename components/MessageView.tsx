@@ -26,6 +26,7 @@ const RichMarkdownBlock = dynamic(
 interface Props {
   message: AgentMessage;
   isStreaming?: boolean;
+  streamBlockStart?: number;
   toolResults?: Map<string, ToolResultMessage>;
   modelNames?: Record<string, string>;
   entryId?: string;
@@ -248,6 +249,7 @@ function BlockLine({
 export function MessageView({
   message,
   isStreaming,
+  streamBlockStart,
   toolResults,
   modelNames,
   entryId,
@@ -280,6 +282,7 @@ export function MessageView({
       <AssistantMessageView
         message={message as AssistantMessage}
         isStreaming={isStreaming}
+        streamBlockStart={streamBlockStart}
         toolResults={toolResults}
         modelNames={modelNames}
         entryId={entryId}
@@ -780,6 +783,7 @@ function UserMessageView({
 function AssistantMessageView({
   message,
   isStreaming,
+  streamBlockStart,
   toolResults,
   modelNames,
   entryId,
@@ -790,6 +794,7 @@ function AssistantMessageView({
 }: {
   message: AssistantMessage;
   isStreaming?: boolean;
+  streamBlockStart?: number;
   toolResults?: Map<string, ToolResultMessage>;
   modelNames?: Record<string, string>;
   entryId?: string;
@@ -905,6 +910,7 @@ function AssistantMessageView({
           blocks={blocks}
           toolResults={toolResults}
           isStreaming={isStreaming}
+          streamBlockStart={streamBlockStart}
           entryId={entryId}
           streamingDurations={streamingDurations}
           thinkingDurationFromFile={thinkingDurationFromFile}
@@ -1088,6 +1094,7 @@ function BlockView({
   blocks,
   toolResults,
   isStreaming,
+  streamBlockStart,
   entryId,
   streamingDurations,
   thinkingDurationFromFile,
@@ -1096,6 +1103,7 @@ function BlockView({
   blocks: AssistantContentBlock[];
   toolResults?: Map<string, ToolResultMessage>;
   isStreaming?: boolean;
+  streamBlockStart?: number;
   entryId?: string;
   streamingDurations: Map<number, number>;
   thinkingDurationFromFile?: number;
@@ -1106,6 +1114,8 @@ function BlockView({
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
     const isLast = i === blocks.length - 1;
+    const blockIsStreaming =
+      isStreaming && (streamBlockStart === undefined || i >= streamBlockStart);
 
     if (block.type === "toolCall") {
       const toolBlock = block as ToolCallContent;
@@ -1115,7 +1125,7 @@ function BlockView({
           key={i}
           block={toolBlock}
           result={result}
-          isRunning={isStreaming && !result}
+          isRunning={blockIsStreaming && !result}
           duration={toolCallDurations?.get(toolBlock.toolCallId)}
           entryId={entryId}
           isLast={isLast}
@@ -1126,7 +1136,7 @@ function BlockView({
         <TextBlock
           key={i}
           block={block as TextContent}
-          isStreaming={isStreaming}
+          isStreaming={blockIsStreaming}
           isLast={isLast}
         />,
       );
@@ -1137,7 +1147,7 @@ function BlockView({
           key={i}
           block={block as ThinkingContent}
           duration={dur}
-          isStreaming={isStreaming}
+          isStreaming={blockIsStreaming}
           isLast={isLast}
         />,
       );

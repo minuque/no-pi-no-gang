@@ -473,6 +473,7 @@ export const ChatWindow = memo(function ChatWindow({
       entryId: string;
       originalIndex: number;
       isStreaming?: boolean;
+      streamBlockStart?: number;
     }> = [];
 
     for (let i = 0; i < messages.length; i++) {
@@ -509,6 +510,7 @@ export const ChatWindow = memo(function ChatWindow({
       if (s.role === "assistant" && last?.msg.role === "assistant") {
         const lastAssist = last.msg as AssistantMessage;
         const curAssist = s as AssistantMessage;
+        const streamBlockStart = lastAssist.content.length;
         last.msg = {
           ...lastAssist,
           content: [...lastAssist.content, ...(curAssist.content ?? [])],
@@ -519,6 +521,7 @@ export const ChatWindow = memo(function ChatWindow({
           provider: curAssist.provider ?? lastAssist.provider,
         } as AssistantMessage;
         last.isStreaming = true;
+        last.streamBlockStart = streamBlockStart;
       } else if (s.role) {
         items.push({
           msg: s,
@@ -860,7 +863,10 @@ export const ChatWindow = memo(function ChatWindow({
               <div ref={scrollContentRef} style={{ paddingTop: 16 }}>
                 {/* Completed messages */}
                 {renderedMessages.items.map(
-                  ({ msg, entryId, originalIndex, isStreaming: itemStreaming }, idx) => {
+                  (
+                    { msg, entryId, originalIndex, isStreaming: itemStreaming, streamBlockStart },
+                    idx,
+                  ) => {
                     const prevItem = idx > 0 ? renderedMessages.items[idx - 1] : undefined;
                     const nextItem =
                       idx < renderedMessages.items.length - 1
@@ -951,6 +957,7 @@ export const ChatWindow = memo(function ChatWindow({
                         <MessageView
                           message={msg}
                           isStreaming={itemStreaming}
+                          streamBlockStart={streamBlockStart}
                           toolResults={toolResultsMap}
                           modelNames={modelNames}
                           entryId={entryId}
