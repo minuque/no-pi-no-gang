@@ -1141,7 +1141,10 @@ function BlockView({
         />,
       );
     } else if (block.type === "thinking") {
-      const dur = streamingDurations.get(i) ?? thinkingDurationFromFile;
+      const dur =
+        streamBlockStart !== undefined && i < streamBlockStart
+          ? thinkingDurationFromFile
+          : (streamingDurations.get(i) ?? thinkingDurationFromFile);
       elements.push(
         <ThinkingBlock
           key={i}
