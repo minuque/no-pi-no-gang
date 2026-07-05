@@ -1,103 +1,26 @@
 "use client";
 
-import { startTransition, useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 
 import { toast } from "sonner";
 
 import type { ToolEntry } from "@/components/ToolPanel";
-import {
-  type AgentEventState,
-  agentEventReducer,
-  initialAgentEventState,
-  mergeToolCallMessages,
-} from "@/lib/agent-event-reducer";
+import { agentEventReducer, mergeToolCallMessages } from "@/lib/agent-event-reducer";
 import type { AnyAgentEvent as AgentEvent, AgentEventStatus } from "@/lib/events/event-types";
 import type { SlashCommandItem } from "@/lib/pi-resources";
 import type { AgentMessage, AssistantMessage, EntryTreeNode, SessionInfo } from "@/lib/types";
 
+import { type ModelListItem, deriveContextUsage, useAgentState } from "./useAgentState";
 import { type SessionData, useTransport } from "./useTransport";
 
 export type { AgentEventStatus } from "@/lib/events/event-types";
+export type { AgentPhase } from "./useAgentState";
 export type { SessionData } from "./useTransport";
-
-interface StreamingState {
-  isStreaming: boolean;
-  streamingMessage: Partial<AgentMessage> | null;
-}
-
-type StreamAction =
-  | { type: "start" }
-  | { type: "update"; message: Partial<AgentMessage> }
-  | { type: "end" }
-  | { type: "reset" };
-
-function streamReducer(state: StreamingState, action: StreamAction): StreamingState {
-  switch (action.type) {
-    case "start":
-      return { isStreaming: true, streamingMessage: null };
-    case "update":
-      return { isStreaming: true, streamingMessage: action.message };
-    case "end":
-    case "reset":
-      return { isStreaming: false, streamingMessage: null };
-    default:
-      return state;
-  }
-}
-
-type ModelListItem = { id: string; name: string; provider: string; contextWindow?: number };
-type ContextUsageState = {
-  percent: number | null;
-  contextWindow: number;
-  tokens: number | null;
-};
 
 async function responseError(res: Response): Promise<string> {
   const data = (await res.json().catch(() => ({}))) as { error?: string };
   return data.error ?? `HTTP ${res.status}`;
 }
-
-function deriveContextUsage(
-  messages: AgentMessage[],
-  model: { provider: string; modelId: string; contextWindow?: number } | null,
-  modelList: ModelListItem[],
-): ContextUsageState | null {
-  const contextWindow =
-    model?.contextWindow ??
-    modelList.find((m) => m.provider === model?.provider && m.id === model?.modelId)?.contextWindow;
-  if (!contextWindow) return null;
-
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    if (msg.role !== "assistant") continue;
-    const usage = (msg as AssistantMessage).usage as
-      | (AssistantMessage["usage"] & { totalTokens?: number })
-      | undefined;
-    if (!usage) continue;
-    const tokens =
-      usage.totalTokens ??
-      (usage.input ?? 0) + (usage.output ?? 0) + (usage.cacheRead ?? 0) + (usage.cacheWrite ?? 0);
-    if (tokens <= 0) continue;
-    return {
-      percent: (tokens / contextWindow) * 100,
-      contextWindow,
-      tokens,
-    };
-  }
-
-  return {
-    percent: 0,
-    contextWindow,
-    tokens: 0,
-  };
-}
-
-export type AgentPhase =
-  | { kind: "waiting_model" }
-  | { kind: "running_tools"; tools: { id: string; name: string }[] }
-  | { kind: "running_skill"; skill: string }
-  | { kind: "running_command"; command: string }
-  | null;
 
 export interface AgentSessionStatus {
   exists: boolean;
@@ -167,10 +90,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [error, setError] = useState<string | null>(null);
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
   const [entryIds, setEntryIds] = useState<string[]>([]);
-  const [streamState, dispatch] = useReducer(streamReducer, {
-    isStreaming: false,
-    streamingMessage: null,
-  });
   const [modelNames, setModelNames] = useState<Record<string, string>>({});
   const [modelList, setModelList] = useState<ModelListItem[]>([]);
   const [modelThinkingLevels, setModelThinkingLevels] = useState<Record<string, string[]>>({});
@@ -183,7 +102,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   } | null>(null);
   const [toolPreset, setToolPreset] = useState<"none" | "default" | "full">("default");
   const [thinkingLevel, setThinkingLevel] = useState<ThinkingLevelOption>("auto");
-  const [contextUsage, setContextUsage] = useState<ContextUsageState | null>(null);
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
   const [forkingEntryId, setForkingEntryId] = useState<string | null>(null);
   const [currentModelOverride, setCurrentModelOverride] = useState<{
@@ -198,115 +116,33 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [agentLastUpdated, setAgentLastUpdated] = useState<string | null>(null);
   const [commands, setCommands] = useState<SlashCommandItem[]>([]);
 
-  // Agent-event-driven state is computed by a pure reducer (lib/agent-event-reducer).
-  // agentEventStateRef mirrors the latest reducer state so non-render paths
-  // (applyAgentEvent / setMessages / setAgentRunning wrappers) can chain updates
-  // synchronously without waiting for React's commit, eliminating the
-  // "loadGenRef += 1 inside the event handler" race the old code had.
-  const agentEventStateRef = useRef<AgentEventState>(initialAgentEventState());
-  const [agentEventState, setAgentEventStateRaw] = useState<AgentEventState>(
-    agentEventStateRef.current,
-  );
-  const applyAgentEventState = useCallback(
-    (next: AgentEventState | ((prev: AgentEventState) => AgentEventState)) => {
-      const prev = agentEventStateRef.current;
-      const newState = typeof next === "function" ? next(prev) : next;
-      agentEventStateRef.current = newState;
-      setAgentEventStateRaw(newState);
-    },
-    [],
-  );
-
-  const messages: AgentMessage[] = agentEventState.messages;
-  const agentRunning: boolean = agentEventState.agentRunning;
-  const agentStateRunning: boolean = agentEventState.agentStateRunning;
-  const agentStateStreaming: boolean = agentEventState.agentStateStreaming;
-  const agentStateCompacting: boolean = agentEventState.agentStateCompacting;
-  const agentPhase: AgentPhase = agentEventState.agentPhase;
-  const eventStatus: AgentEventStatus = agentEventState.eventStatus;
-  const retryInfo: {
-    attempt: number;
-    maxAttempts: number;
-    errorMessage?: string;
-  } | null = agentEventState.retryInfo;
-  const isCompacting: boolean = agentEventState.isCompacting;
-  const compactError: string | null = agentEventState.compactError;
-
-  // Stable identity setters (one ref, lazily initialized) that funnel each
-  // partial update through applyAgentEventState.  useRef keeps identity stable
-  // across renders so existing useCallback consumers (handleSend etc.) don't
   // need to list these setters in their dependency arrays — same guarantee
-  // React's built-in useState dispatch used to give them.
-  const settersRef = useRef<{
-    setMessages: React.Dispatch<React.SetStateAction<AgentMessage[]>>;
-    setAgentRunning: React.Dispatch<React.SetStateAction<boolean>>;
-    setAgentStateRunning: React.Dispatch<React.SetStateAction<boolean>>;
-    setAgentStateStreaming: React.Dispatch<React.SetStateAction<boolean>>;
-    setAgentStateCompacting: React.Dispatch<React.SetStateAction<boolean>>;
-    setIsCompacting: React.Dispatch<React.SetStateAction<boolean>>;
-    setCompactError: React.Dispatch<React.SetStateAction<string | null>>;
-    setAgentPhase: React.Dispatch<React.SetStateAction<AgentPhase>>;
-    setEventStatus: React.Dispatch<React.SetStateAction<AgentEventStatus>>;
-  } | null>(null);
-  if (settersRef.current === null) {
-    const mkBool =
-      (
-        field:
-          | "agentRunning"
-          | "agentStateRunning"
-          | "agentStateStreaming"
-          | "agentStateCompacting"
-          | "isCompacting",
-      ): React.Dispatch<React.SetStateAction<boolean>> =>
-      (action) =>
-        applyAgentEventState((prev) => ({
-          ...prev,
-          [field]:
-            typeof action === "function"
-              ? (action as (p: boolean) => boolean)(prev[field])
-              : action,
-        }));
-    settersRef.current = {
-      setMessages: (action) =>
-        applyAgentEventState((prev) => ({
-          ...prev,
-          messages:
-            typeof action === "function"
-              ? (action as (p: AgentMessage[]) => AgentMessage[])(prev.messages)
-              : action,
-        })),
-      setAgentRunning: mkBool("agentRunning"),
-      setAgentStateRunning: mkBool("agentStateRunning"),
-      setAgentStateStreaming: mkBool("agentStateStreaming"),
-      setAgentStateCompacting: mkBool("agentStateCompacting"),
-      setIsCompacting: mkBool("isCompacting"),
-      setCompactError: (action) =>
-        applyAgentEventState((prev) => ({
-          ...prev,
-          compactError:
-            typeof action === "function"
-              ? (action as (p: string | null) => string | null)(prev.compactError)
-              : action,
-        })),
-      setAgentPhase: (action) =>
-        applyAgentEventState((prev) => ({
-          ...prev,
-          agentPhase:
-            typeof action === "function"
-              ? (action as (p: AgentPhase) => AgentPhase)(prev.agentPhase)
-              : action,
-        })),
-      setEventStatus: (action) =>
-        applyAgentEventState((prev) => ({
-          ...prev,
-          eventStatus:
-            typeof action === "function"
-              ? (action as (p: AgentEventStatus) => AgentEventStatus)(prev.eventStatus)
-              : action,
-        })),
-    };
-  }
+  const setNewSessionModel = opts.setNewSessionModel ?? setNewSessionModelState;
+  const setToolPresetState = opts.setToolPreset ?? setToolPreset;
+
+  const currentModel = currentModelOverride ?? data?.context.model ?? pendingModel ?? null;
+  const displayModel = isNew ? newSessionModel : currentModel;
+  const currentModelRef = useRef(currentModel);
+  currentModelRef.current = currentModel;
+
   const {
+    messages,
+    agentRunning,
+    agentStateRunning,
+    agentStateStreaming,
+    agentStateCompacting,
+    agentPhase,
+    eventStatus,
+    retryInfo,
+    isCompacting,
+    compactError,
+    streamState,
+    contextUsage,
+    sessionStats,
+    agentEventStateRef,
+    applyAgentEventState,
+    dispatch,
+    setContextUsage,
     setMessages,
     setAgentRunning,
     setAgentStateRunning,
@@ -316,7 +152,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setCompactError,
     setAgentPhase,
     setEventStatus,
-  } = settersRef.current;
+  } = useAgentState({ currentModel, modelList });
 
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
   const agentRunningRef = useRef(false);
@@ -344,37 +180,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const loadGenRef = useRef(0);
   const modelListRef = useRef(modelList);
   modelListRef.current = modelList;
-
-  const setNewSessionModel = opts.setNewSessionModel ?? setNewSessionModelState;
-  const setToolPresetState = opts.setToolPreset ?? setToolPreset;
-
-  const currentModel = currentModelOverride ?? data?.context.model ?? pendingModel ?? null;
-  const displayModel = isNew ? newSessionModel : currentModel;
-  const currentModelRef = useRef(currentModel);
-  currentModelRef.current = currentModel;
-
-  const sessionStats = (() => {
-    const tokens = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
-    let cost = 0;
-    for (const msg of messages) {
-      if (msg.role !== "assistant") continue;
-      const u = (msg as import("@/lib/types").AssistantMessage).usage;
-      if (!u) continue;
-      tokens.input += u.input ?? 0;
-      tokens.output += u.output ?? 0;
-      tokens.cacheRead += u.cacheRead ?? 0;
-      tokens.cacheWrite += u.cacheWrite ?? 0;
-      cost += u.cost?.total ?? 0;
-    }
-    const total = tokens.input + tokens.output + tokens.cacheRead + tokens.cacheWrite;
-    return total > 0 ? { tokens, cost } : null;
-  })();
-
-  useEffect(() => {
-    if (contextUsage !== null || messages.length === 0) return;
-    const fallback = deriveContextUsage(messages, currentModel, modelList);
-    if (fallback) setContextUsage(fallback);
-  }, [contextUsage, currentModel, messages, modelList]);
 
   const loadSession = useCallback(
     async (sid: string, showLoading = false, includeState = false) => {
@@ -468,6 +273,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setAgentStateCompacting,
       setAgentStateRunning,
       setAgentStateStreaming,
+      setContextUsage,
       setEventStatus,
       setMessages,
     ],
@@ -513,7 +319,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         }
       }
     },
-    [setMessages],
+    [setContextUsage, setMessages],
   );
 
   const loadTools = useCallback(
@@ -588,7 +394,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (sessionIdRef.current) loadSession(sessionIdRef.current).catch(() => {});
       }
     },
-    [applyAgentEventState, loadSession, onAgentEnd],
+    [agentEventStateRef, applyAgentEventState, dispatch, loadSession, onAgentEnd, setContextUsage],
   );
   handleAgentEventRef.current = handleAgentEvent;
 
@@ -771,6 +577,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       connectEvents,
       onSessionCreated,
       commands,
+      dispatch,
       setAgentPhase,
       setAgentRunning,
       setAgentStateRunning,
@@ -907,6 +714,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       onSessionCreated,
       commands,
       handleCommand,
+      dispatch,
       setAgentPhase,
       setAgentRunning,
       setAgentStateRunning,
