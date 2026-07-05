@@ -361,9 +361,9 @@ html.light {
   /* --- 校验/错误状态 ---
    * 亮底错误/警告/信息 — 用浅底色 + 深文字
    */
-  --ui-error-fg: #d1242f;
+  --ui-error-fg: #bd1f29;
   --ui-error-bg: #fde7e9;
-  --ui-warn-fg: #946800;
+  --ui-warn-fg: #8a5f00;
   --ui-warn-bg: #fff3cd;
   --ui-info-fg: #006ab1;
   --ui-info-bg: #e8f4fd;

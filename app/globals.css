@@ -2,23 +2,116 @@
 @import "./theme/tokens-dark.css";
 @import "./theme/tokens-light.css";
 
+/* ═══════════════════════════════════════════════════════════════════════
+ * Tailwind v4 @theme — 映射 DESIGN.md token → CSS 变量
+ *
+ * DESIGN.md 是 tokens 的单一数据源 (authoritative source)。
+ * 运行时值由 ./theme/tokens-dark.css / tokens-light.css 提供，
+ * var() 引用保证 dark/light 主题切换生效。
+ *
+ * 更新流程:
+ *   1. 修改 DESIGN.md (YAML front matter + 文档)
+ *   2. 同步更新 tokens-dark.css / tokens-light.css 对应变量
+ *   3. npx @google/design.md lint DESIGN.md 校验
+ * ═══════════════════════════════════════════════════════════════════════ */
 @theme {
+  /* ── Surface ── */
   --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-deep: var(--surface-deep);
   --color-bg-panel: var(--bg-panel);
   --color-bg-hover: var(--bg-hover);
   --color-bg-selected: var(--bg-selected);
-  --color-border: var(--border);
+  --color-bg-subtle: var(--bg-subtle);
+  /* ── Foreground ── */
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-text-dim: var(--text-dim);
+  --color-muted: var(--muted);
+  --color-meta: var(--meta);
+  /* ── Accent ── */
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
+  --color-accent-active: var(--accent-active);
+  --color-accent-focus: var(--accent-focus);
   --color-accent-soft: var(--accent-soft);
   --color-accent-border: var(--accent-border);
+  --color-accent-on: var(--accent-on);
+  /* ── Border ── */
+  --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-border-muted: var(--border-muted);
+  /* ── Semantic ── */
+  --color-success: var(--success);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  /* ── UI: 消息 ── */
   --color-user-bg: var(--user-bg);
   --color-assistant-bg: var(--assistant-bg);
   --color-tool-bg: var(--tool-bg);
-  --color-bg-subtle: var(--bg-subtle);
+  --color-msg-user-bg: var(--ui-msg-user-bg);
+  --color-msg-user-hover-bg: var(--ui-msg-user-hover-bg);
+  /* ── UI: 代码块 ── */
+  --color-code-bg: var(--ui-code-bg);
+  --color-code-gutter: var(--ui-code-gutter);
+  /* ── UI: 输入框 ── */
+  --color-input-area-bg: var(--ui-input-area-bg);
+  --color-input-bg: var(--ui-input-bg);
+  --color-input-border: var(--ui-input-border);
+  --color-input-placeholder: var(--ui-placeholder);
+  /* ── UI: 按钮 ── */
+  --color-btn-primary-bg: var(--ui-btn-primary-bg);
+  --color-btn-primary-hover-bg: var(--ui-btn-primary-hover-bg);
+  --color-btn-primary-fg: var(--ui-btn-primary-fg);
+  /* ── UI: 侧栏 ── */
+  --color-sidebar-bg: var(--ui-sidebar-bg);
+  --color-sidebar-expanded-bg: var(--ui-sidebar-expanded-bg);
+  --color-chatlist-bg: var(--ui-chatlist-bg);
+  --color-chatlist-item-hover: var(--ui-chatlist-item-hover);
+  --color-chatlist-item-active: var(--ui-chatlist-item-active);
+  --color-topnav-bg: var(--ui-topnav-bg);
+  /* ── UI: 图标 ── */
+  --color-icon-default: var(--ui-icon-default);
+  --color-icon-hover: var(--ui-icon-hover);
+  --color-icon-active: var(--ui-icon-active);
+  --color-icon-active-accent: var(--ui-icon-active-accent);
+  /* ── UI: 弹窗/下拉/模态 ── */
+  --color-dropdown-bg: var(--ui-dropdown-bg);
+  --color-dropdown-hover: var(--ui-dropdown-hover);
+  --color-modal-bg: var(--ui-modal-bg);
+  --color-modal-backdrop: var(--ui-modal-backdrop);
+  --color-tooltip-bg: var(--ui-tooltip-bg);
+  /* ── UI: Tab ── */
+  --color-tab-active-bg: var(--ui-tab-active-bg);
+  --color-tab-inactive-bg: var(--ui-tab-inactive-bg);
+  --color-tab-hover-bg: var(--ui-tab-hover-bg);
+  /* ── UI: 链接 ── */
+  --color-link: var(--ui-link);
+  --color-link-hover: var(--ui-link-hover);
+  /* ── UI: 表单校验 ── */
+  --color-error-fg: var(--ui-error-fg);
+  --color-error-bg: var(--ui-error-bg);
+  --color-warn-fg: var(--ui-warn-fg);
+  --color-warn-bg: var(--ui-warn-bg);
+  --color-info-fg: var(--ui-info-fg);
+  --color-info-bg: var(--ui-info-bg);
+  /* ── UI: 滚动条 ── */
+  --color-scrollbar-thumb: var(--ui-scrollbar-thumb);
+  --color-scrollbar-hover: var(--ui-scrollbar-hover);
+  /* ── UI: 其他 ── */
+  --color-selection-bg: var(--ui-selection-bg);
+  --color-badge-bg: var(--ui-badge-bg);
+  --color-badge-fg: var(--ui-badge-fg);
+  --color-toolbar-hover: var(--ui-toolbar-hover);
+  --color-tps-high-bg: var(--ui-tps-high-bg);
+  --color-tps-mid-bg: var(--ui-tps-mid-bg);
+  --color-tps-low-bg: var(--ui-tps-low-bg);
+  /* ── 字体 ── */
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
   --font-mono-font: var(--font-mono);
 }
 

@@ -29,7 +29,7 @@ function SsrFallback() {
         justifyContent: "center",
         flexDirection: "column",
         gap: 20,
-        background: "#111113",
+        background: "var(--bg)",
       }}
     >
       {/* Large logo acts as LCP element — loaded from HTML, no JS needed */}
@@ -40,7 +40,7 @@ function SsrFallback() {
         height={48}
         style={{ opacity: 0.9 }}
       />
-      <span style={{ color: "#555", fontSize: 13, letterSpacing: "0.03em" }}>
+      <span style={{ color: "var(--text-dim)", fontSize: 13, letterSpacing: "0.03em" }}>
         {t("ssrLoadingText")}
       </span>
     </div>

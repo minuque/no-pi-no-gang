@@ -399,11 +399,11 @@ html.dark {
    * editorError.foreground = #f44747, editorWarning.foreground = #cca700
    * editorInfo.foreground = #3794ff
    */
-  --ui-error-fg: #f44747;
+  --ui-error-fg: #f77c7c;
   --ui-error-bg: #5a1d1d;
-  --ui-warn-fg: #cca700;
+  --ui-warn-fg: #d6b200;
   --ui-warn-bg: #4d3f00;
-  --ui-info-fg: #3794ff;
+  --ui-info-fg: #5eaaff;
   --ui-info-bg: #063b5e;
 
   /* ════════════════════════════════════════════════════════════════════
@@ -419,10 +419,10 @@ html.dark {
   --assistant-bg: var(--bg);
   --tool-bg: var(--surface);
   --bg-subtle: rgba(255, 255, 255, 0.05);
-  --shadow-xs: 0 1px 2px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.02);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.02);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.03);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.03);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.02);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.02);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.03);
 
   /* ════════════════════════════════════════════════════════════════════
    * Z-INDEX — 层叠顺序比例尺
