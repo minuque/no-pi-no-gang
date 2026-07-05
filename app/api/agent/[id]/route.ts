@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 
-import { getRpcSession, startRpcSession } from "@/lib/rpc-manager";
+import { getRpcSession, startRpcSession } from "@/lib/session-bridge";
 import { resolveSessionPath } from "@/lib/session-reader";
 
 // POST /api/agent/[id] - Send a command to an existing session

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { existsSync } from "fs";
 
-import { startRpcSession } from "@/lib/rpc-manager";
+import { startRpcSession } from "@/lib/session-bridge";
 
 // POST /api/agent/new  body: { cwd: string; type: string; message: string; ... }
 // Spawns a brand-new pi session and immediately sends the first command.

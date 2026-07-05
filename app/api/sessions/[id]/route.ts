@@ -4,7 +4,7 @@ import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from "fs";
 import { join } from "path";
 
-import { getRpcSession, getRpcSessionNodeState } from "@/lib/rpc-manager";
+import { getRpcSession, getRpcSessionNodeState } from "@/lib/session-bridge";
 import {
   buildSessionContext,
   getSessionMetadata,

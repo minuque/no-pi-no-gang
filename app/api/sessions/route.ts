@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { mergeSessionNodeState } from "@/lib/rpc-manager";
+import { mergeSessionNodeState } from "@/lib/session-bridge";
 import { listAllSessions } from "@/lib/session-reader";
 
 export async function GET() {
