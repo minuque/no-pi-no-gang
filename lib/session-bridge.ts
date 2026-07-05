@@ -147,7 +147,7 @@ declare global {
  * mutable store that lives for the lifetime of the Node process, shared
  * across all request contexts — not a per-request shared-state anti-pattern.
  */
-function getRegistry(): Map<string, AgentSessionWrapper> {
+export function getRegistry(): Map<string, AgentSessionWrapper> {
   if (!globalThis.__piSessions) {
     globalThis.__piSessions = new Map();
     const cleanup = () => globalThis.__piSessions?.forEach((s) => s.destroy());
@@ -158,7 +158,10 @@ function getRegistry(): Map<string, AgentSessionWrapper> {
   return globalThis.__piSessions;
 }
 
-function getLocks(): Map<string, Promise<{ session: AgentSessionWrapper; realSessionId: string }>> {
+export function getLocks(): Map<
+  string,
+  Promise<{ session: AgentSessionWrapper; realSessionId: string }>
+> {
   if (!globalThis.__piStartLocks) globalThis.__piStartLocks = new Map();
   return globalThis.__piStartLocks;
 }
