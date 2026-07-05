@@ -957,6 +957,7 @@ export const ChatWindow = memo(function ChatWindow({
                         <MessageView
                           message={msg}
                           isStreaming={itemStreaming}
+                          agentRunning={agentRunning}
                           streamBlockStart={streamBlockStart}
                           toolResults={toolResultsMap}
                           modelNames={modelNames}

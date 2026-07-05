@@ -107,6 +107,7 @@
     "creatingSession": "正在创建新会话…",
     "forkAction": "Fork — 创建新的独立 .jsonl 会话文件",
     "thinking": "思考中",
+    "thought": "已思考",
     "thoughtFor": "思考了 {seconds}s",
     "open": "打开",
     "openFile": "打开 {path}",

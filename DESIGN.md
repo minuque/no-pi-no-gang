@@ -1,16 +1,16 @@
 ---
 version: alpha
-name: Pi Agent — VSCode Dark+
+name: Pi Agent — VSCode Dark Modern
 description: >
-  Developer-tool aesthetic built on the VSCode Dark+ color system.
+  Developer-tool aesthetic built on the VSCode Dark Modern color system.
   Pure neutral-gray surfaces with a single blue accent (#007acc).
   No glow, no gradients, no color-mix — every state gets its own hex value.
 colors:
   # ── Surface hierarchy (dark theme default) ──
-  bg: "#1a1a1c"
-  surface: "#222225"
-  surface-raised: "#2a2a2e"
-  surface-deep: "#121214"
+  bg: "#161616"
+  surface: "#181818"
+  surface-raised: "#161616"
+  surface-deep: "#181818"
   # ── Foreground scale ──
   fg: "#d4d4d4"
   fg-2: "#c8c8c8"
@@ -33,18 +33,18 @@ colors:
   warn: "#cca700"
   danger: "#f44747"
   # ── Component-specific ──
-  topnav-bg: "#1e1e20"
-  sidebar-bg: "#121214"
-  sidebar-expanded-bg: "#222225"
-  chatlist-bg: "#222225"
-  chatlist-item-hover: "#2a2a2e"
+  topnav-bg: "#181818"
+  sidebar-bg: "#181818"
+  sidebar-expanded-bg: "#181818"
+  chatlist-bg: "#181818"
+  chatlist-item-hover: "#2a2d2e"
   chatlist-item-active: "#094771"
   msg-user-bg: "#2c2c30"
   msg-user-hover-bg: "#323236"
-  code-bg: "#161618"
-  code-gutter: "#1e1e20"
-  input-area-bg: "#1e1e20"
-  input-bg: "#2a2a2e"
+  code-bg: "#161616"
+  code-gutter: "#181818"
+  input-area-bg: "#161616"
+  input-bg: "#3c3c3c"
   input-border: "#404045"
   input-placeholder: "#767676"
   btn-primary-bg: "#0e639c"
@@ -63,9 +63,9 @@ colors:
   dropdown-hover: "#094771"
   modal-bg: "#2a2a2e"
   modal-backdrop: "rgba(0,0,0,0.5)"
-  tab-active-bg: "#1a1a1c"
-  tab-inactive-bg: "#2a2a2e"
-  tab-hover-bg: "#2e2e32"
+  tab-active-bg: "#161616"
+  tab-inactive-bg: "#161616"
+  tab-hover-bg: "#2a2d2e"
   link: "#3794ff"
   link-hover: "#3794ff"
   error-fg: "#f77c7c"
@@ -78,10 +78,10 @@ colors:
   icon-hover: "rgba(255,255,255,0.72)"
   icon-active: "#ffffff"
   icon-active-accent: "#007acc"
-  toolbar-hover: "#2a2a2e"
+  toolbar-hover: "#2a2d2e"
   # ── Background aliases ──
-  bg-panel: "#222225"
-  bg-hover: "#2a2a2e"
+  bg-panel: "#181818"
+  bg-hover: "#2a2d2e"
   bg-selected: "#2d3035"
   bg-subtle: "rgba(255,255,255,0.05)"
   # ── Semantic primary ──
@@ -325,9 +325,9 @@ components:
 
 ## Overview
 
-Pi Agent 的视觉语言：**VSCode Dark+ 同源色板 · 纯中性灰表面 · 蓝色单 accent · 零光效零渐变**。
+视觉语言：**VSCode Dark Modern 同源色板 · 纯中性灰表面 · 蓝色单 accent · 零光效零渐变**。
 
-- **色板**: VSCode Dark+/Light+ 同源，中性灰 R=G=B，不偏蓝不暖
+- **色板**: VSCode Dark Modern/Light+ 同源，中性灰 R=G=B，不偏蓝不暖
 - **层级**: 纯靠亮度差区分三层表面 (editor → sidebar → tab)，不靠色调
 - **Accent**: `#007acc` 仅状态栏/链接/按钮/选中态，全界面 ≤2 处可见
 - **克制**: 无 glow、无渐变、无 `color-mix`，每种状态独立色值
@@ -338,14 +338,14 @@ Pi Agent 的视觉语言：**VSCode Dark+ 同源色板 · 纯中性灰表面 · 
 
 ### Dark Theme (默认)
 
-色彩系统完全映射 VSCode Dark+ 原生色板：
+色彩系统完全映射 VSCode Dark Modern (默认暗色) 原生色板：
 
 | CSS Token | 色值 | VSCode 映射 |
 |-----------|------|------------|
-| `--bg` | `#1a1a1c` | editor.background |
-| `--surface` | `#222225` | sideBar.background |
-| `--surface-raised` | `#2a2a2e` | tab.inactiveBackground |
-| `--surface-deep` | `#121214` | activityBar.background |
+| `--bg` | `#161616` | editor.background (chat 区比 session tree 略深) |
+| `--surface` | `#181818` | sideBar.background (session tree) |
+| `--surface-raised` | `#161616` | tab.inactiveBackground |
+| `--surface-deep` | `#181818` | activityBar.background |
 | `--fg` | `#d4d4d4` | editor.foreground |
 | `--fg-2` | `#c8c8c8` | 次要文字 |
 | `--muted` | `#a8a8a8` | 三级/说明 |

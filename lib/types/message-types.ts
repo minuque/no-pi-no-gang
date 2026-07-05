@@ -16,6 +16,7 @@ export interface ImageContent {
 export interface ThinkingContent {
   type: "thinking";
   thinking: string;
+  _duration?: number; // frontend-observed duration in seconds, persisted on message_end
 }
 
 export interface ToolCallContent {

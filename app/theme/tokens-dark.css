@@ -1,21 +1,21 @@
 /* ─────────────────────────────────────────────────────────────────────────
- * Agent WebUI Dark Theme — v3 "VSCode Dark+"
+ * Agent WebUI Dark Theme — v4 "VSCode Dark Modern"
  *
- * 基于 VSCode Dark+ (default dark) 色彩系统的完整重建。
- * 上一版偏蓝灰 (R/G 差 B 10–24 通道)，这一版用纯中性灰 — 跟 VSCode
- * 编辑器、侧栏、终端同源色板。
+ * 基于 VSCode Dark Modern (default dark) 色彩系统的完整重建。
+ * 上一版偏蓝灰 (R/G 差 B 10–24 通道) 且人为加大层级对比，这一版
+ * 直接对齐 VSCode 当前默认暗色主题的原生色值 — 纯中性灰，不偏蓝不偏暖。
  *
- * VSCode Dark+ 核心色:
- *   editor  #1e1e1e  ─→ --bg
- *   sidebar #252526  ─→ --surface
- *   tab     #2d2d2d  ─→ --surface-raised
+ * VSCode Dark Modern 核心色:
+ *   editor  #1f1f1f  ─→ --bg
+ *   sidebar #181818  ─→ --surface
+ *   tab     #1f1f1f  ─→ --surface-raised
  *   status  #007acc  ─→ --accent
  *   text    #d4d4d4  ─→ --fg
- *   border  #3e3e42  ─→ --border
+ *   border  #2b2b2b  ─→ --border
  *
  * 哲学：
  *   — 纯中性灰，不偏蓝不偏暖（R=G=B）
- *   — 表面层级只用亮度差区分，不靠色调
+ *   — 表面层级对齐 VSCode 原生亮度关系
  *   — 蓝色 accent 仅出现在状态栏/链接/按钮/选中态
  *   — 无发光、无渐变、无 color-mix 运算
  *   — 严谨克制的开发者工具美学
@@ -25,28 +25,29 @@
 
 html.dark {
   /* ════════════════════════════════════════════════════════════════════
-   * SURFACE — 三层表面系统 (VSCode 原生 + 放大对比)
+   * SURFACE — 三层表面系统 (VSCode Dark Modern 原生色)
    *
-   * 各级亮度差加大 ~50%，让高分辨率屏幕上也能直观区分区域。
-   *   #1a1a1c  editor / panel    (最暗)
-   *   #222225  sidebar / tabs    (中)
-   *   #2a2a2e  inactive tab      (最亮)
-   *   #121214  activity bar      (最深)
+   * 对齐 VSCode 当前默认暗色主题，并做一处产品层调整：
+   * chat 主工作区 (#161616) 比 session tree / sidebar (#181818) 略深，
+   * 让聊天区在视觉上沉入背景，session tree 保持可辨识。
+   *
+   *   #161616  editor / panel / inactive tab / chat (主工作区，最深)
+   *   #181818  sidebar / activityBar / titleBar / panel (session tree)
    *
    * 映射:
-   *   --bg             = editor 背景 → 主工作区
-   *   --surface        = sidebar 背景 → 面板/卡片
+   *   --bg             = editor 背景 → 主工作区 / chat 区
+   *   --surface        = sidebar 背景 → 面板/卡片 / session tree
    *   --surface-raised = inactive tab → 弹窗/hover 面板
    *   --surface-deep   = activity bar → 最深层 (图标列/窄侧栏)
    * ════════════════════════════════════════════════════════════════════ */
-  --bg: #1a1a1c;
-  /* editor.background — 比原版 #151517 亮 5 点，减少压抑感 */
-  --surface: #222225;
-  /* sideBar.background — 比 bg 亮 8 点，层级明确 */
-  --surface-raised: #2a2a2e;
-  /* tab.inactiveBackground — 比 surface 再亮 8 点 */
-  --surface-deep: #121214;
-  /* activityBar.background — 图标专用深色 */
+  --bg: #161616;
+  /* editor.background — chat 区比 session tree 略深 */
+  --surface: #181818;
+  /* sideBar.background — session tree */
+  --surface-raised: #161616;
+  /* tab.inactiveBackground */
+  --surface-deep: #181818;
+  /* activityBar.background */
   --surface-warm: var(--surface);
   /* schema 兼容 */
 
@@ -65,13 +66,11 @@ html.dark {
   --meta: #9a9a9a;
 
   /* ════════════════════════════════════════════════════════════════════
-   * BORDER — 两级边框 (提升可见度)
-   *
-   * 原版太暗 (#2d2d2e) 高分辨率屏几乎不可见，加大区分度。
+   * BORDER — 两级边框 (对齐 Dark Modern 面板分割线)
    * ════════════════════════════════════════════════════════════════════ */
-  --border: #353538;
-  --border-soft: #2a2a2d;
-  --border-muted: #222225;
+  --border: #2b2b2b;
+  --border-soft: #1f1f1f;
+  --border-muted: #181818;
 
   /* ════════════════════════════════════════════════════════════════════
    * ACCENT — VSCode 蓝 #007acc
@@ -224,13 +223,13 @@ html.dark {
    *   标题栏 = #323233 (VSCode 原生 titleBar.activeBackground)
    * 这里用 inactive tab 色做导航底色，用 border 区分。
    */
-  --ui-topnav-bg: #1e1e20;
+  --ui-topnav-bg: #181818;
   --ui-topnav-border: 0.5px solid var(--border);
   --ui-topnav-height: 40px;
 
   /* --- 侧边栏 ---
-   * activityBar 最深 (#333333)，sideBar 次之 (#252526)。
-   * 窄图标列用 activityBar 色，展开面板用 sideBar 色。
+   * Dark Modern 中 activityBar 与 sideBar 均为 #181818，展开面板用同一色。
+   * 窄图标列用 surface-deep，展开面板用 surface。
    */
   --ui-sidebar-bg: var(--surface-deep);
   --ui-sidebar-expanded-bg: var(--surface);
@@ -261,7 +260,7 @@ html.dark {
    */
   --ui-chatlist-bg: var(--surface);
   --ui-chatlist-width: var(--chat-list);
-  --ui-chatlist-item-hover: #2a2a2e;
+  --ui-chatlist-item-hover: #2a2d2e;
   --ui-chatlist-item-active: #094771;
 
   /* --- 消息流 ---
@@ -279,21 +278,21 @@ html.dark {
   --ui-msg-max-width: 85%;
 
   /* --- 代码块 ---
-   * terminal.background = editor.background = #1e1e1e
-   * 代码块底色跟主背景一致，用微妙的边框区分，行号列略深。
+   * terminal.background = editor.background = #161616
+   * 代码块底色跟 chat 主背景一致，用微妙的边框区分，行号列用 sidebar 色。
    */
-  --ui-code-bg: #161618;
+  --ui-code-bg: #161616;
   --ui-code-border: 1px solid var(--border);
   --ui-code-accent-stripe: 2px solid var(--accent);
-  --ui-code-gutter: #1e1e20;
+  --ui-code-gutter: #181818;
   --ui-code-radius: 0;
 
   /* --- 输入框区域 ---
    * input.background = #3c3c3c
-   * 比主底亮的独立输入区，focus 用 accent-focus 边框 + 微光环。
+   * 输入区与 chat 主背景同色，输入框本身用 VSCode 原生 input 背景色。
    */
-  --ui-input-area-bg: #1e1e20;
-  --ui-input-bg: #2a2a2e;
+  --ui-input-area-bg: #161616;
+  --ui-input-bg: #3c3c3c;
   --ui-input-border: 1px solid #404045;
   /* input.border 与 bg 同色 */
   --ui-input-border-focus: 1px solid var(--accent-focus);
@@ -357,37 +356,37 @@ html.dark {
 
   /* --- 工具栏 / 快捷操作 ---
    * editorGroup.emptyBackground = 同 editor
-   * toolbar hover = menubar.selectionBackground = #3c3c3c
+   * toolbar hover = menubar.selectionBackground = #2a2d2e
    */
   --ui-toolbar-bg: var(--bg);
-  --ui-toolbar-hover: #2a2a2e;
+  --ui-toolbar-hover: #2a2d2e;
 
   /* --- Tooltip / popover ---
    */
-  --ui-tooltip-bg: #2a2a2e;
+  --ui-tooltip-bg: #181818;
   --ui-tooltip-fg: var(--fg);
-  --ui-tooltip-border: 1px solid #353538;
+  --ui-tooltip-border: 1px solid #2b2b2b;
   --ui-tooltip-shadow: var(--elev-raised);
 
   /* --- 下拉菜单 / context menu ---
    */
-  --ui-dropdown-bg: #2a2a2e;
+  --ui-dropdown-bg: #181818;
   --ui-dropdown-hover: #094771;
-  --ui-dropdown-border: 1px solid #353538;
+  --ui-dropdown-border: 1px solid #2b2b2b;
 
   /* --- 模态 / 对话框 ---
    */
-  --ui-modal-bg: #2a2a2e;
+  --ui-modal-bg: #181818;
   --ui-modal-backdrop: rgba(0, 0, 0, 0.5);
 
   /* --- Tab / 标签切换 ---
-   * tab.activeBackground = #1e1e1e, tab.inactiveBackground = #2d2d2d
+   * tab.activeBackground = #161616, tab.inactiveBackground = #161616
    * tab.activeBorderTop = #007acc
    */
-  --ui-tab-active-bg: #1a1a1c;
-  --ui-tab-inactive-bg: #2a2a2e;
+  --ui-tab-active-bg: #161616;
+  --ui-tab-inactive-bg: #161616;
   --ui-tab-active-border: var(--accent);
-  --ui-tab-hover-bg: #2e2e32;
+  --ui-tab-hover-bg: #2a2d2e;
 
   /* --- 链接 ---
    * textLink.foreground = #3794ff, textLink.activeForeground = #3794ff
@@ -410,7 +409,7 @@ html.dark {
    * COMPAT — 旧组件引用的别名
    * ════════════════════════════════════════════════════════════════════ */
   --bg-panel: var(--surface);
-  --bg-hover: #2a2a2e;
+  --bg-hover: #2a2d2e;
   --bg-selected: #2d3035;
   --text: var(--fg);
   --text-muted: var(--fg-2);

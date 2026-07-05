@@ -28,6 +28,10 @@ export interface AgentEventState {
   loadGen: number;
   // Last injected event timestamp; pure reducer must not call new Date itself.
   lastEventAt: string | null;
+  // Frontend-observed block timing for the current streaming assistant message.
+  // Keys are block indices within the streaming message's content array.
+  blockStartTimes: Map<number, number>;
+  streamingBlockDurations: Map<number, number>;
 }
 
 export type AgentPhase =
@@ -79,6 +83,68 @@ export function mergeToolCallMessages(msgs: AgentMessage[]): AgentMessage[] {
   );
 }
 
+function countAssistantBlocks(msg: Partial<AgentMessage> | undefined): number {
+  if (msg?.role !== "assistant") return 0;
+  const content = (msg as AssistantMessage).content;
+  return Array.isArray(content) ? content.length : 0;
+}
+
+function updateStreamingBlockTimings(
+  contentLength: number,
+  startTimes: Map<number, number>,
+  durations: Map<number, number>,
+  eventAtMs: number,
+): { startTimes: Map<number, number>; durations: Map<number, number> } {
+  const nextStart = new Map(startTimes);
+  const nextDurations = new Map(durations);
+
+  for (let i = 0; i < contentLength; i++) {
+    if (!nextStart.has(i)) nextStart.set(i, eventAtMs);
+  }
+
+  for (let i = 0; i < contentLength - 1; i++) {
+    if (nextStart.has(i) && !nextDurations.has(i)) {
+      const start = nextStart.get(i)!;
+      const end = nextStart.get(i + 1) ?? eventAtMs;
+      const secs = Math.round((end - start) / 1000);
+      if (secs > 0) nextDurations.set(i, secs);
+    }
+  }
+
+  return { startTimes: nextStart, durations: nextDurations };
+}
+
+function finalizeStreamingBlockDurations(
+  contentLength: number,
+  startTimes: Map<number, number>,
+  durations: Map<number, number>,
+  eventAtMs: number,
+): Map<number, number> {
+  const next = new Map(durations);
+  for (let i = 0; i < contentLength; i++) {
+    if (next.has(i)) continue;
+    const start = startTimes.get(i);
+    if (start === undefined) continue;
+    const secs = Math.round((eventAtMs - start) / 1000);
+    if (secs > 0) next.set(i, secs);
+  }
+  return next;
+}
+
+function applyThinkingDurations(msg: AgentMessage, durations: Map<number, number>): AgentMessage {
+  if (msg.role !== "assistant") return msg;
+  const content = msg.content;
+  let changed = false;
+  const nextContent = content.map((block, i) => {
+    if (block.type !== "thinking") return block;
+    const duration = durations.get(i);
+    if (duration === undefined) return block;
+    changed = true;
+    return { ...block, _duration: duration };
+  });
+  return changed ? { ...msg, content: nextContent } : msg;
+}
+
 export function initialAgentEventState(): AgentEventState {
   return {
     messages: [],
@@ -93,6 +159,8 @@ export function initialAgentEventState(): AgentEventState {
     compactError: null,
     loadGen: 0,
     lastEventAt: null,
+    blockStartTimes: new Map(),
+    streamingBlockDurations: new Map(),
   };
 }
 
@@ -183,6 +251,14 @@ export function agentEventReducer(
       if (msg?.role === "user") {
         return { state, effects };
       }
+      const contentLength = countAssistantBlocks(msg);
+      const eventAtMs = Date.parse(eventAt);
+      const { startTimes, durations } = updateStreamingBlockTimings(
+        contentLength,
+        state.blockStartTimes,
+        state.streamingBlockDurations,
+        eventAtMs,
+      );
       if (msg) {
         effects.streamAction = {
           type: "update",
@@ -192,7 +268,12 @@ export function agentEventReducer(
       const nextPhase =
         state.agentPhase?.kind === "running_skill" ? { kind: "waiting_model" as const } : null;
       return {
-        state: { ...state, agentPhase: nextPhase },
+        state: {
+          ...state,
+          agentPhase: nextPhase,
+          blockStartTimes: startTimes,
+          streamingBlockDurations: durations,
+        },
         effects,
       };
     }
@@ -200,10 +281,26 @@ export function agentEventReducer(
       const completed = event.message as AgentMessage | undefined;
       let messages = state.messages;
       if (completed && completed.role !== "user") {
-        messages = mergeToolCallMessages([...state.messages, normalizeToolCalls(completed)]);
+        const contentLength = completed.role === "assistant" ? completed.content.length : 0;
+        const eventAtMs = Date.parse(eventAt);
+        const finalDurations = finalizeStreamingBlockDurations(
+          contentLength,
+          state.blockStartTimes,
+          state.streamingBlockDurations,
+          eventAtMs,
+        );
+        const normalized = normalizeToolCalls(completed);
+        const withDurations = applyThinkingDurations(normalized, finalDurations);
+        messages = mergeToolCallMessages([...state.messages, withDurations]);
       }
       return {
-        state: { ...state, messages, agentPhase: { kind: "waiting_model" } },
+        state: {
+          ...state,
+          messages,
+          agentPhase: { kind: "waiting_model" },
+          blockStartTimes: new Map(),
+          streamingBlockDurations: new Map(),
+        },
         effects: { ...effects, streamAction: { type: "reset" } },
       };
     }

@@ -26,6 +26,7 @@ const RichMarkdownBlock = dynamic(
 interface Props {
   message: AgentMessage;
   isStreaming?: boolean;
+  agentRunning?: boolean;
   streamBlockStart?: number;
   toolResults?: Map<string, ToolResultMessage>;
   modelNames?: Record<string, string>;
@@ -168,16 +169,6 @@ function getToolStateLabel(state: ToolCallState): string {
   return "pending";
 }
 
-function getToolResultPreview(result?: ToolResultMessage): string {
-  const error = getStructuredToolError(result);
-  if (error) {
-    return [error.title, error.code, error.message].filter(Boolean).join(" ").slice(0, 140);
-  }
-  const text = getToolResultText(result);
-  if (text === null || isEmptyToolResult(text)) return "";
-  return text.trim().replace(/\s+/g, " ").slice(0, 120);
-}
-
 function ToolStateDot({ state }: { state: ToolCallState }) {
   const color = getToolStateColor(state);
   return (
@@ -249,6 +240,7 @@ function BlockLine({
 export function MessageView({
   message,
   isStreaming,
+  agentRunning,
   streamBlockStart,
   toolResults,
   modelNames,
@@ -282,6 +274,7 @@ export function MessageView({
       <AssistantMessageView
         message={message as AssistantMessage}
         isStreaming={isStreaming}
+        agentRunning={agentRunning}
         streamBlockStart={streamBlockStart}
         toolResults={toolResults}
         modelNames={modelNames}
@@ -783,6 +776,7 @@ function UserMessageView({
 function AssistantMessageView({
   message,
   isStreaming,
+  agentRunning,
   streamBlockStart,
   toolResults,
   modelNames,
@@ -794,6 +788,7 @@ function AssistantMessageView({
 }: {
   message: AssistantMessage;
   isStreaming?: boolean;
+  agentRunning?: boolean;
   streamBlockStart?: number;
   toolResults?: Map<string, ToolResultMessage>;
   modelNames?: Record<string, string>;
@@ -812,7 +807,7 @@ function AssistantMessageView({
   blocksRef.current = blocks;
   const t = useTranslations("MessageView");
   const canNavigate = !!entryId && !!onNavigate && !isStreaming;
-  const actionsVisible = hovered || actionsFocused || copied;
+  const actionsVisible = !agentRunning && !isStreaming && (hovered || actionsFocused || copied);
 
   // Streaming-based timing for thinking blocks
   const blockStartTimesRef = useRef<Map<number, number>>(new Map());
@@ -932,7 +927,7 @@ function AssistantMessageView({
           marginTop: 8,
         }}
       >
-        {time && !isStreaming && (
+        {time && !isStreaming && !agentRunning && (
           <span style={{ fontSize: 12, color: "var(--text-dim)" }}>{time}</span>
         )}
         {onRetry && !isStreaming && (
@@ -1114,7 +1109,10 @@ function BlockView({
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
     const isLast = i === blocks.length - 1;
-    const blockIsStreaming =
+    // Only the final block in a streaming message is actively growing; earlier
+    // blocks (e.g. prior thinking turns) should render as completed.
+    const blockIsStreaming = isStreaming && isLast;
+    const toolBlockIsStreaming =
       isStreaming && (streamBlockStart === undefined || i >= streamBlockStart);
 
     if (block.type === "toolCall") {
@@ -1125,7 +1123,7 @@ function BlockView({
           key={i}
           block={toolBlock}
           result={result}
-          isRunning={blockIsStreaming && !result}
+          isRunning={toolBlockIsStreaming && !result}
           duration={toolCallDurations?.get(toolBlock.toolCallId)}
           entryId={entryId}
           isLast={isLast}
@@ -1141,16 +1139,28 @@ function BlockView({
         />,
       );
     } else if (block.type === "thinking") {
+      const thinkingBlock = block as ThinkingContent;
+      const hasPersistedDuration = thinkingBlock._duration !== undefined;
       const dur =
-        streamBlockStart !== undefined && i < streamBlockStart
+        thinkingBlock._duration ??
+        (streamBlockStart !== undefined && i < streamBlockStart
           ? thinkingDurationFromFile
-          : (streamingDurations.get(i) ?? thinkingDurationFromFile);
+          : (streamingDurations.get(i) ?? thinkingDurationFromFile));
+      // If we only have a message-level fallback duration, the total belongs to
+      // the whole turn, not each individual thinking block. Show the seconds only
+      // on the last thinking block; earlier ones render as "Thought".
+      const isFallbackDuration =
+        !hasPersistedDuration &&
+        !(streamBlockStart !== undefined && i < streamBlockStart) &&
+        !streamingDurations.has(i);
+      const isSharedTotalDuration = isFallbackDuration && i < blocks.length - 1;
       elements.push(
         <ThinkingBlock
           key={i}
-          block={block as ThinkingContent}
+          block={thinkingBlock}
           duration={dur}
-          isStreaming={blockIsStreaming}
+          isSharedTotalDuration={isSharedTotalDuration}
+          isStreaming={isStreaming}
           isLast={isLast}
         />,
       );
@@ -1161,14 +1171,15 @@ function BlockView({
 
   return (
     <div style={{ position: "relative" }}>
-      {/* One continuous line for ALL blocks in this message */}
+      {/* One continuous line connecting the dots of all blocks in this message.
+          Starts/ends at the dot center so the chain feels anchored to the nodes. */}
       <span
         aria-hidden
         style={{
           position: "absolute",
           left: 7,
-          top: 12,
-          bottom: -2,
+          top: 14.5,
+          bottom: 14.5,
           width: 1,
           background: LINE_COLOR,
         }}
@@ -1273,21 +1284,7 @@ function TextBlock({
         }
       >
         <div className="markdown-body">
-          <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-            {displayText}
-            {isStreaming && isLast && (
-              <span
-                style={{
-                  display: "inline-block",
-                  width: 2,
-                  height: "1.05em",
-                  background: "var(--accent)",
-                  marginLeft: 1,
-                  verticalAlign: "text-bottom",
-                }}
-              />
-            )}
-          </div>
+          <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{displayText}</div>
         </div>
       </BlockLine>
     );
@@ -1312,18 +1309,6 @@ function TextBlock({
     >
       <div className="markdown-body">
         <RichMarkdownBlock text={displayText} isStreaming={isStreaming} />
-        {isStreaming && isLast && (
-          <span
-            style={{
-              display: "inline-block",
-              width: 2,
-              height: "1.05em",
-              background: "var(--accent)",
-              marginLeft: 1,
-              verticalAlign: "text-bottom",
-            }}
-          />
-        )}
       </div>
     </BlockLine>
   );
@@ -1332,92 +1317,62 @@ function TextBlock({
 function ThinkingBlock({
   block,
   duration,
+  isSharedTotalDuration,
   isStreaming,
   isLast,
 }: {
   block: ThinkingContent;
   duration?: number;
+  isSharedTotalDuration?: boolean;
   isStreaming?: boolean;
   isLast?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const t = useTranslations("MessageView");
-  const label = isStreaming
+
+  const isMessageStreaming = isStreaming;
+  const blockIsStreaming = isStreaming && isLast;
+
+  const label = isMessageStreaming
     ? t("thinking")
-    : duration !== undefined
+    : duration !== undefined && !isSharedTotalDuration
       ? t("thoughtFor", { seconds: duration })
-      : t("thinking");
+      : t("thought");
 
   return (
     <BlockLine
       isLast={isLast}
-      isStreaming={isStreaming}
+      isStreaming={blockIsStreaming}
       dot={
         <span
           style={{
-            width: 6,
-            height: 6,
+            width: 5,
+            height: 5,
             borderRadius: "50%",
-            background: "var(--text-dim)",
-            boxShadow: "0 0 0 2px color-mix(in oklab, var(--text-dim), transparent 92%)",
+            background: blockIsStreaming ? "var(--accent)" : "var(--text-dim)",
             flexShrink: 0,
+            ...(blockIsStreaming ? { animation: "pulse 1.8s ease-in-out infinite" } : {}),
           }}
         />
       }
     >
-      {/* ── Thin trigger row ── */}
-      <span
+      <button
         onClick={() => setExpanded((v) => !v)}
         style={{
           display: "inline-flex",
           alignItems: "center",
           gap: 6,
           padding: 0,
-          paddingLeft: 5,
           background: "none",
           border: "none",
           color: "var(--text-dim)",
           cursor: "pointer",
-          fontSize: 14,
+          fontSize: 13,
           lineHeight: "20px",
-          ...(isStreaming ? { animation: "think-pulse 1.8s ease-in-out infinite" } : {}),
+          fontFamily: "inherit",
         }}
       >
         <span>{label}</span>
-        {isStreaming && (
-          <span style={{ display: "flex", gap: 2, alignItems: "flex-end", height: 12 }}>
-            <span
-              style={{
-                width: 3,
-                height: 3,
-                borderRadius: "50%",
-                background: "currentColor",
-                animation: "think-pulse 1.2s ease-in-out infinite",
-                animationDelay: "0s",
-              }}
-            />
-            <span
-              style={{
-                width: 3,
-                height: 3,
-                borderRadius: "50%",
-                background: "currentColor",
-                animation: "think-pulse 1.2s ease-in-out infinite",
-                animationDelay: "0.2s",
-              }}
-            />
-            <span
-              style={{
-                width: 3,
-                height: 3,
-                borderRadius: "50%",
-                background: "currentColor",
-                animation: "think-pulse 1.2s ease-in-out infinite",
-                animationDelay: "0.4s",
-              }}
-            />
-          </span>
-        )}
         <svg
           width="10"
           height="10"
@@ -1427,31 +1382,28 @@ function ThinkingBlock({
           strokeWidth="1.6"
           strokeLinecap="round"
           strokeLinejoin="round"
-          style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}
+          style={{
+            transform: expanded ? "rotate(180deg)" : "none",
+            transition: "transform 0.15s",
+          }}
         >
           <polyline points="2 3.5 5 6.5 8 3.5" />
         </svg>
-      </span>
+      </button>
 
-      {/* ── Expandable thinking content ── */}
       {expanded && (
-        <div
+        <pre
           style={{
-            padding: "8px 12px",
-            marginTop: 6,
+            margin: "8px 0 0",
             color: "var(--text-muted)",
-            fontSize: 12,
-            lineHeight: 1.6,
+            fontSize: 13,
+            lineHeight: 1.55,
             whiteSpace: "pre-wrap",
-            background: "var(--bg-subtle)",
-            borderRadius: 8,
-            borderLeft: "2px solid var(--border)",
-            animation: "think-collapse-in 250ms ease both",
-            overflow: "hidden",
+            wordBreak: "break-word",
           }}
         >
           {block.thinking}
-        </div>
+        </pre>
       )}
     </BlockLine>
   );
@@ -1478,7 +1430,6 @@ function ToolCallBlock({
   const resultIsEmpty = isEmptyToolResult(resultText);
   const isError = result?.isError ?? false;
   const state = getToolState(result, isRunning);
-  const resultPreview = getToolResultPreview(result);
   const errorInfo = getStructuredToolError(result);
   const t = useTranslations("MessageView");
   const mountRef = useRef(0);
@@ -1505,133 +1456,156 @@ function ToolCallBlock({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 6,
+          gap: 10,
           width: "100%",
           minHeight: 26,
-          padding: "3px 5px",
+          padding: "3px 0",
           background: "none",
           border: "none",
           color: "var(--text-muted)",
           cursor: "pointer",
-          fontSize: 12,
-          fontFamily: "var(--font-mono)",
+          fontSize: 13,
+          fontFamily: "inherit",
           textAlign: "left",
           minWidth: 0,
           borderRadius: 5,
-          transition: "background 160ms ease, color 180ms ease",
+          transition: "color 160ms ease",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = "var(--bg-subtle)";
+          e.currentTarget.style.color = "var(--text)";
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = "none";
+          e.currentTarget.style.color = "var(--text-muted)";
         }}
       >
+        {/* Left: capitalized tool name + description */}
         <span
           style={{
-            color: state === "done" ? "var(--text-muted)" : getToolStateColor(state),
-            fontWeight: 600,
-            flexShrink: 0,
-            maxWidth: 180,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {block.toolName}
-        </span>
-        <span
-          style={{
-            color: "var(--text-dim)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            flex: "0 1 34%",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flex: 1,
             minWidth: 0,
           }}
         >
-          {getToolPreview(block)}
+          <span
+            style={{
+              color: getToolStateColor(state),
+              fontWeight: 600,
+              flexShrink: 0,
+              maxWidth: 120,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              textTransform: "capitalize",
+            }}
+          >
+            {block.toolName}
+          </span>
+          {getToolDescription(block) && (
+            <span
+              style={{
+                color: "var(--text-dim)",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                minWidth: 0,
+                fontFamily: "var(--font-mono)",
+              }}
+            >
+              {getToolDescription(block)}
+            </span>
+          )}
         </span>
+
+        {/* Right: status / result preview + duration + expand arrow */}
         <span
           style={{
-            color: isError ? "var(--danger)" : "var(--text-dim)",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            flex: 1,
-            minWidth: 36,
-            opacity: resultPreview ? 1 : 0,
-            transition: "opacity 180ms ease, color 220ms ease",
-          }}
-        >
-          {resultPreview || " "}
-        </span>
-        <span
-          style={{
-            width: 34,
-            fontSize: 12,
-            color: "var(--text-dim)",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
             flexShrink: 0,
-            textAlign: "right",
-            fontVariantNumeric: "tabular-nums",
-            opacity: shownDuration !== undefined ? (isRunning ? 0.9 : 0.58) : 0,
-            transition: "opacity 180ms ease",
-            ...(isRunning ? { animation: "pulse 1.8s ease-in-out infinite" } : {}),
           }}
         >
-          {shownDuration ?? 0}s
+          {isError ? (
+            <span style={{ color: "var(--danger)", fontSize: 12, fontWeight: 500 }}>Failed</span>
+          ) : state === "running" ? (
+            <span style={{ color: "var(--accent)", fontSize: 12 }}>Running</span>
+          ) : null}
+          <span
+            style={{
+              fontSize: 12,
+              color: "var(--text-dim)",
+              fontVariantNumeric: "tabular-nums",
+              opacity: shownDuration !== undefined ? (isRunning ? 0.9 : 0.58) : 0,
+              transition: "opacity 180ms ease",
+              ...(isRunning ? { animation: "pulse 1.8s ease-in-out infinite" } : {}),
+            }}
+          >
+            {shownDuration !== undefined ? `${shownDuration}s` : ""}
+          </span>
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 10 10"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{
+              flexShrink: 0,
+              transform: expanded ? "rotate(180deg)" : "none",
+              transition: "transform 0.15s",
+            }}
+          >
+            <polyline points="2 3.5 5 6.5 8 3.5" />
+          </svg>
         </span>
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 10 10"
-          fill="none"
-          stroke="var(--text-dim)"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{
-            flexShrink: 0,
-            transform: expanded ? "rotate(180deg)" : "none",
-            transition: "transform 0.15s",
-          }}
-        >
-          <polyline points="2 3.5 5 6.5 8 3.5" />
-        </svg>
       </button>
 
       {expanded && (
         <div
           style={{
-            margin: "2px 0 8px 6px",
+            margin: "4px 0 8px 20px",
             border: "1px solid var(--border)",
-            borderRadius: 7,
+            borderRadius: 8,
             overflow: "hidden",
-            background: "var(--bg-panel)",
+            background: "var(--bg-subtle)",
             animation: "fade-in-up 160ms ease",
           }}
         >
-          <pre
-            style={{
-              margin: 0,
-              padding: "8px 10px",
-              color: "var(--text-muted)",
-              fontSize: 12,
-              lineHeight: 1.5,
-              overflow: "auto",
-              background: "var(--bg-subtle)",
-              borderTop: "1px solid var(--border)",
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-all",
-            }}
-          >
-            {inputStr}
-          </pre>
+          <InOutSection label="IN" first>
+            <CodePre>{inputStr}</CodePre>
+          </InOutSection>
 
-          {errorInfo && <StructuredToolErrorBox error={errorInfo} />}
+          {errorInfo && (
+            <InOutSection label="ERROR" isError>
+              <div style={{ color: "var(--danger)", fontSize: 13, lineHeight: 1.55 }}>
+                <strong>
+                  {errorInfo.title}
+                  {errorInfo.code ? ` (${errorInfo.code})` : ""}
+                </strong>
+                <div style={{ marginTop: 4 }}>{errorInfo.message}</div>
+                {errorInfo.detail && (
+                  <CodePre>
+                    <span style={{ color: "var(--text-dim)" }}>{errorInfo.detail}</span>
+                  </CodePre>
+                )}
+              </div>
+            </InOutSection>
+          )}
 
           {result && (
-            <PairedResult text={resultText ?? ""} isEmpty={resultIsEmpty} isError={isError} />
+            <InOutSection label={isError ? "ERROR" : "OUT"} isError={isError}>
+              <CodePre>
+                {resultIsEmpty ? (
+                  <span style={{ fontStyle: "italic", opacity: 0.6 }}>{t("noOutput")}</span>
+                ) : (
+                  (resultText ?? "")
+                )}
+              </CodePre>
+            </InOutSection>
           )}
         </div>
       )}
@@ -1639,87 +1613,75 @@ function ToolCallBlock({
   );
 }
 
-function StructuredToolErrorBox({ error }: { error: StructuredToolError }) {
-  return (
-    <div
-      style={{
-        borderTop: "1px solid var(--border)",
-        background: "var(--bg)",
-        padding: "8px 10px",
-        color: "var(--danger)",
-        fontSize: 12,
-        lineHeight: 1.5,
-      }}
-    >
-      <div style={{ fontWeight: 600 }}>
-        {error.title}
-        {error.code ? ` (${error.code})` : ""}
-      </div>
-      <div style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{error.message}</div>
-      {error.detail && (
-        <pre
-          style={{
-            margin: "6px 0 0",
-            color: "var(--text-dim)",
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-all",
-            maxHeight: 160,
-            overflow: "auto",
-          }}
-        >
-          {error.detail}
-        </pre>
-      )}
-    </div>
-  );
+function getToolDescription(block: ToolCallContent): string {
+  const name = block.toolName?.toLowerCase() ?? "";
+  const input = block.input;
+
+  if (name === "bash" && input && typeof input === "object" && "command" in input) {
+    return String(input.command).slice(0, 160);
+  }
+  if (/^(edit|write|read)$/i.test(name) && input && typeof input === "object") {
+    if ("file_path" in input) return String(input.file_path).slice(0, 160);
+    if ("path" in input) return String(input.path).slice(0, 160);
+  }
+  if (input && typeof input === "object" && "query" in input) {
+    return String(input.query).slice(0, 160);
+  }
+  return "";
 }
 
-function PairedResult({
-  text,
-  isEmpty,
+function InOutSection({
+  label,
+  children,
+  first,
   isError,
 }: {
-  text: string;
-  isEmpty: boolean;
-  isError: boolean;
+  label: string;
+  children: ReactNode;
+  first?: boolean;
+  isError?: boolean;
 }) {
-  const t = useTranslations("MessageView");
   return (
     <div
       style={{
-        borderTop: "1px solid var(--border)",
-        background: "var(--bg-panel)",
+        borderTop: first ? "none" : "1px solid var(--border)",
+        padding: "10px 12px 12px",
+        background: isError ? "color-mix(in oklab, var(--danger), transparent 94%)" : "transparent",
       }}
     >
-      <pre
+      <div
         style={{
-          margin: 0,
-          padding: "8px 10px",
-          color: isError ? "var(--danger)" : isEmpty ? "var(--text-dim)" : "var(--text-muted)",
-          fontSize: 12,
-          lineHeight: 1.5,
-          overflow: "auto",
-          maxHeight: 400,
-          background: "var(--bg)",
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-all",
-          fontStyle: isEmpty ? "italic" : "normal",
-          opacity: isEmpty ? 0.6 : 1,
+          color: "var(--text-dim)",
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: 0.6,
+          marginBottom: 6,
+          fontFamily: "var(--font-mono)",
+          textTransform: "uppercase",
         }}
       >
-        {isEmpty ? t("noOutput") : text}
-      </pre>
+        {label}
+      </div>
+      {children}
     </div>
   );
 }
 
-function getToolPreview(block: ToolCallContent): string {
-  const name = block.toolName?.toLowerCase() ?? "";
-  // Only show file path preview for file-oriented tools
-  if (!/^(edit|write|read)$/i.test(name)) return "";
-  const input = block.input;
-  if (!input || typeof input !== "object") return "";
-  if ("file_path" in input) return String(input.file_path).slice(0, 120);
-  if ("path" in input) return String(input.path).slice(0, 120);
-  return "";
+function CodePre({ children }: { children: ReactNode }) {
+  return (
+    <pre
+      style={{
+        margin: 0,
+        padding: 0,
+        color: "var(--text-muted)",
+        fontSize: 13,
+        lineHeight: 1.55,
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-all",
+        fontFamily: "var(--font-mono)",
+      }}
+    >
+      {children}
+    </pre>
+  );
 }
