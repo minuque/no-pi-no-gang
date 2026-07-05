@@ -1,5 +1,8 @@
+import type { AgentEventStatus, AnyAgentEvent } from "./events/event-types";
 import { normalizeToolCalls } from "./normalize";
 import type { AgentMessage, AssistantMessage, ToolCallContent } from "./types";
+
+export type { AnyAgentEvent as AgentEvent, AgentEventStatus } from "./events/event-types";
 
 // Mirror of streamReducer's StreamAction.  Kept here so the hook can re-dispatch
 // onto its existing useReducer(streamReducer) without us merging streaming into
@@ -40,19 +43,6 @@ export type AgentPhase =
   | { kind: "running_skill"; skill: string }
   | { kind: "running_command"; command: string }
   | null;
-
-export type AgentEventStatus =
-  | "idle"
-  | "connecting"
-  | "connected"
-  | "reconnecting"
-  | "readonly"
-  | "destroyed";
-
-export interface AgentEvent {
-  type: string;
-  [key: string]: unknown;
-}
 
 /**
  * Returns true when an assistant message's content is exclusively toolCall
@@ -191,7 +181,7 @@ export interface AgentEventEffects {
  */
 export function agentEventReducer(
   state: AgentEventState,
-  event: AgentEvent,
+  event: AnyAgentEvent,
   eventAt: string,
 ): { state: AgentEventState; effects: AgentEventEffects } {
   const effects: AgentEventEffects = {

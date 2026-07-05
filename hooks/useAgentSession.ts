@@ -12,8 +12,11 @@ import {
   initialAgentEventState,
   mergeToolCallMessages,
 } from "@/lib/agent-event-reducer";
+import type { AnyAgentEvent as AgentEvent, AgentEventStatus } from "@/lib/events/event-types";
 import type { SlashCommandItem } from "@/lib/pi-resources";
 import type { AgentMessage, AssistantMessage, EntryTreeNode, SessionInfo } from "@/lib/types";
+
+export type { AgentEventStatus } from "@/lib/events/event-types";
 
 export interface SessionData {
   sessionId: string;
@@ -52,11 +55,6 @@ function streamReducer(state: StreamingState, action: StreamAction): StreamingSt
     default:
       return state;
   }
-}
-
-interface AgentEvent {
-  type: string;
-  [key: string]: unknown;
 }
 
 type ModelListItem = { id: string; name: string; provider: string; contextWindow?: number };
@@ -112,14 +110,6 @@ export type AgentPhase =
   | { kind: "running_skill"; skill: string }
   | { kind: "running_command"; command: string }
   | null;
-
-export type AgentEventStatus =
-  | "idle"
-  | "connecting"
-  | "connected"
-  | "reconnecting"
-  | "readonly"
-  | "destroyed";
 
 export interface AgentSessionStatus {
   exists: boolean;

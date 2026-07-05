@@ -1,19 +1,11 @@
 import { createAgentSession } from "@earendil-works/pi-coding-agent";
 
+import type { AnyAgentEvent as AgentEvent } from "./events/event-types";
 import { getProjectResourceLoaderOptions } from "./pi-resources";
 import type { AgentSessionLike } from "./pi-types";
 import { piCommandHandlers } from "./pi/pi-command-dispatcher";
 import { cacheSessionPath } from "./session-reader";
 import type { RpcSessionState, SessionInfo, SessionNodeAgentState } from "./types";
-
-// ============================================================================
-// Types
-// ============================================================================
-
-export interface AgentEvent {
-  type: string;
-  [key: string]: unknown;
-}
 
 type EventListener = (event: AgentEvent) => void;
 
