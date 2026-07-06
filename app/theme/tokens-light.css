@@ -1,127 +1,64 @@
 /* ─────────────────────────────────────────────────────────────────────────
- * Agent WebUI Light Theme — v1 "VSCode Light+"
+ * Agent WebUI Light Theme — v2 "YouTube Light"
  *
- * 与 tokens-dark.css (v3 VSCode Dark+) 的完整 light 对应版本。
- * 基于 VSCode Light+ (default light) 色彩系统，加 2–8 通道轻微蓝偏移，
- * 保持编辑器/侧栏/终端同源色板，同时提供冷调 white-space 感。
+ * 对齐 YouTube 网页端浅色设计语言：
+ *   — 背景 #ffffff，surface #f9f9f9，raised #f1f1f1
+ *   — 前景 #0f0f0f，次级 #606060
+ *   — 大圆角（按钮/输入框 8px，卡片 12px，消息气泡 18px）
+ *   — 柔和卡片阴影
+ *   — Roboto 字体栈
+ *   — Accent 保留项目原色 #007acc
  *
- * VSCode Light+ 核心色:
- *   editor  #ffffff  ─→ --bg     (加冷: #fafbfc)
- *   sidebar #f3f3f3  ─→ --surface (加冷: #f2f3f6)
- *   tab     #ececec  ─→ --surface-raised (加冷: #e9eaf0)
- *   accent  #007acc  ─→ --accent (跨主题一致)
- *   text    #1f1f1f  ─→ --fg
- *   border  #d9d9d9  ─→ --border
- *
- * 冷色调哲学：
- *   — 所有中性灰 R=G, B 偏多 2–8 通道 (极轻微蓝偏)
- *   — 不暖色泄漏: 无米黄/暖灰/奶油底色
- *   — Accent 蓝 #007acc 与 dark 主题一致，跨主题换肤无突变
- *   — 文字/边框保持中性 (R=G=B) 确保可读性
- *   — 语义色为冷调适配: success 冷绿, warn 深琥珀, danger 冷红
- *
- * 使用方式: 与 tokens-dark.css 并排放置，
- *           由 globals.css 根据 html.light / html.dark 切换加载。
- *           html.light 下引用本文件。
+ * 使用方式：由 globals.css @import 引入，html.light 下生效
  * ──────────────────────────────────────────────────────────────────────── */
 
 html.light {
   /* ════════════════════════════════════════════════════════════════════
-   * SURFACE — 三层表面系统 (加大层级对比度)
-   *
-   * 各级亮度差加大，让区域边界在高分辨率屏上也直观可辨。
-   *
-   * 映射:
-   *   --bg             = editor 背景 → 主工作区
-   *   --surface        = sidebar 背景 → 面板/卡片
-   *   --surface-raised = inactive tab → 弹窗/hover 面板
-   *   --surface-deep   = 最深亮色 → 图标列/窄侧栏
+   * SURFACE — YouTube 浅色三层表面
    * ════════════════════════════════════════════════════════════════════ */
-  --bg: #f8f9fb;
-  /* 冷白底 — R=248 G=249 B=251 (+3) */
-  --surface: #eff0f4;
-  /* 浅灰面 — R=239 G=240 B=244 (+5) */
-  --surface-raised: #e5e6ec;
-  /* 抬起层 — R=229 G=230 B=236 (+7) */
-  --surface-deep: #dcdee5;
-  /* 最深层 — R=220 G=221 B=229 (+9) */
+  --bg: #ffffff;
+  --surface: #f9f9f9;
+  --surface-raised: #f1f1f1;
+  --surface-deep: #ffffff;
   --surface-warm: var(--surface);
-  /* schema 兼容 */
 
   /* ════════════════════════════════════════════════════════════════════
-   * FOREGROUND — 四级文字色阶 (提升 muted/meta 可读性)
-   *
-   * 文字色保持纯中性 (R=G=B):
-   *   #1e1e1e  主体文字
-   *   #444444  次级文字 (从 #3b3b3b 提升)
-   *   #6e6e6e  三级文字 (从 #616161 提升)
-   *   #929292  装饰性文字 (从 #8a8a8a 提升)
+   * FOREGROUND — 四级文字色阶
    * ════════════════════════════════════════════════════════════════════ */
-  --fg: #1e1e1e;
-  --fg-2: #444444;
-  --muted: #6e6e6e;
-  --meta: #929292;
+  --fg: #0f0f0f;
+  --fg-2: #333333;
+  --muted: #606060;
+  --meta: #909090;
 
   /* ════════════════════════════════════════════════════════════════════
-   * BORDER — 两级边框 (提升可见度)
+   * BORDER
    * ════════════════════════════════════════════════════════════════════ */
-  --border: #c8c8cc;
-  --border-soft: #dcdce1;
-  --border-muted: #e5e5ea;
+  --border: #e5e5e5;
+  --border-soft: #f0f0f0;
+  --border-muted: #f9f9f9;
 
   /* ════════════════════════════════════════════════════════════════════
-   * ACCENT — VSCode 蓝 #007acc (跨主题一致)
-   *
-   * Accent 色在 dark/light 间保持不变 — 这是 VSCode 的设计惯例。
-   * 亮底需要更浅的选中/悬停变体。
-   *
-   *   accent         #007acc — 状态栏、链接、活动指示
-   *   accent-hover   #106ebe — button hover (比 dark 亮)
-   *   accent-active  #005a9e — list.activeSelectionBackground
-   *   accent-focus   #005fb8 — focusBorder
-   *   accent-soft    #e8f4fd — 选中底色 (极浅蓝)
-   *   accent-subtle  #d0e8f7 — list.focusBackground (浅蓝)
-   *   accent-border  #add6ff — 选中边框 (selection)
-   *   accent-ring    #005fb8 — 同 focusBorder
-   *
-   * 使用策略:
-   *   — 主 accent 最多 2 处可见
-   *   — 图标未激活 = #616161 (muted), 激活 = #1e1e1e (fg)
-   *   — 不发光 — VSCode 纯粹靠色值区分状态
+   * ACCENT — 保留项目原色 #007acc
    * ════════════════════════════════════════════════════════════════════ */
   --accent: #007acc;
   --accent-on: #ffffff;
   --accent-hover: #106ebe;
-  /* button.background — 亮底需要稍亮 */
   --accent-active: #005a9e;
-  /* list.activeSelectionBackground */
   --accent-focus: #005fb8;
-  /* focusBorder */
   --accent-soft: #e8f4fd;
-  /* list.focusBackground — 稍深蓝 */
   --accent-border: #add6ff;
-  /* 选中/焦点边框 */
-  --accent-ring: #005fb8;
-  /* 同 focusBorder */
 
   /* ════════════════════════════════════════════════════════════════════
-   * SEMANTIC — 状态色 (冷调适配版)
-   *
-   * 为冷调亮底调整饱和度和亮度:
-   *   #0a7e3e  冷绿 — terminal ANSI bright green (加深适配亮底)
-   *   #946800  深琥珀 — 亮底需要更深的警告色保证对比度
-   *   #d1242f  冷红 — terminal 红 (比暖红 #ff4444 更克制)
+   * SEMANTIC — YouTube 风格语义色
    * ════════════════════════════════════════════════════════════════════ */
   --success: #1a8d4a;
-  --warn: #a67c00;
+  --warn: #b06000;
   --danger: #c7423e;
 
   /* ════════════════════════════════════════════════════════════════════
-   * TYPOGRAPHY — 与 dark 主题相同字体栈
-   *
-   * 亮底不需要改字体 — 同一套栈在亮/暗下表现都稳定。
+   * TYPOGRAPHY — Roboto + JetBrains Mono
    * ════════════════════════════════════════════════════════════════════ */
-  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-body: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
 
   --text-xs: 11.5px;
@@ -134,10 +71,10 @@ html.light {
 
   --leading-body: 1.6;
   --leading-tight: 1.3;
-  --tracking-display: 0;
+  --tracking-display: -0.01em;
 
   /* ════════════════════════════════════════════════════════════════════
-   * SPACING — 与 dark 主题一致 (4px 基础单位)
+   * SPACING — 4px 基础单位
    * ════════════════════════════════════════════════════════════════════ */
   --space-1: 4px;
   --space-2: 8px;
@@ -150,169 +87,126 @@ html.light {
   --space-20: 80px;
 
   /* ════════════════════════════════════════════════════════════════════
-   * RADIUS — 与 dark 一致 (VSCode 钝角)
+   * RADIUS — YouTube 大圆角
    * ════════════════════════════════════════════════════════════════════ */
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
   --radius-pill: 9999px;
 
   /* ════════════════════════════════════════════════════════════════════
-   * ELEVATION — 亮底阴影
-   *
-   * 亮底阴影比暗底更轻、更透明。VSCode Light+ 同样几乎不用阴影。
+   * ELEVATION — 柔和阴影
    * ════════════════════════════════════════════════════════════════════ */
   --elev-flat: none;
   --elev-ring: 0 0 0 1px var(--border);
-  --elev-raised: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --elev-raised: 0 4px 12px rgba(0, 0, 0, 0.08);
 
   /* ════════════════════════════════════════════════════════════════════
-   * FOCUS RING — 1px solid accent-focus (与 dark 一致)
+   * FOCUS RING
    * ════════════════════════════════════════════════════════════════════ */
-  --focus-ring: 0 0 0 1px var(--accent-focus);
+  --focus-ring: 0 0 0 2px var(--accent-focus);
 
   /* ════════════════════════════════════════════════════════════════════
-   * MOTION — 与 dark 一致 (极短过渡)
+   * MOTION
    * ════════════════════════════════════════════════════════════════════ */
-  --motion-fast: 80ms;
-  --motion-base: 120ms;
-  --ease-standard: ease-out;
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* ════════════════════════════════════════════════════════════════════
-   * LAYOUT — 与 dark 主题相同布局比例
+   * LAYOUT — YouTube 式导航
    * ════════════════════════════════════════════════════════════════════ */
-  --nav-collapsed: 48px;
+  --header-height: 56px;
+  --nav-collapsed: 72px;
   --nav-expanded: 240px;
   --chat-list: 280px;
-  --content-max: 820px;
+  --content-max: 960px;
 
   /* ════════════════════════════════════════════════════════════════════
-   * AGENT UI — 专用 token (亮底版)
-   *
-   * 命名: `ui-<区域>-<属性>`，全部映射到 VSCode Light+ 冷调色。
-   * 与 tokens-dark.css 同结构、同名 token — 换文件即换肤。
+   * AGENT UI — 专用 token
    * ════════════════════════════════════════════════════════════════════ */
 
-  /* --- 顶部导航 ---
-   * 等价 VSCode title bar / inactive tab:
-   *   #f3f3f7 — 比主底略深 + 冷调
-   *   底部 0.5px border 区隔
-   */
-  --ui-topnav-bg: #f0f1f6;
-  --ui-topnav-border: 0.5px solid var(--border);
-  --ui-topnav-height: 40px;
+  /* --- 顶部 header --- */
+  --ui-topnav-bg: var(--bg);
+  --ui-topnav-border: 1px solid var(--border);
+  --ui-topnav-height: var(--header-height);
 
-  /* --- 侧边栏 ---
-   * activityBar 等价: surface-deep (最深亮色)
-   * sideBar 展开面板: surface
-   */
-  --ui-sidebar-bg: var(--surface-deep);
+  /* --- 侧边栏 --- */
+  --ui-sidebar-bg: var(--surface);
   --ui-sidebar-expanded-bg: var(--surface);
   --ui-sidebar-width: var(--nav-collapsed);
   --ui-sidebar-expanded: var(--nav-expanded);
   --ui-sidebar-divider: 1px solid var(--border);
 
-  /* --- 侧边栏图标 ---
-   * VSCode activityBar light:
-   *   未激活图标 = rgba(0,0,0,0.38) (黑色半透)
-   *   激活图标   = #1e1e1e (fg)
-   *   备选 accent = #007acc (VSCode 状态栏蓝)
-   */
-  --ui-icon-default: rgba(0, 0, 0, 0.38);
-  --ui-icon-hover: rgba(0, 0, 0, 0.6);
-  --ui-icon-active: #1e1e1e;
+  /* --- 侧边栏图标 --- */
+  --ui-icon-default: rgba(0, 0, 0, 0.5);
+  --ui-icon-hover: rgba(0, 0, 0, 0.75);
+  --ui-icon-active: #0f0f0f;
   --ui-icon-active-accent: var(--accent);
   --ui-icon-size: 20px;
 
-  /* --- 对话列表 ---
-   * sideBar 底色，hover/active:
-   *   list.hoverBackground             = #e8e8eb (微深灰 + 冷)
-   *   list.activeSelectionBackground   = #e0edf9 (浅蓝选中)
-   *   list.inactiveSelectionBackground = #e4e6f1 (失焦选中 + 冷)
-   */
+  /* --- 对话列表 --- */
   --ui-chatlist-bg: var(--surface);
   --ui-chatlist-width: var(--chat-list);
-  --ui-chatlist-item-hover: #e5e6ec;
-  --ui-chatlist-item-active: #dbe8f7;
+  --ui-chatlist-item-hover: var(--surface-raised);
+  --ui-chatlist-item-active: rgba(0, 0, 0, 0.08);
 
-  /* --- 消息流 ---
-   * Claude/Codex 风格: 用户气泡靠底色+微阴影区分，无可见边框;
-   *   Agent 消息 = 主底纯文本、左边 accent 线
-   */
-  --ui-msg-user-bg: #e8e9f0;
+  /* --- 消息流 --- */
+  --ui-msg-user-bg: #e6e6e6;
   --ui-msg-user-border: none;
-  --ui-msg-user-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
-  --ui-msg-user-hover-bg: #dddee6;
+  --ui-msg-user-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  --ui-msg-user-hover-bg: #dbdbdb;
   --ui-msg-agent-accent-line: 2px solid var(--accent);
-  --ui-msg-padding: 12px 16px;
-  --ui-msg-radius: 12px;
+  --ui-msg-padding: 14px 18px;
+  --ui-msg-radius: 18px;
   --ui-msg-gap: 24px;
-  --ui-msg-max-width: 85%;
+  --ui-msg-max-width: 82%;
 
-  /* --- 代码块 ---
-   * terminal.background = 略深于 editor 的冷灰
-   * 代码块底色稍微暗于主底，细边框 + 左 accent 线区分。
-   */
-  --ui-code-bg: #f0f1f5;
+  /* --- 代码块 --- */
+  --ui-code-bg: #f5f5f5;
   --ui-code-border: 1px solid var(--border);
   --ui-code-accent-stripe: 2px solid var(--accent);
-  --ui-code-gutter: #e6e7ed;
-  --ui-code-radius: 0;
+  --ui-code-gutter: #ececec;
+  --ui-code-radius: var(--radius-md);
 
-  /* --- 输入框区域 ---
-   */
-  --ui-input-area-bg: #eff0f4;
-  --ui-input-bg: #ffffff;
-  --ui-input-border: 1px solid #c0c0c6;
+  /* --- 输入框区域 --- */
+  --ui-input-area-bg: var(--bg);
+  --ui-input-bg: var(--surface-raised);
+  --ui-input-border: 1px solid var(--border);
   --ui-input-border-focus: 1px solid var(--accent-focus);
   --ui-input-focus-ring: 0 0 0 3px rgba(0, 127, 212, 0.18);
-  --ui-input-streaming-ring: 0 0 0 3px rgba(209, 36, 47, 0.18);
-  --ui-input-radius: 0;
+  --ui-input-streaming-ring: 0 0 0 3px rgba(199, 66, 62, 0.18);
+  --ui-input-radius: var(--radius-sm);
 
-  /* --- 按钮 ---
-   * button.background = #0078d4 (VSCode 亮底按钮)
-   * 二次按钮 = 透明底 + 边框
-   */
-  --ui-btn-primary-bg: #0078d4;
+  /* --- 按钮 --- */
+  --ui-btn-primary-bg: var(--accent);
   --ui-btn-primary-fg: #ffffff;
-  --ui-btn-primary-hover-bg: #106ebe;
-  --ui-btn-secondary-bg: transparent;
+  --ui-btn-primary-hover-bg: var(--accent-hover);
+  --ui-btn-secondary-bg: var(--surface-raised);
   --ui-btn-secondary-fg: var(--fg);
   --ui-btn-secondary-border: 1px solid var(--border);
-  --ui-btn-radius: 0;
+  --ui-btn-radius: var(--radius-sm);
 
-  /* --- 滚动条 ---
-   * scrollbarSlider.background = #c8c8c8 (亮底滚动条)
-   * scrollbarSlider.hoverBackground = #a0a0a0
-   */
+  /* --- 滚动条 --- */
   --ui-scrollbar-thumb: #c8c8c8;
   --ui-scrollbar-hover: #a0a0a0;
   --ui-scrollbar-track: transparent;
 
-  /* --- 选中文字 ---
-   * editor.selectionBackground = #add6ff (VSCode 亮底选中蓝)
-   */
+  /* --- 选中文字 --- */
   --ui-selection-bg: #add6ff;
   --ui-selection-fg: var(--fg);
 
-  /* --- 分割线 ---
-   */
+  /* --- 分割线 --- */
   --ui-divider: 1px solid var(--border);
 
-  /* --- 表单 placeholder ---
-   * input.placeholderForeground = #767676 (VSCode)
-   */
-  --ui-placeholder: #767676;
+  /* --- 表单 placeholder --- */
+  --ui-placeholder: var(--meta);
 
-  /* --- Badge / pill ---
-   * badge.background = #c4c4c4, badge.foreground = #333333
-   */
-  --ui-badge-bg: #c4c4c4;
-  --ui-badge-fg: #333333;
+  /* --- Badge / pill --- */
+  --ui-badge-bg: var(--surface-raised);
+  --ui-badge-fg: var(--fg);
 
-  /* --- TPS 速率 badge (ChatInput 流式速度指示) ---
-   * high (≥50 t/s)  accent 蓝底  中 (20–50)  成功绿底  低 (<20)  警告琥珀底
-   */
+  /* --- TPS 速率 badge --- */
   --ui-tps-high-bg: #e8f4fd;
   --ui-tps-high-fg: var(--accent);
   --ui-tps-mid-bg: #e6f7ee;
@@ -320,47 +214,36 @@ html.light {
   --ui-tps-low-bg: #fef3d5;
   --ui-tps-low-fg: var(--warn);
 
-  /* --- 工具栏 / 快捷操作 ---
-   * toolbar hover = #e8e8eb (微深冷灰)
-   */
+  /* --- 工具栏 / 快捷操作 --- */
   --ui-toolbar-bg: var(--bg);
-  --ui-toolbar-hover: #e5e6ec;
+  --ui-toolbar-hover: var(--surface-raised);
 
-  /* --- Tooltip / popover ---
-   */
-  --ui-tooltip-bg: #ffffff;
+  /* --- Tooltip / popover --- */
+  --ui-tooltip-bg: var(--surface-raised);
   --ui-tooltip-fg: var(--fg);
-  --ui-tooltip-border: 1px solid #c8c8cc;
+  --ui-tooltip-border: 1px solid var(--border);
   --ui-tooltip-shadow: var(--elev-raised);
 
-  /* --- 下拉菜单 / context menu ---
-   */
-  --ui-dropdown-bg: #ffffff;
-  --ui-dropdown-hover: #dbe8f7;
-  --ui-dropdown-border: 1px solid #c8c8cc;
+  /* --- 下拉菜单 / context menu --- */
+  --ui-dropdown-bg: var(--surface-raised);
+  --ui-dropdown-hover: rgba(0, 0, 0, 0.05);
+  --ui-dropdown-border: 1px solid var(--border);
 
-  /* --- 模态 / 对话框 ---
-   */
-  --ui-modal-bg: #ffffff;
+  /* --- 模态 / 对话框 --- */
+  --ui-modal-bg: var(--surface-raised);
   --ui-modal-backdrop: rgba(0, 0, 0, 0.28);
 
-  /* --- Tab / 标签切换 ---
-   * tab.activeBackground = #ffffff, tab.inactiveBackground = #ececec
-   * tab.activeBorderTop = #007acc
-   */
-  --ui-tab-active-bg: #f8f9fb;
-  --ui-tab-inactive-bg: #e5e6ec;
+  /* --- Tab / 标签切换 --- */
+  --ui-tab-active-bg: var(--bg);
+  --ui-tab-inactive-bg: var(--surface-raised);
   --ui-tab-active-border: var(--accent);
-  --ui-tab-hover-bg: #e0e2e9;
+  --ui-tab-hover-bg: var(--surface);
 
-  /* --- 链接 ---
-   */
+  /* --- 链接 --- */
   --ui-link: #006ab1;
   --ui-link-hover: #006ab1;
 
-  /* --- 校验/错误状态 ---
-   * 亮底错误/警告/信息 — 用浅底色 + 深文字
-   */
+  /* --- 校验/错误状态 --- */
   --ui-error-fg: #bd1f29;
   --ui-error-bg: #fde7e9;
   --ui-warn-fg: #8a5f00;
@@ -369,11 +252,11 @@ html.light {
   --ui-info-bg: #e8f4fd;
 
   /* ════════════════════════════════════════════════════════════════════
-   * COMPAT — 旧组件引用的别名 (亮底版)
+   * COMPAT — 旧组件引用的别名
    * ════════════════════════════════════════════════════════════════════ */
   --bg-panel: var(--surface);
-  --bg-hover: #e5e6ec;
-  --bg-selected: #dbe8f7;
+  --bg-hover: var(--surface-raised);
+  --bg-selected: rgba(0, 0, 0, 0.08);
   --text: var(--fg);
   --text-muted: var(--fg-2);
   --text-dim: var(--muted);
@@ -381,10 +264,10 @@ html.light {
   --assistant-bg: var(--bg);
   --tool-bg: var(--surface);
   --bg-subtle: rgba(0, 0, 0, 0.03);
-  --shadow-xs: 0 1px 2px rgba(0, 0, 8, 0.04);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 8, 0.06), 0 1px 2px rgba(0, 0, 8, 0.03);
-  --shadow-md: 0 4px 12px rgba(0, 0, 8, 0.08), 0 2px 4px rgba(0, 0, 8, 0.04);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 8, 0.12), 0 2px 6px rgba(0, 0, 8, 0.06);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
 
   /* ════════════════════════════════════════════════════════════════════
    * Z-INDEX — 层叠顺序比例尺

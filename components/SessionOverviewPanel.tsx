@@ -108,7 +108,7 @@ function Tag({ label, color }: { label: string; color?: string }) {
       style={{
         display: "inline-flex",
         padding: "1px 6px",
-        borderRadius: 3,
+        borderRadius: "var(--radius-sm)",
         background: "var(--bg-hover)",
         border: "1px solid var(--border)",
         color: color ?? "var(--text-muted)",
@@ -254,7 +254,7 @@ function ContextBar({
       <div
         style={{
           height: 3,
-          borderRadius: 2,
+          borderRadius: "var(--radius-sm)",
           background: "var(--bg-hover)",
           overflow: "hidden",
         }}
@@ -264,7 +264,7 @@ function ContextBar({
             height: "100%",
             width: `${Math.min(100, pct)}%`,
             background: barColor,
-            borderRadius: 2,
+            borderRadius: "var(--radius-sm)",
             transition: "width 0.3s ease",
           }}
         />
@@ -474,7 +474,7 @@ export function SessionOverviewPanel({
           style={{
             width: 28,
             height: 28,
-            borderRadius: 4,
+            borderRadius: "var(--radius-sm)",
             border: "none",
             background: "transparent",
             color: "var(--text-muted)",
@@ -526,7 +526,7 @@ export function SessionOverviewPanel({
             padding: "10px 12px",
             background: "var(--bg-panel)",
             border: "1px solid var(--border)",
-            borderRadius: 6,
+            borderRadius: "var(--radius-md)",
           }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -593,7 +593,7 @@ export function SessionOverviewPanel({
               padding: "8px 4px",
               background: "var(--bg-panel)",
               border: "1px solid var(--border)",
-              borderRadius: 6,
+              borderRadius: "var(--radius-md)",
             }}
           >
             <StatCell label={t("input")} value={formatTokens(sessionStats.tokens.input)} />
@@ -619,7 +619,7 @@ export function SessionOverviewPanel({
                 padding: "8px 10px",
                 background: "var(--bg-panel)",
                 border: "1px solid var(--border)",
-                borderRadius: 4,
+                borderRadius: "var(--radius-sm)",
                 fontSize: 11.5,
                 color: "var(--text-muted)",
                 fontFamily: "var(--font-mono)",
@@ -699,7 +699,7 @@ export function SessionOverviewPanel({
                       maxHeight: "80vh",
                       background: "var(--bg)",
                       border: "1px solid var(--border)",
-                      borderRadius: 8,
+                      borderRadius: "var(--radius-sm)",
                       boxShadow: "0 8px 24px rgba(0,0,0,0.55)",
                       display: "flex",
                       flexDirection: "column",
@@ -734,7 +734,7 @@ export function SessionOverviewPanel({
                         style={{
                           width: 28,
                           height: 28,
-                          borderRadius: 4,
+                          borderRadius: "var(--radius-sm)",
                           border: "none",
                           background: "transparent",
                           color: "var(--text-muted)",
@@ -806,7 +806,7 @@ export function SessionOverviewPanel({
               gap: 1,
               marginBottom: 10,
               background: "var(--bg-panel)",
-              borderRadius: 5,
+              borderRadius: "var(--radius-sm)",
               padding: 2,
             }}
           >
@@ -823,7 +823,7 @@ export function SessionOverviewPanel({
                   flex: 1,
                   padding: "5px 0",
                   border: "none",
-                  borderRadius: 4,
+                  borderRadius: "var(--radius-sm)",
                   background: tab === key ? "var(--bg)" : "transparent",
                   color: tab === key ? "var(--text)" : "var(--text-dim)",
                   fontWeight: tab === key ? 600 : 400,

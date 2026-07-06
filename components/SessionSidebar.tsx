@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useTranslations } from "next-intl";
 
-import { useTheme } from "@/hooks/useTheme";
 import type { SessionInfo } from "@/lib/types";
 
 interface Props {
@@ -18,7 +17,6 @@ interface Props {
   selectedCwd?: string | null;
   onCwdChange?: (cwd: string | null) => void;
   onSessionsChange?: (sessions: SessionInfo[]) => void;
-  onToggleSidebar: () => void;
 }
 
 function formatRelativeTime(
@@ -85,66 +83,7 @@ function getCwdLabel(cwd: string, t?: (key: string) => string): string {
 interface CwdSessionGroup {
   cwd: string;
   sessions: SessionInfo[];
-  tree: ForkTreeNode[];
   modified: string;
-}
-
-interface ForkTreeNode {
-  session: SessionInfo;
-  children: ForkTreeNode[];
-}
-
-function buildSessionTree(sessions: SessionInfo[]): ForkTreeNode[] {
-  const byId = new Map<string, ForkTreeNode>();
-  for (const s of sessions) {
-    byId.set(s.id, { session: s, children: [] });
-  }
-
-  // Build a map of parentSessionId chains so nested forks display as siblings.
-  const parentOf = new Map<string, string>();
-  for (const s of sessions) {
-    if (s.parentSessionId) parentOf.set(s.id, s.parentSessionId);
-  }
-
-  function resolveDisplayParent(id: string): string | null {
-    let cur = parentOf.get(id);
-    let parent: string | null = cur ?? null;
-    const visited = new Set<string>();
-    while (cur) {
-      if (visited.has(cur)) return null; // cycle guard
-      visited.add(cur);
-      if (byId.has(cur)) parent = cur;
-      cur = parentOf.get(cur);
-    }
-    return parent && byId.has(parent) ? parent : null;
-  }
-
-  const roots: ForkTreeNode[] = [];
-  for (const node of byId.values()) {
-    const parent = resolveDisplayParent(node.session.id);
-    if (parent) {
-      byId.get(parent)!.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  }
-
-  // Sort each level by modified desc
-  const sort = (nodes: ForkTreeNode[]) => {
-    nodes.sort((a, b) => b.session.modified.localeCompare(a.session.modified));
-    nodes.forEach((n) => sort(n.children));
-  };
-  sort(roots);
-  return roots;
-}
-
-function containsSession(nodes: ForkTreeNode[], sessionId: string | null): boolean {
-  if (!sessionId) return false;
-  for (const node of nodes) {
-    if (node.session.id === sessionId) return true;
-    if (containsSession(node.children, sessionId)) return true;
-  }
-  return false;
 }
 
 function buildCwdSessionGroups(sessions: SessionInfo[]): CwdSessionGroup[] {
@@ -160,7 +99,6 @@ function buildCwdSessionGroups(sessions: SessionInfo[]): CwdSessionGroup[] {
     .map(([cwd, groupSessions]) => ({
       cwd,
       sessions: groupSessions,
-      tree: buildSessionTree(groupSessions),
       modified: groupSessions.reduce(
         (latest, session) => (session.modified > latest ? session.modified : latest),
         "",
@@ -175,22 +113,6 @@ function matchesSessionSearch(session: SessionInfo, query: string): boolean {
   );
 }
 
-function AppLogo() {
-  const { isDark } = useTheme();
-  const t = useTranslations("Common");
-
-  return (
-    <img
-      src={isDark ? "/pi-logo-on-dark.svg" : "/pi-logo-on-light.svg"}
-      alt={t("appName")}
-      width={22}
-      height={22}
-      style={{ opacity: 0.85 }}
-    />
-  );
-}
-
-// Shared icon components — tiny, crisp, inline
 function IconFolder({ active }: { active: boolean }) {
   return (
     <svg
@@ -205,48 +127,6 @@ function IconFolder({ active }: { active: boolean }) {
       style={{ flexShrink: 0, opacity: active ? 1 : 0.6 }}
     >
       <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H10l2 2h6.5A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z" />
-    </svg>
-  );
-}
-
-function IconChevron({ collapsed, size = 12 }: { collapsed: boolean; size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 10 10"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{
-        transform: collapsed ? "none" : "rotate(180deg)",
-        transition: "transform 0.2s ease",
-      }}
-    >
-      <polyline points="2 3.5 5 6.5 8 3.5" />
-    </svg>
-  );
-}
-
-function IconFork() {
-  return (
-    <svg
-      width="10"
-      height="10"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="var(--text-dim)"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ flexShrink: 0, opacity: 0.5 }}
-    >
-      <line x1="6" y1="3" x2="6" y2="15" />
-      <circle cx="18" cy="6" r="3" />
-      <circle cx="6" cy="18" r="3" />
-      <path d="M18 9a9 9 0 0 1-9 9" />
     </svg>
   );
 }
@@ -282,24 +162,6 @@ function IconSearch() {
     >
       <circle cx="11" cy="11" r="8" />
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
-    </svg>
-  );
-}
-
-function IconSidebar() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <line x1="9" y1="3" x2="9" y2="21" />
     </svg>
   );
 }
@@ -377,16 +239,16 @@ function HeaderBtn({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        width: 28,
-        height: 28,
+        width: 32,
+        height: 32,
         padding: 0,
         background: active ? "var(--bg-hover)" : "none",
         border: "none",
-        borderRadius: 6,
+        borderRadius: "var(--radius-sm)",
         color: activeColor ? "var(--success)" : active ? "var(--text)" : "var(--text-muted)",
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.35 : 1,
-        transition: "background 0.15s, color 0.15s",
+        transition: "background var(--motion-fast), color var(--motion-fast)",
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -407,14 +269,11 @@ export function SessionSidebar({
   selectedCwd: selCwd,
   onCwdChange,
   onSessionsChange,
-  onToggleSidebar,
 }: Props) {
   const t = useTranslations("SessionSidebar");
-  const tc = useTranslations("Common");
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedCwds, setExpandedCwds] = useState<Set<string>>(() => new Set());
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -530,7 +389,6 @@ export function SessionSidebar({
         {
           cwd: selCwd,
           sessions: [],
-          tree: [],
           modified: "",
         },
         ...groups,
@@ -538,6 +396,11 @@ export function SessionSidebar({
     }
     return groups;
   }, [allSessions, selCwd]);
+
+  const allSessionsSorted = useMemo(
+    () => [...allSessions].sort((a, b) => b.modified.localeCompare(a.modified)),
+    [allSessions],
+  );
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const isSearching = normalizedSearchQuery.length > 0;
@@ -564,7 +427,6 @@ export function SessionSidebar({
         return {
           ...group,
           sessions,
-          tree: buildSessionTree(sessions),
         };
       })
       .filter((group) => group.sessions.length > 0);
@@ -589,51 +451,18 @@ export function SessionSidebar({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  useEffect(() => {
-    if (!selectedSessionId) return;
-    const selectedGroup = cwdGroups.find((group) => containsSession(group.tree, selectedSessionId));
-    if (!selectedGroup) return;
-    setExpandedCwds((prev) => {
-      if (prev.has(selectedGroup.cwd)) return prev;
-      const next = new Set(prev);
-      next.add(selectedGroup.cwd);
-      return next;
-    });
-  }, [cwdGroups, selectedSessionId]);
-
   const handleSelectCwd = useCallback(
     (cwd: string) => {
       onCwdChange?.(cwd);
-      setExpandedCwds((prev) => {
-        if (prev.has(cwd)) return prev;
-        const next = new Set(prev);
-        next.add(cwd);
-        return next;
-      });
     },
     [onCwdChange],
   );
-
-  const handleToggleCwd = useCallback((cwd: string) => {
-    setExpandedCwds((prev) => {
-      const next = new Set(prev);
-      if (next.has(cwd)) next.delete(cwd);
-      else next.add(cwd);
-      return next;
-    });
-  }, []);
 
   const handleSearchSelectSession = useCallback(
     (session: SessionInfo) => {
       setSearchOpen(false);
       setSearchQuery("");
       onCwdChange?.(session.cwd);
-      setExpandedCwds((prev) => {
-        if (prev.has(session.cwd)) return prev;
-        const next = new Set(prev);
-        next.add(session.cwd);
-        return next;
-      });
       onSelectSession(session);
     },
     [onCwdChange, onSelectSession],
@@ -641,48 +470,33 @@ export function SessionSidebar({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-      {/* Header — logo + app name + actions */}
+      {/* Header — project actions */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          height: 44,
-          padding: "0 10px",
+          justifyContent: "space-between",
+          height: 52,
+          padding: "0 12px",
           borderBottom: "1px solid var(--border)",
           flexShrink: 0,
           gap: 8,
         }}
       >
-        <AppLogo />
         <span
           style={{
-            fontSize: 13,
+            fontSize: 15,
             fontWeight: 600,
-            color: "var(--accent)",
+            color: "var(--text)",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
             letterSpacing: "-0.01em",
           }}
         >
-          {tc("appName")}
+          {t("sessions")}
         </span>
-        <div
-          style={{
-            marginLeft: "auto",
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-            height: 32,
-            padding: 2,
-            background: "var(--bg)",
-            border: "1px solid var(--border)",
-            borderRadius: 6,
-          }}
-        >
-          <HeaderBtn onClick={onToggleSidebar} title={t("hideFileSidebar")}>
-            <IconSidebar />
-          </HeaderBtn>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <HeaderBtn
             onClick={() => setSearchOpen(true)}
             title={t("openSearch")}
@@ -717,28 +531,73 @@ export function SessionSidebar({
         {error && (
           <div style={{ padding: "12px 16px", color: "var(--danger)", fontSize: 12 }}>{error}</div>
         )}
-        {!loading && !error && cwdGroups.length === 0 && (
+        {!loading && !error && allSessions.length === 0 && (
           <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 12 }}>
             {t("noSessions")}
           </div>
         )}
-        {cwdGroups.map((group) => (
-          <CwdGroupSection
-            key={group.cwd}
-            group={group}
-            selectedSessionId={selectedSessionId}
-            isActive={group.cwd === selCwd}
-            isCollapsed={!expandedCwds.has(group.cwd)}
-            onSelectCwd={handleSelectCwd}
-            onToggleCwd={handleToggleCwd}
-            onSelectSession={onSelectSession}
-            onRenamed={loadSessions}
-            onSessionDeleted={(id) => {
-              onSessionDeleted?.(id);
-              loadSessions();
-            }}
-          />
-        ))}
+
+        {/* Sessions section — flat cards */}
+        {!loading && !error && allSessionsSorted.length > 0 && (
+          <section style={{ padding: "8px 0" }}>
+            <div
+              style={{
+                padding: "0 12px 8px",
+                fontSize: 11,
+                fontWeight: 600,
+                color: "var(--text-dim)",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+              }}
+            >
+              {t("sessions")}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 8px" }}>
+              {allSessionsSorted.map((session) => (
+                <SessionCard
+                  key={session.id}
+                  session={session}
+                  selectedSessionId={selectedSessionId}
+                  cwdLabel={session.cwd ? getCwdLabel(session.cwd, t) : undefined}
+                  onSelectSession={onSelectSession}
+                  onRenamed={loadSessions}
+                  onSessionDeleted={(id) => {
+                    onSessionDeleted?.(id);
+                    loadSessions();
+                  }}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Projects section — collapsible project list */}
+        {!loading && !error && cwdGroups.length > 0 && (
+          <section style={{ borderTop: "1px solid var(--border)", marginTop: 4 }}>
+            <div
+              style={{
+                padding: "12px 12px 6px",
+                fontSize: 11,
+                fontWeight: 600,
+                color: "var(--text-dim)",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+              }}
+            >
+              {t("projects")}
+            </div>
+            <div style={{ padding: "0 8px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
+              {cwdGroups.map((group) => (
+                <CwdGroupSection
+                  key={group.cwd}
+                  group={group}
+                  isActive={group.cwd === selCwd}
+                  onSelectCwd={handleSelectCwd}
+                />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
       {searchOpen && (
         <div
@@ -768,7 +627,7 @@ export function SessionSidebar({
               overflow: "hidden",
               background: "var(--bg-panel)",
               border: "1px solid var(--border)",
-              borderRadius: 6,
+              borderRadius: "var(--radius-md)",
               boxShadow: "var(--shadow-lg)",
             }}
           >
@@ -817,7 +676,7 @@ export function SessionSidebar({
                   padding: 0,
                   background: "none",
                   border: "none",
-                  borderRadius: 4,
+                  borderRadius: "var(--radius-sm)",
                   color: "var(--text-muted)",
                   cursor: "pointer",
                 }}
@@ -892,7 +751,7 @@ export function SessionSidebar({
                               session.id === selectedSessionId
                                 ? "2px solid var(--accent)"
                                 : "2px solid transparent",
-                            borderRadius: 4,
+                            borderRadius: "var(--radius-sm)",
                             background:
                               session.id === selectedSessionId
                                 ? "var(--bg-selected)"
@@ -957,253 +816,122 @@ export function SessionSidebar({
 // ─── CWD Group Section ───
 function CwdGroupSection({
   group,
-  selectedSessionId,
   isActive,
-  isCollapsed,
   onSelectCwd,
-  onToggleCwd,
-  onSelectSession,
-  onRenamed,
-  onSessionDeleted,
 }: {
   group: CwdSessionGroup;
-  selectedSessionId: string | null;
   isActive: boolean;
-  isCollapsed: boolean;
   onSelectCwd: (cwd: string) => void;
-  onToggleCwd: (cwd: string) => void;
-  onSelectSession: (s: SessionInfo) => void;
-  onRenamed?: () => void;
-  onSessionDeleted?: (id: string) => void;
 }) {
   const t = useTranslations("SessionSidebar");
   const [hovered, setHovered] = useState(false);
-  const empty = group.sessions.length === 0;
 
   return (
-    <section style={{ borderBottom: "1px solid var(--border)" }}>
-      <div
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          display: "flex",
-          alignItems: "stretch",
-          minHeight: 56,
-          background: isActive
-            ? "color-mix(in oklab, var(--accent), transparent 94%)"
-            : hovered
-              ? "var(--bg-hover)"
-              : "transparent",
-          borderLeft: isActive ? "2px solid var(--accent)" : "2px solid transparent",
-          transition: "background 0.12s",
-        }}
-      >
-        {/* Content area */}
-        <button
-          onClick={() => onSelectCwd(group.cwd)}
-          title={group.cwd}
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={() => onSelectCwd(group.cwd)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelectCwd(group.cwd);
+        }
+      }}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "10px 12px",
+        background: isActive ? "var(--bg-selected)" : hovered ? "var(--bg-hover)" : "transparent",
+        borderRadius: "var(--radius-sm)",
+        cursor: "pointer",
+        transition: "background var(--motion-fast)",
+      }}
+    >
+      <IconFolder active={isActive} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
           style={{
-            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
             minWidth: 0,
-            padding: "10px 0 10px 14px",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            textAlign: "left",
-            color: "var(--text)",
           }}
         >
-          {/* Project name row */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            <IconFolder active={isActive} />
-            <span
-              style={{
-                flex: 1,
-                minWidth: 0,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                fontSize: 13,
-                fontWeight: isActive ? 600 : 500,
-                lineHeight: "20px",
-              }}
-            >
-              {getCwdLabel(group.cwd, t)}
-            </span>
-          </div>
-
-          {/* Path */}
-          <div
+          <span
             style={{
-              marginTop: 3,
+              flex: 1,
+              minWidth: 0,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
-              color: "var(--text-dim)",
-              fontSize: 11,
-              fontFamily: "var(--font-mono)",
-              lineHeight: "16px",
-              opacity: 0.7,
+              fontSize: 13,
+              fontWeight: isActive ? 600 : 500,
+              color: "var(--text)",
+              lineHeight: "18px",
             }}
           >
-            {group.cwd}
-          </div>
-
-          {/* Metadata row */}
-          <div
-            style={{
-              marginTop: 5,
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              color: "var(--text-dim)",
-              fontSize: 11.5,
-              lineHeight: "16px",
-            }}
-          >
-            <span>{t("sessionCount", { count: group.sessions.length })}</span>
-            {group.modified && (
-              <span title={group.modified}>{formatRelativeTime(group.modified, t)}</span>
-            )}
-          </div>
-        </button>
-
-        {/* Chevron — right side */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleCwd(group.cwd);
-          }}
-          title={isCollapsed ? t("expand") : t("collapse")}
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "center",
-            width: 32,
-            paddingTop: 16,
-            flexShrink: 0,
-            background: "none",
-            border: "none",
-            color: "var(--text-dim)",
-            cursor: "pointer",
-            opacity: hovered || isActive ? 0.7 : 0.35,
-            transition: "opacity 0.15s",
-          }}
-        >
-          <IconChevron collapsed={isCollapsed} />
-        </button>
-      </div>
-
-      {/* Session tree */}
-      {!isCollapsed && (
-        <div style={{ padding: "6px 0 0 14px" }}>
-          {empty ? (
-            <div
-              style={{
-                padding: "12px 12px 10px 4px",
-                color: "var(--text-dim)",
-                fontSize: 12,
-                opacity: 0.6,
-              }}
-            >
-              {t("noSessionsInProject")}
-            </div>
-          ) : (
-            group.tree.map((node) => (
-              <SessionTreeItem
-                key={node.session.id}
-                node={node}
-                selectedSessionId={selectedSessionId}
-                onSelectSession={onSelectSession}
-                onRenamed={onRenamed}
-                onSessionDeleted={onSessionDeleted}
-                depth={0}
-              />
-            ))
+            {getCwdLabel(group.cwd, t)}
+          </span>
+          {isActive && (
+            <span style={{ fontSize: 10, color: "var(--accent)", fontWeight: 600, flexShrink: 0 }}>
+              {t("currentProject")}
+            </span>
           )}
         </div>
-      )}
-    </section>
-  );
-}
-
-// ─── Session Tree Item (recursive) ───
-function SessionTreeItem({
-  node,
-  selectedSessionId,
-  onSelectSession,
-  onRenamed,
-  onSessionDeleted,
-  depth,
-}: {
-  node: ForkTreeNode;
-  selectedSessionId: string | null;
-  onSelectSession: (s: SessionInfo) => void;
-  onRenamed?: () => void;
-  onSessionDeleted?: (id: string) => void;
-  depth: number;
-}) {
-  const isSelectedPath = containsSession([node], selectedSessionId);
-  const [collapsed, setCollapsed] = useState(true);
-  const hasChildren = node.children.length > 0;
-
-  useEffect(() => {
-    if (isSelectedPath) setCollapsed(false);
-  }, [isSelectedPath]);
-
-  return (
-    <div>
-      <SessionItem
-        session={node.session}
-        isSelected={node.session.id === selectedSessionId}
-        onClick={() => onSelectSession(node.session)}
-        onRenamed={onRenamed}
-        onDeleted={(id) => onSessionDeleted?.(id)}
-        depth={depth}
-        hasChildren={hasChildren}
-        collapsed={collapsed}
-        onToggleCollapse={() => setCollapsed((v) => !v)}
-      />
-      {hasChildren && !collapsed && (
-        <div>
-          {node.children.map((child) => (
-            <SessionTreeItem
-              key={child.session.id}
-              node={child}
-              selectedSessionId={selectedSessionId}
-              onSelectSession={onSelectSession}
-              onRenamed={onRenamed}
-              onSessionDeleted={onSessionDeleted}
-              depth={depth + 1}
-            />
-          ))}
+        <div
+          style={{
+            marginTop: 2,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            color: "var(--text-dim)",
+            fontSize: 11,
+            fontFamily: "var(--font-mono)",
+            lineHeight: "16px",
+            opacity: 0.7,
+          }}
+        >
+          {group.cwd}
         </div>
-      )}
+        <div
+          style={{
+            marginTop: 3,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            color: "var(--text-dim)",
+            fontSize: 11,
+            lineHeight: "16px",
+          }}
+        >
+          <span>{t("sessionCount", { count: group.sessions.length })}</span>
+          {group.modified && (
+            <span title={group.modified}>{formatRelativeTime(group.modified, t)}</span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-// ─── Single Session Item ───
-function SessionItem({
+// ─── Session Card (flat list) ───
+function SessionCard({
   session,
-  isSelected,
-  onClick,
+  selectedSessionId,
+  cwdLabel,
+  onSelectSession,
   onRenamed,
-  onDeleted,
-  depth = 0,
-  hasChildren = false,
-  collapsed = false,
-  onToggleCollapse,
+  onSessionDeleted,
 }: {
   session: SessionInfo;
-  isSelected: boolean;
-  onClick: () => void;
+  selectedSessionId: string | null;
+  cwdLabel?: string;
+  onSelectSession: (s: SessionInfo) => void;
   onRenamed?: () => void;
-  onDeleted?: (id: string) => void;
-  depth?: number;
-  hasChildren?: boolean;
-  collapsed?: boolean;
-  onToggleCollapse?: () => void;
+  onSessionDeleted?: (id: string) => void;
 }) {
   const t = useTranslations("SessionSidebar");
   const [hovered, setHovered] = useState(false);
@@ -1215,14 +943,21 @@ function SessionItem({
   const [deleting, setDeleting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const title = session.name || session.firstMessage.slice(0, 50) || session.id.slice(0, 12);
-  const isFork = Boolean(session.parentSessionId) || depth > 0;
+  const isSelected = session.id === selectedSessionId;
+  const title = session.name || session.firstMessage.slice(0, 55) || session.id.slice(0, 12);
   const isOrphaned = hasAnyFlag(session, ["orphaned", "isOrphaned"]);
   const hasCompaction = hasAnyFlag(session, ["hasCompaction", "hasCompactions", "compacted"]);
   const agentState = (session as SessionInfo & SessionMeta).agentState;
   const isLiveStreaming =
     agentState?.isStreaming === true ||
     hasAnyFlag(session, ["isStreaming", "streaming", "liveStreaming", "live", "isLive"]);
+  const isFork = Boolean(session.parentSessionId);
+
+  const statusColor = isLiveStreaming
+    ? "var(--success)"
+    : isSelected
+      ? "var(--accent)"
+      : "var(--text-dim)";
 
   const startRename = useCallback(
     (e: React.MouseEvent) => {
@@ -1262,12 +997,12 @@ function SessionItem({
       setDeleting(true);
       try {
         await fetch(`/api/sessions/${encodeURIComponent(session.id)}`, { method: "DELETE" });
-        onDeleted?.(session.id);
+        onSessionDeleted?.(session.id);
       } catch {
         setDeleting(false);
       }
     },
-    [session.id, onDeleted],
+    [session.id, onSessionDeleted],
   );
 
   const handleDeleteCancel = useCallback((e: React.MouseEvent) => {
@@ -1275,7 +1010,6 @@ function SessionItem({
     setConfirmDelete(false);
   }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     if (!menuOpen) return;
     const handler = (e: MouseEvent) => {
@@ -1287,55 +1021,52 @@ function SessionItem({
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
-  const rowH = 48;
-
-  // Depth thread color — fades with depth, forms vertical line when same-depth items stack
-  const depthColor =
-    depth === 0
-      ? "color-mix(in oklab, var(--accent), transparent 86%)"
-      : depth === 1
-        ? "color-mix(in oklab, var(--accent), transparent 92%)"
-        : "color-mix(in oklab, var(--accent), transparent 95%)";
-
-  const borderColor = confirmDelete ? "var(--danger)" : isSelected ? "var(--accent)" : depthColor;
-  const showRowActions = hovered || menuOpen;
-
   return (
     <div
-      onClick={confirmDelete || renaming ? undefined : onClick}
+      onClick={confirmDelete || renaming ? undefined : () => onSelectSession(session)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         position: "relative",
-        height: rowH,
         display: "flex",
-        alignItems: "center",
-        marginLeft: depth * 14,
-        paddingLeft: 8,
-        paddingRight: 8,
+        alignItems: "flex-start",
+        gap: 10,
+        padding: "10px 12px",
         cursor: confirmDelete || renaming ? "default" : "pointer",
         background: confirmDelete
           ? "color-mix(in oklab, var(--danger), transparent 93%)"
           : isSelected
-            ? "color-mix(in oklab, var(--accent), transparent 93%)"
+            ? "var(--bg-selected)"
             : hovered
-              ? "var(--bg-selected)"
+              ? "var(--bg-hover)"
               : "transparent",
-        borderLeft: `2px solid ${borderColor}`,
-        borderRadius: "0 5px 5px 0",
-        transition: "background 0.15s, border-color 0.15s",
+        borderRadius: "var(--radius-sm)",
+        transition: "background var(--motion-fast)",
         opacity: deleting ? 0.4 : 1,
-        gap: 8,
-        overflow: menuOpen ? "visible" : "hidden",
-        marginBottom: 2,
       }}
     >
+      <span
+        aria-hidden
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: statusColor,
+          flexShrink: 0,
+          marginTop: 6,
+          boxShadow: isLiveStreaming
+            ? `0 0 0 4px color-mix(in oklab, ${statusColor}, transparent 88%)`
+            : isSelected
+              ? `0 0 0 3px color-mix(in oklab, ${statusColor}, transparent 90%)`
+              : "none",
+          animation: isLiveStreaming ? "pulse 1.8s ease-in-out infinite" : undefined,
+        }}
+      />
+
       {confirmDelete ? (
-        <>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <span
             style={{
-              flex: 1,
-              minWidth: 0,
               fontSize: 12.5,
               color: "var(--text)",
               overflow: "hidden",
@@ -1345,13 +1076,15 @@ function SessionItem({
           >
             {t("deleteConfirm", { title: title.slice(0, 24) + (title.length > 24 ? "…" : "") })}
           </span>
-          <button onClick={handleDeleteConfirm} style={btnDanger}>
-            {t("delete")}
-          </button>
-          <button onClick={handleDeleteCancel} style={btnGhost}>
-            {t("cancel")}
-          </button>
-        </>
+          <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+            <button onClick={handleDeleteConfirm} style={btnDanger}>
+              {t("delete")}
+            </button>
+            <button onClick={handleDeleteCancel} style={btnGhost}>
+              {t("cancel")}
+            </button>
+          </div>
+        </div>
       ) : renaming ? (
         <input
           ref={inputRef}
@@ -1368,7 +1101,7 @@ function SessionItem({
             fontSize: 13,
             padding: "4px 7px",
             border: "1px solid var(--accent)",
-            borderRadius: 4,
+            borderRadius: "var(--radius-sm)",
             outline: "none",
             background: "var(--bg)",
             color: "var(--text)",
@@ -1377,15 +1110,11 @@ function SessionItem({
         />
       ) : (
         <>
-          {/* Fork icon */}
-          {isFork && <IconFork />}
-
-          {/* Text content */}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{
                 fontSize: 13,
-                fontWeight: isSelected ? 500 : 400,
+                fontWeight: isSelected ? 600 : 500,
                 lineHeight: "18px",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -1398,7 +1127,7 @@ function SessionItem({
             </div>
             <div
               style={{
-                marginTop: 1,
+                marginTop: 3,
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
@@ -1410,7 +1139,6 @@ function SessionItem({
                 lineHeight: "16px",
               }}
             >
-              {/* Session type badge */}
               {isFork && (
                 <SessionMetaBadge title={t("forkBadgeTitle")} tone="accent">
                   {t("forkBadge")}
@@ -1431,45 +1159,13 @@ function SessionItem({
                   {t("liveBadge")}
                 </SessionMetaBadge>
               )}
-              <span title={session.modified} style={{ flexShrink: 0 }}>
-                {formatRelativeTime(session.modified, t)}
-              </span>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
-                {t("msgCount", { count: session.messageCount })}
-              </span>
+              <span title={session.modified}>{formatRelativeTime(session.modified, t)}</span>
+              <span>{t("msgCount", { count: session.messageCount })}</span>
+              {cwdLabel && <span style={{ opacity: 0.7 }}>· {cwdLabel}</span>}
             </div>
           </div>
 
-          {/* Fork collapse toggle */}
-          {hasChildren && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleCollapse?.();
-              }}
-              title={collapsed ? t("expandForks") : t("collapseForks")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 18,
-                height: 18,
-                padding: 0,
-                flexShrink: 0,
-                background: "none",
-                border: "none",
-                color: "var(--text-dim)",
-                cursor: "pointer",
-                opacity: hovered ? 0.6 : 0.3,
-                transition: "opacity 0.15s",
-              }}
-            >
-              <IconChevron collapsed={collapsed} size={10} />
-            </button>
-          )}
-
-          {/* More actions button + dropdown */}
-          <div style={{ position: "relative", flexShrink: 0 }}>
+          <div style={{ position: "relative", flexShrink: 0, marginTop: -2 }}>
             <button
               ref={moreBtnRef}
               onClick={(e) => {
@@ -1479,9 +1175,9 @@ function SessionItem({
               title={t("moreActions")}
               style={{
                 ...btnIcon,
-                opacity: showRowActions ? 1 : 0,
-                pointerEvents: showRowActions ? "auto" : "none",
-                transition: "opacity 0.12s",
+                opacity: hovered || menuOpen ? 1 : 0,
+                pointerEvents: hovered || menuOpen ? "auto" : "none",
+                transition: "opacity var(--motion-fast)",
               }}
             >
               <IconMore />
@@ -1497,7 +1193,7 @@ function SessionItem({
                   padding: 4,
                   background: "var(--bg-panel)",
                   border: "1px solid var(--border)",
-                  borderRadius: 6,
+                  borderRadius: "var(--radius-md)",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.18)",
                   zIndex: 10,
                   display: "flex",
@@ -1572,7 +1268,7 @@ function SessionMetaBadge({
         height: 17,
         maxWidth: 72,
         padding: "0 5px",
-        borderRadius: 3,
+        borderRadius: "var(--radius-sm)",
         background: toneVar
           ? `color-mix(in oklab, ${toneVar}, transparent 88%)`
           : "var(--bg-hover)",
@@ -1604,11 +1300,12 @@ const btnIcon: React.CSSProperties = {
   padding: 0,
   background: "var(--bg-hover)",
   border: "1px solid var(--border)",
-  borderRadius: 6,
+  borderRadius: "var(--radius-sm)",
   color: "var(--text-muted)",
   cursor: "pointer",
   flexShrink: 0,
-  transition: "background 0.12s, color 0.12s, border-color 0.12s",
+  transition:
+    "background var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast)",
 };
 
 const menuItemStyle: React.CSSProperties = {
@@ -1620,12 +1317,12 @@ const menuItemStyle: React.CSSProperties = {
   padding: "0 8px",
   background: "none",
   border: "none",
-  borderRadius: 4,
+  borderRadius: "var(--radius-sm)",
   color: "var(--text)",
   fontSize: 13,
   cursor: "pointer",
   textAlign: "left",
-  transition: "background 0.1s, color 0.1s",
+  transition: "background var(--motion-fast), color var(--motion-fast)",
 };
 
 const btnDanger: React.CSSProperties = {
@@ -1636,7 +1333,7 @@ const btnDanger: React.CSSProperties = {
   padding: "0 10px",
   background: "var(--danger)",
   border: "none",
-  borderRadius: 5,
+  borderRadius: "var(--radius-sm)",
   color: "var(--accent-on)",
   cursor: "pointer",
   fontSize: 12,
@@ -1652,7 +1349,7 @@ const btnGhost: React.CSSProperties = {
   padding: "0 10px",
   background: "var(--bg)",
   border: "1px solid var(--border)",
-  borderRadius: 5,
+  borderRadius: "var(--radius-sm)",
   color: "var(--text-muted)",
   cursor: "pointer",
   fontSize: 12,

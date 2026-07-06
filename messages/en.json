@@ -18,9 +18,13 @@
     "switchToDark": "Switch to dark mode",
     "closeOverviewPanel": "Close overview panel",
     "openOverviewPanel": "Open overview panel",
-    "documentTitle": "no-pi-no-gang"
+    "documentTitle": "no-pi-no-gang",
+    "appLogoAlt": "No Pi No Gang logo",
+    "appTitle": "No Pi No Gang"
   },
   "SessionSidebar": {
+    "sessions": "Sessions",
+    "projects": "Projects",
     "searchPlaceholder": "Search",
     "searchAriaLabel": "Search sessions",
     "clearSearch": "Clear search",
@@ -58,6 +62,7 @@
     "orphanBadge": "orphan",
     "compactBadge": "compact",
     "liveBadge": "live",
+    "projects": "Projects",
     "expandForks": "Expand fork .jsonl files",
     "collapseForks": "Collapse fork .jsonl files"
   },

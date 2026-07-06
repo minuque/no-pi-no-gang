@@ -11,14 +11,13 @@ import "nprogress/nprogress.css";
 import { Toaster } from "sonner";
 
 import { useResizablePanel } from "@/hooks/useResizablePanel";
-import { useTheme } from "@/hooks/useTheme";
 import { useViewTransition } from "@/hooks/useViewTransition";
 import type { EntryTreeNode, SessionInfo } from "@/lib/types";
 
 import { BranchNavigator } from "./BranchNavigator";
-import { LocaleSwitcher } from "./LocaleSwitcher";
 import { SessionOverviewPanel } from "./SessionOverviewPanel";
 import { SessionSidebar } from "./SessionSidebar";
+import { TopHeader } from "./TopHeader";
 import type { ChatInputHandle } from "./chat-input";
 
 const ChatWindow = dynamic(() => import("./ChatWindow").then((m) => m.ChatWindow), { ssr: false });
@@ -34,7 +33,6 @@ export function AppShell() {
   const t = useTranslations("AppShell");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isDark, toggleTheme } = useTheme();
   const vtTransition = useViewTransition();
   const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(null);
   const selectedSessionRef = useRef(selectedSession);
@@ -69,7 +67,7 @@ export function AppShell() {
     minWidth: SIDEBAR_MIN,
     maxWidth: sidebarMaxWidth,
     storageKey: "pi-sidebar-width",
-    defaultWidth: 260,
+    defaultWidth: 240,
     reservedRight: () => (workspacePanelOpen ? rightPanel.widthRef.current : 0),
     handleLeft: (width) => `${width - EDGE_HANDLE_INSET}px`,
   });
@@ -100,7 +98,7 @@ export function AppShell() {
     onPointerUp: handleRightDragEnd,
   } = rightPanel;
   const chatInputRef = useRef<ChatInputHandle | null>(null);
-  const topBarRef = useRef<HTMLDivElement>(null);
+  const headerCenterRef = useRef<HTMLDivElement>(null);
 
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
   const [toolPreset, setToolPreset] = useState<"none" | "default" | "full">("default");
@@ -398,7 +396,6 @@ export function AppShell() {
         selectedCwd={selectedSession?.cwd ?? newSessionCwd ?? activeCwd ?? null}
         onCwdChange={handleCwdChange}
         onSessionsChange={setAllSessions}
-        onToggleSidebar={() => vtTransition(() => setSidebarOpen(false))}
       />
       <div style={{ padding: "8px", flexShrink: 0, position: "relative" }}>
         <button
@@ -579,302 +576,211 @@ export function AppShell() {
 
   return (
     <>
-      <div style={{ display: "flex", height: "100dvh", overflow: "hidden", position: "relative" }}>
-        {/* Mobile overlay backdrop */}
-        <div
-          className="sidebar-overlay-backdrop"
-          onClick={() => vtTransition(() => setSidebarOpen(false))}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: "var(--z-sidebar)",
-            background: "rgba(0,0,0,0.4)",
-            opacity: sidebarOpen ? 1 : 0,
-            pointerEvents: sidebarOpen ? "auto" : "none",
-            transition: "opacity 0.25s ease",
-          }}
-        />
-
-        {/* Left sidebar */}
-        <div
-          ref={sidebarRef}
-          className={`sidebar-container${sidebarOpen ? " sidebar-open" : " sidebar-closed"}`}
-          style={{
-            background: "var(--bg-panel)",
-            display: "flex",
-            flexDirection: "column",
-            flexShrink: 0,
-            zIndex: "calc(var(--z-sidebar) + 1)",
-            width: sidebarOpen ? sidebarWidth : 0,
-            minWidth: sidebarOpen ? sidebarWidth : 0,
-          }}
+      <div
+        style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}
+      >
+        <TopHeader
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => vtTransition(() => setSidebarOpen((v) => !v))}
+          workspacePanelOpen={workspacePanelOpen}
+          onToggleWorkspacePanel={() => vtTransition(() => setWorkspacePanelOpen((v) => !v))}
+          centerRef={headerCenterRef}
         >
-          {sidebarContent}
-        </div>
-
-        {/* Left resize handle 鈥?between sidebar and chat */}
-        <div
-          ref={sidebarHandleRef}
-          className="resize-handle-overlay resize-handle-overlay-left"
-          style={{
-            display: sidebarOpen ? "block" : "none",
-            width: EDGE_HANDLE_WIDTH,
-            left: sidebarWidth - EDGE_HANDLE_INSET,
-          }}
-          onPointerDown={handleDragStart}
-          onPointerMove={handleDragMove}
-          onPointerUp={handleDragEnd}
-          onLostPointerCapture={handleDragEnd}
-        />
-
-        {/* Center: chat */}
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden",
-            minWidth: CHAT_MIN_WIDTH,
-            background: "var(--bg)",
-          }}
-        >
-          {/* Top bar with sidebar toggle */}
-          <div
-            ref={topBarRef}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              flexShrink: 0,
-              borderBottom: "1px solid var(--border)",
-              height: 44,
-              padding: "0 12px",
-              background: "var(--bg)",
-            }}
-          >
-            {!sidebarOpen && (
-              <button
-                onClick={() => vtTransition(() => setSidebarOpen(true))}
-                title={t("showSidebar")}
-                aria-label={t("showSidebar")}
-                className="tb-btn"
-                style={{ color: "var(--text-muted)" }}
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                >
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="18" x2="21" y2="18" />
-                </svg>
-              </button>
-            )}
-            {showChat && sseStatus && (
-              <div
-                title={`SSE: ${sseStatus.label}`}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                  height: 22,
-                  padding: "0 8px",
-                  borderRadius: 4,
-                  background:
-                    sseStatus.tone === "danger"
-                      ? "color-mix(in oklab, var(--danger), transparent 88%)"
-                      : sseStatus.tone === "warn"
-                        ? "color-mix(in oklab, var(--warn), transparent 88%)"
-                        : sseStatus.tone === "success"
-                          ? "color-mix(in oklab, var(--success), transparent 90%)"
-                          : "var(--bg-hover)",
-                  border: "1px solid var(--border)",
-                  color:
-                    sseStatus.tone === "danger"
-                      ? "var(--danger)"
-                      : sseStatus.tone === "warn"
-                        ? "var(--warn)"
-                        : sseStatus.tone === "success"
-                          ? "var(--success)"
-                          : "var(--text-muted)",
-                  fontSize: 11.5,
-                  fontFamily: "var(--font-mono)",
-                  lineHeight: "22px",
-                  flexShrink: 0,
-                }}
-              >
-                <span
+          {showChat && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                minWidth: 0,
+                overflow: "hidden",
+              }}
+            >
+              {sseStatus && (
+                <div
+                  title={`SSE: ${sseStatus.label}`}
                   style={{
-                    width: 5,
-                    height: 5,
-                    borderRadius: "50%",
-                    background: "currentColor",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    height: 22,
+                    padding: "0 8px",
+                    borderRadius: 4,
+                    background:
+                      sseStatus.tone === "danger"
+                        ? "color-mix(in oklab, var(--danger), transparent 88%)"
+                        : sseStatus.tone === "warn"
+                          ? "color-mix(in oklab, var(--warn), transparent 88%)"
+                          : sseStatus.tone === "success"
+                            ? "color-mix(in oklab, var(--success), transparent 90%)"
+                            : "var(--bg-hover)",
+                    border: "1px solid var(--border)",
+                    color:
+                      sseStatus.tone === "danger"
+                        ? "var(--danger)"
+                        : sseStatus.tone === "warn"
+                          ? "var(--warn)"
+                          : sseStatus.tone === "success"
+                            ? "var(--success)"
+                            : "var(--text-muted)",
+                    fontSize: 11.5,
+                    fontFamily: "var(--font-mono)",
+                    lineHeight: "22px",
                     flexShrink: 0,
                   }}
-                />
-                {sseStatus.label}
-              </div>
-            )}
-            {showChat && (
+                >
+                  <span
+                    style={{
+                      width: 5,
+                      height: 5,
+                      borderRadius: "50%",
+                      background: "currentColor",
+                      flexShrink: 0,
+                    }}
+                  />
+                  {sseStatus.label}
+                </div>
+              )}
               <BranchNavigator
                 tree={branchTree}
                 activeLeafId={branchActiveLeafId}
                 onLeafChange={(id) => branchOnLeafChangeRef.current?.(id)}
                 inline
-                containerRef={topBarRef}
+                containerRef={headerCenterRef}
                 hasSession={!!selectedSession}
                 disabled={branchDisabled}
                 hideWhenEmpty
               />
-            )}
-            {/* Right-side toolbar 鈥?SSE status + actions */}
-            {showChat && (
-              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
-                <LocaleSwitcher />
-                <button
-                  onClick={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-                  }}
-                  title={t(isDark ? "switchToLight" : "switchToDark")}
-                  aria-label={t(isDark ? "switchToLight" : "switchToDark")}
-                  aria-pressed={isDark}
-                  className="tb-btn"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  {isDark ? (
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="12" cy="12" r="5" />
-                      <line x1="12" y1="1" x2="12" y2="3" />
-                      <line x1="12" y1="21" x2="12" y2="23" />
-                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                      <line x1="1" y1="12" x2="3" y2="12" />
-                      <line x1="21" y1="12" x2="23" y2="12" />
-                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                    </svg>
-                  ) : (
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                    </svg>
-                  )}
-                </button>
-                <button
-                  onClick={() => vtTransition(() => setWorkspacePanelOpen((v) => !v))}
-                  title={t(workspacePanelOpen ? "closeOverviewPanel" : "openOverviewPanel")}
-                  aria-label={t(workspacePanelOpen ? "closeOverviewPanel" : "openOverviewPanel")}
-                  className="tb-btn"
-                  style={{ color: workspacePanelOpen ? "var(--text)" : "var(--text-muted)" }}
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <line x1="15" y1="3" x2="15" y2="21" />
-                  </svg>
-                </button>
-              </div>
-            )}
+            </div>
+          )}
+        </TopHeader>
+
+        <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+          {/* Mobile overlay backdrop */}
+          <div
+            className="sidebar-overlay-backdrop"
+            onClick={() => vtTransition(() => setSidebarOpen(false))}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: "var(--z-sidebar)",
+              background: "rgba(0,0,0,0.4)",
+              opacity: sidebarOpen ? 1 : 0,
+              pointerEvents: sidebarOpen ? "auto" : "none",
+              transition: "opacity 0.25s ease",
+            }}
+          />
+
+          {/* Left sidebar */}
+          <div
+            ref={sidebarRef}
+            className={`sidebar-container${sidebarOpen ? " sidebar-open" : " sidebar-closed"}`}
+            style={{
+              background: "var(--bg-panel)",
+              display: "flex",
+              flexDirection: "column",
+              flexShrink: 0,
+              zIndex: "calc(var(--z-sidebar) + 1)",
+              width: sidebarOpen ? sidebarWidth : 0,
+              minWidth: sidebarOpen ? sidebarWidth : 0,
+            }}
+          >
+            {sidebarContent}
           </div>
 
-          {/* Chat content 鈥?always render ChatWindow; it handles empty/loading/error states internally */}
-          <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-            <ChatWindow
-              key={sessionKey}
+          {/* Left resize handle — between sidebar and chat */}
+          <div
+            ref={sidebarHandleRef}
+            className="resize-handle-overlay resize-handle-overlay-left"
+            style={{
+              display: sidebarOpen ? "block" : "none",
+              width: EDGE_HANDLE_WIDTH,
+              left: sidebarWidth - EDGE_HANDLE_INSET,
+            }}
+            onPointerDown={handleDragStart}
+            onPointerMove={handleDragMove}
+            onPointerUp={handleDragEnd}
+            onLostPointerCapture={handleDragEnd}
+          />
+
+          {/* Center: chat */}
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              minWidth: CHAT_MIN_WIDTH,
+              background: "var(--bg)",
+            }}
+          >
+            {/* Chat content — always render ChatWindow; it handles empty/loading/error states internally */}
+            <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+              <ChatWindow
+                key={sessionKey}
+                session={selectedSession}
+                newSessionCwd={effectiveNewSessionCwd}
+                onAgentEnd={handleAgentEnd}
+                onSessionCreated={handleSessionCreated}
+                onSessionForked={handleSessionForked}
+                modelsRefreshKey={modelsRefreshKey}
+                chatInputRef={chatInputRef}
+                onBranchDataChange={handleBranchDataChange}
+                onSystemPromptChange={handleSystemPromptChange}
+                onSessionStatsChange={handleSessionStatsChange}
+                onContextUsageChange={handleContextUsageChange}
+                onLoadingChange={handleChatLoadingChange}
+                onSseStatusChange={handleSseStatusChange}
+                recentCwds={recentCwds}
+                homeDir={homeDir}
+                onCwdSelect={handleCwdChange}
+                onCwdDefault={handleCwdDefault}
+                onToolPresetChange={handleToolPresetChange}
+              />
+            </div>
+          </div>
+
+          {/* Right resize handle — between chat and workspace panel */}
+          <div
+            ref={rightPanelHandleRef}
+            className="resize-handle-overlay resize-handle-overlay-right"
+            style={{
+              display: workspacePanelOpen ? "block" : "none",
+              width: EDGE_HANDLE_WIDTH,
+              left: `calc(100% - ${rightPanelWidth}px)`,
+            }}
+            onPointerDown={handleRightDragStart}
+            onPointerMove={handleRightDragMove}
+            onPointerUp={handleRightDragEnd}
+            onLostPointerCapture={handleRightDragEnd}
+          />
+
+          {/* Right panel */}
+          <div
+            ref={rightPanelRef}
+            className={`right-panel-container${workspacePanelOpen ? " right-panel-open" : " right-panel-closed"}`}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--bg)",
+              width: workspacePanelOpen ? rightPanelWidth : 0,
+              minWidth: workspacePanelOpen ? rightPanelWidth : 0,
+              overflow: "hidden",
+              opacity: workspacePanelOpen ? 1 : 0,
+              transition: "opacity 0.15s ease",
+              viewTransitionName: "workspace-panel",
+            }}
+          >
+            <SessionOverviewPanel
               session={selectedSession}
-              newSessionCwd={effectiveNewSessionCwd}
-              onAgentEnd={handleAgentEnd}
-              onSessionCreated={handleSessionCreated}
-              onSessionForked={handleSessionForked}
-              modelsRefreshKey={modelsRefreshKey}
-              chatInputRef={chatInputRef}
-              onBranchDataChange={handleBranchDataChange}
-              onSystemPromptChange={handleSystemPromptChange}
-              onSessionStatsChange={handleSessionStatsChange}
-              onContextUsageChange={handleContextUsageChange}
-              onLoadingChange={handleChatLoadingChange}
-              onSseStatusChange={handleSseStatusChange}
-              recentCwds={recentCwds}
-              homeDir={homeDir}
-              onCwdSelect={handleCwdChange}
-              onCwdDefault={handleCwdDefault}
-              onToolPresetChange={handleToolPresetChange}
+              cwd={activeCwd ?? selectedSession?.cwd ?? newSessionCwd ?? null}
+              onClose={() => vtTransition(() => setWorkspacePanelOpen(false))}
+              systemPrompt={systemPrompt}
+              contextUsage={contextUsage}
+              sessionStats={sessionStats}
+              toolPreset={toolPreset}
             />
           </div>
-        </div>
-
-        {/* Right resize handle 鈥?between chat and workspace panel */}
-        <div
-          ref={rightPanelHandleRef}
-          className="resize-handle-overlay resize-handle-overlay-right"
-          style={{
-            display: workspacePanelOpen ? "block" : "none",
-            width: EDGE_HANDLE_WIDTH,
-            left: `calc(100% - ${rightPanelWidth}px)`,
-          }}
-          onPointerDown={handleRightDragStart}
-          onPointerMove={handleRightDragMove}
-          onPointerUp={handleRightDragEnd}
-          onLostPointerCapture={handleRightDragEnd}
-        />
-
-        {/* Right panel: width snaps instantly (no CSS transition) to avoid text reflow drift;
-             visual smoothness via opacity fade */}
-        <div
-          ref={rightPanelRef}
-          className={`right-panel-container${workspacePanelOpen ? " right-panel-open" : " right-panel-closed"}`}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            background: "var(--bg)",
-            width: workspacePanelOpen ? rightPanelWidth : 0,
-            minWidth: workspacePanelOpen ? rightPanelWidth : 0,
-            overflow: "hidden",
-            opacity: workspacePanelOpen ? 1 : 0,
-            transition: "opacity 0.15s ease",
-            viewTransitionName: "workspace-panel",
-          }}
-        >
-          <SessionOverviewPanel
-            session={selectedSession}
-            cwd={activeCwd ?? selectedSession?.cwd ?? newSessionCwd ?? null}
-            onClose={() => vtTransition(() => setWorkspacePanelOpen(false))}
-            systemPrompt={systemPrompt}
-            contextUsage={contextUsage}
-            sessionStats={sessionStats}
-            toolPreset={toolPreset}
-          />
         </div>
       </div>
       {modelsConfigOpen && (

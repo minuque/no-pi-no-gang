@@ -133,7 +133,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
   scrollbar-width: auto;
-  scrollbar-color: #3a3a3e transparent;
+  scrollbar-color: var(--ui-scrollbar-thumb) transparent;
 }
 
 body {
@@ -148,25 +148,22 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3a3a3e;
+  background: var(--ui-scrollbar-thumb);
   border-radius: 4px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #4a4a50;
+  background: var(--ui-scrollbar-hover);
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-dim);
-}
 
 :root {
-  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-body: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono:
     "JetBrains Mono", "Fira Code", "Consolas", ui-monospace, "PingFang SC", "Microsoft YaHei",
     monospace;
@@ -185,7 +182,7 @@ code {
 .message-action-button {
   width: 36px !important;
   height: 33px !important;
-  border-radius: 7px !important;
+  border-radius: var(--radius-sm) !important;
   transition:
     opacity 0.12s,
     background 0.12s,
@@ -228,7 +225,7 @@ code {
   text-rendering: optimizeLegibility;
 }
 html.dark .markdown-body {
-  color: #e0e0e0;
+  color: var(--fg);
 }
 /* Custom text selection — tinted to the accent instead of browser default blue */
 .markdown-body ::selection {
@@ -333,7 +330,7 @@ html.dark .markdown-body {
   padding: 6px 12px;
   color: var(--text-muted);
   background: var(--bg-subtle);
-  border-radius: 0 6px 6px 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 .markdown-body blockquote p:last-child {
   margin-bottom: 0;
@@ -353,7 +350,7 @@ html.dark .markdown-body {
   margin: 14px 0;
   font-size: 13px;
   overflow: hidden;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
 }
 .markdown-body th,
@@ -380,7 +377,7 @@ html.dark .markdown-body {
 .markdown-body img {
   max-width: 100%;
   height: auto;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   margin: 8px 0;
 }
 
@@ -388,7 +385,7 @@ html.dark .markdown-body {
 .markdown-body :not(pre) > code {
   background: var(--bg-subtle);
   padding: 1px 5px;
-  border-radius: 3px;
+  border-radius: 4px;
   font-family: var(--font-mono);
   font-size: 0.9em;
   color: var(--text);
@@ -417,7 +414,7 @@ html.dark .markdown-body {
   height: 13px;
   margin: 0 6px 0 0;
   border: 1.5px solid var(--border);
-  border-radius: 3px;
+  border-radius: 4px;
   background: var(--bg);
   cursor: default;
   vertical-align: text-bottom;
@@ -455,7 +452,7 @@ html.dark .markdown-body {
   color: var(--text-muted);
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   box-shadow: 0 1px 0 var(--border);
 }
 
@@ -505,7 +502,7 @@ html.dark .markdown-body {
 .markdown-body details {
   margin: 10px 0;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 8px 12px;
 }
 .markdown-body summary {
@@ -549,7 +546,7 @@ html.dark .markdown-body {
 .markdown-file-preview pre {
   background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 12px 16px;
   overflow-x: auto;
   font-family: var(--font-mono);
@@ -561,7 +558,7 @@ html.dark .markdown-body {
   font-size: 0.9em;
   background: var(--bg-subtle);
   padding: 1px 5px;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 .markdown-file-preview pre code {
   background: none;
@@ -585,7 +582,7 @@ span.linenumber {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 /* ── Theme switching — smooth colour adoption ──
@@ -626,7 +623,7 @@ html.theme-switching [style*="border"] {
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
-  border-radius: 0 0 6px 0;
+  border-radius: 0 0 var(--radius-sm) 0;
   transform: translateY(-100%);
   transition: transform 0.15s;
 }
@@ -976,7 +973,7 @@ html.theme-switching [style*="border"] {
 }
 
 .sl-input {
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--bg);
   padding: 10px 10px 10px 14px;
@@ -1108,8 +1105,8 @@ html.theme-switching [style*="border"] {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   background: none;
   border: none;
@@ -1117,8 +1114,8 @@ html.theme-switching [style*="border"] {
   cursor: pointer;
   flex-shrink: 0;
   transition:
-    background 0.12s,
-    color 0.12s,
+    background var(--motion-fast),
+    color var(--motion-fast),
     transform 0.1s;
 }
 .tb-btn:hover {
@@ -1135,15 +1132,15 @@ html.theme-switching [style*="border"] {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  height: 32px;
-  padding: 0 10px;
+  height: 40px;
+  padding: 0 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   transition:
-    background 0.12s,
-    color 0.12s;
+    background var(--motion-fast),
+    color var(--motion-fast);
 }
 .sidebar-btn:hover {
   background: var(--bg-hover);
@@ -1441,24 +1438,4 @@ html.theme-switching [style*="border"] {
   animation:
     var(--duration-enter) ease-out var(--duration-exit) both vt-fade,
     var(--duration-move) ease-out both vt-slide-y;
-}
-
-/* ── Noise grain overlay ─────────────────────────────────────────
- * Subtle screen-door texture using SVG feTurbulence, applied as
- * a fixed pseudo-element.  Gives flat surfaces a VSCode-like
- * "matte paper" tactile quality. */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 99999;
-  opacity: 0.02;
-}
-html.dark body::after {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' fill='%23fff'/%3E%3C/svg%3E");
-}
-html.light body::after {
-  opacity: 0.015;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' fill='%23000'/%3E%3C/svg%3E");
 }

@@ -1,22 +1,21 @@
 ---
 version: alpha
-name: Pi Agent — VSCode Dark Modern
-description: >
-  Developer-tool aesthetic built on the VSCode Dark Modern color system.
-  Pure neutral-gray surfaces with a single blue accent (#007acc).
-  No glow, no gradients, no color-mix — every state gets its own hex value.
+name: Pi Agent — YouTube Dark
+ description: >
+  YouTube 网页端深色设计语言：深黑底 #0f0f0f、大圆角 8–18px、Roboto 字体、
+  卡片阴影与 hover 抬升。Accent 保留原项目蓝色 #007acc。
 colors:
   # ── Surface hierarchy (dark theme default) ──
-  bg: "#161616"
-  surface: "#181818"
-  surface-raised: "#161616"
-  surface-deep: "#181818"
+  bg: "#0f0f0f"
+  surface: "#1a1a1a"
+  surface-raised: "#212121"
+  surface-deep: "#0f0f0f"
   # ── Foreground scale ──
-  fg: "#d4d4d4"
-  fg-2: "#c8c8c8"
-  muted: "#a8a8a8"
-  meta: "#9a9a9a"
-  # ── Accent (VSCode blue) ──
+  fg: "#f1f1f1"
+  fg-2: "#e6e6e6"
+  muted: "#aaaaaa"
+  meta: "#717171"
+  # ── Accent (retained project blue) ──
   accent: "#007acc"
   accent-hover: "#0e639c"
   accent-active: "#094771"
@@ -25,70 +24,70 @@ colors:
   accent-border: "#264f78"
   accent-on: "#ffffff"
   # ── Borders ──
-  border: "#353538"
-  border-soft: "#2a2a2d"
-  border-muted: "#222225"
+  border: "#303030"
+  border-soft: "#1f1f1f"
+  border-muted: "#181818"
   # ── Semantic ──
-  success: "#1d9e7a"
-  warn: "#cca700"
-  danger: "#f44747"
+  success: "#2ba640"
+  warn: "#f9a825"
+  danger: "#ff4d4f"
   # ── Component-specific ──
-  topnav-bg: "#181818"
-  sidebar-bg: "#181818"
-  sidebar-expanded-bg: "#181818"
-  chatlist-bg: "#181818"
-  chatlist-item-hover: "#2a2d2e"
-  chatlist-item-active: "#094771"
-  msg-user-bg: "#2c2c30"
-  msg-user-hover-bg: "#323236"
-  code-bg: "#161616"
+  topnav-bg: "#0f0f0f"
+  sidebar-bg: "#1a1a1a"
+  sidebar-expanded-bg: "#1a1a1a"
+  chatlist-bg: "#1a1a1a"
+  chatlist-item-hover: "#212121"
+  chatlist-item-active: "rgba(255,255,255,0.15)"
+  msg-user-bg: "#212121"
+  msg-user-hover-bg: "#2a2a2a"
+  code-bg: "#141414"
   code-gutter: "#181818"
-  input-area-bg: "#161616"
-  input-bg: "#3c3c3c"
-  input-border: "#404045"
-  input-placeholder: "#767676"
-  btn-primary-bg: "#0e639c"
-  btn-primary-hover-bg: "#1177bb"
+  input-area-bg: "#0f0f0f"
+  input-bg: "#212121"
+  input-border: "#303030"
+  input-placeholder: "#717171"
+  btn-primary-bg: "#007acc"
+  btn-primary-hover-bg: "#0e639c"
   btn-primary-fg: "#ffffff"
-  scrollbar-thumb: "#3a3a3e"
-  scrollbar-hover: "#4a4a50"
+  scrollbar-thumb: "#4a4a4a"
+  scrollbar-hover: "#606060"
   selection-bg: "#264f78"
-  badge-bg: "#333333"
-  badge-fg: "#ffffff"
+  badge-bg: "#212121"
+  badge-fg: "#f1f1f1"
   tps-high-bg: "#0e2a3d"
   tps-mid-bg: "#0d2f29"
   tps-low-bg: "#332a0d"
-  tooltip-bg: "#2a2a2e"
-  dropdown-bg: "#2a2a2e"
-  dropdown-hover: "#094771"
-  modal-bg: "#2a2a2e"
-  modal-backdrop: "rgba(0,0,0,0.5)"
-  tab-active-bg: "#161616"
-  tab-inactive-bg: "#161616"
-  tab-hover-bg: "#2a2d2e"
-  link: "#3794ff"
-  link-hover: "#3794ff"
-  error-fg: "#f77c7c"
-  error-bg: "#5a1d1d"
-  warn-fg: "#d6b200"
-  warn-bg: "#4d3f00"
-  info-fg: "#5eaaff"
-  info-bg: "#063b5e"
-  icon-default: "rgba(255,255,255,0.48)"
-  icon-hover: "rgba(255,255,255,0.72)"
+  tooltip-bg: "#212121"
+  dropdown-bg: "#212121"
+  dropdown-hover: "rgba(255,255,255,0.1)"
+  modal-bg: "#212121"
+  modal-backdrop: "rgba(0,0,0,0.6)"
+  tab-active-bg: "#0f0f0f"
+  tab-inactive-bg: "#212121"
+  tab-hover-bg: "#1a1a1a"
+  link: "#4dabf7"
+  link-hover: "#74c0fc"
+  error-fg: "#ff8787"
+  error-bg: "#3a1212"
+  warn-fg: "#ffd43b"
+  warn-bg: "#332a0d"
+  info-fg: "#74c0fc"
+  info-bg: "#0a2540"
+  icon-default: "rgba(255,255,255,0.55)"
+  icon-hover: "rgba(255,255,255,0.87)"
   icon-active: "#ffffff"
   icon-active-accent: "#007acc"
-  toolbar-hover: "#2a2d2e"
+  toolbar-hover: "#212121"
   # ── Background aliases ──
-  bg-panel: "#181818"
-  bg-hover: "#2a2d2e"
-  bg-selected: "#2d3035"
+  bg-panel: "#1a1a1a"
+  bg-hover: "#212121"
+  bg-selected: "rgba(255,255,255,0.15)"
   bg-subtle: "rgba(255,255,255,0.05)"
   # ── Semantic primary ──
   primary: "#007acc"
 typography:
   body:
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif'
+    fontFamily: 'Roboto, "YouTube Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif'
     fontSize: 15px
     fontWeight: 400
     lineHeight: 1.6
@@ -97,11 +96,11 @@ typography:
     fontSize: 14px
     lineHeight: 1.5
   h1:
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif'
+    fontFamily: 'Roboto, "YouTube Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif'
     fontSize: 1.35em
     fontWeight: 600
   h2:
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif'
+    fontFamily: 'Roboto, "YouTube Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif'
     fontSize: 1.18em
     fontWeight: 600
   text-xs:
@@ -119,14 +118,14 @@ typography:
   text-3xl:
     fontSize: 26px
 rounded:
-  sm: 2px
-  md: 4px
-  lg: 6px
+  sm: 8px
+  md: 12px
+  lg: 18px
   pill: 9999px
-  msg: 12px
-  code: 0px
-  input: 0px
-  btn: 0px
+  msg: 18px
+  code: 12px
+  input: 8px
+  btn: 8px
 spacing:
   1: 4px
   2: 8px
@@ -138,7 +137,7 @@ spacing:
   12: 48px
   20: 80px
   msg-gap: 24px
-  msg-padding: 12px 16px
+  msg-padding: 14px 18px
   paragraph-gap: 14px
 components:
   # ── 表面层级 ──
@@ -220,7 +219,7 @@ components:
     backgroundColor: "{colors.msg-user-bg}"
     textColor: "{colors.fg}"
     rounded: "{rounded.msg}"
-    padding: 12px 16px
+    padding: 14px 18px
   msg-bubble-user-hover:
     backgroundColor: "{colors.msg-user-hover-bg}"
   msg-bubble-agent:
@@ -251,7 +250,7 @@ components:
   button-primary-hover:
     backgroundColor: "{colors.btn-primary-hover-bg}"
   button-secondary:
-    backgroundColor: transparent
+    backgroundColor: "{colors.surface-raised}"
     textColor: "{colors.fg}"
     rounded: "{rounded.btn}"
   # ── 链接 ──
@@ -278,7 +277,7 @@ components:
     backgroundColor: "{colors.dropdown-hover}"
   modal:
     backgroundColor: "{colors.modal-bg}"
-    rounded: "{rounded.lg}"
+    rounded: "{rounded.md}"
   modal-backdrop:
     backgroundColor: "{colors.modal-backdrop}"
   tooltip:
@@ -325,118 +324,135 @@ components:
 
 ## Overview
 
-视觉语言：**VSCode Dark Modern 同源色板 · 纯中性灰表面 · 蓝色单 accent · 零光效零渐变**。
+视觉语言：**YouTube 网页端深色设计语言 · 深黑底 · 大圆角 · Roboto 字体 · 卡片阴影 · hover 抬升**。
 
-- **色板**: VSCode Dark Modern/Light+ 同源，中性灰 R=G=B，不偏蓝不暖
-- **层级**: 纯靠亮度差区分三层表面 (editor → sidebar → tab)，不靠色调
-- **Accent**: `#007acc` 仅状态栏/链接/按钮/选中态，全界面 ≤2 处可见
-- **克制**: 无 glow、无渐变、无 `color-mix`，每种状态独立色值
-- **反馈**: hover/active 瞬时切换，≤120ms，不拖动画
-- **布局**: 三栏 — ActivityBar 48px → ChatList 280px → 聊天区 剩余宽度 (max 820px) → 文件面板 (默认 42vw)
+- **色板**: 背景 #0f0f0f，surface #1a1a1a，raised #212121，前景 #f1f1f1
+- **层级**: 靠亮度差 + 阴影区分，surface/raised/deep 三层
+- **Accent**: `#007acc` 保留原项目蓝色，用于主要 action + 选中态
+- **字体**: Roboto 用于 UI，JetBrains Mono 用于代码
+- **圆角**: 按钮/输入框 8px，卡片/下拉 12px，消息气泡 18px
+- **阴影**: 卡片使用 `0 4px 12px rgba(0,0,0,0.5)`，hover 抬升
+- **反馈**: hover 200ms，active scale(0.98)
+- **布局**: 顶部 Header 56px → 左侧 collapsible sidebar (72px/240px) → 主内容区
 
 ## Colors
 
 ### Dark Theme (默认)
 
-色彩系统完全映射 VSCode Dark Modern (默认暗色) 原生色板：
-
-| CSS Token | 色值 | VSCode 映射 |
-|-----------|------|------------|
-| `--bg` | `#161616` | editor.background (chat 区比 session tree 略深) |
-| `--surface` | `#181818` | sideBar.background (session tree) |
-| `--surface-raised` | `#161616` | tab.inactiveBackground |
-| `--surface-deep` | `#181818` | activityBar.background |
-| `--fg` | `#d4d4d4` | editor.foreground |
-| `--fg-2` | `#c8c8c8` | 次要文字 |
-| `--muted` | `#a8a8a8` | 三级/说明 |
-| `--meta` | `#9a9a9a` | placeholder |
-| `--accent` | `#007acc` | statusBar.background |
-| `--accent-hover` | `#0e639c` | button.background |
-| `--accent-active` | `#094771` | list.activeSelectionBackground |
+| CSS Token | 色值 | 用途 |
+|-----------|------|------|
+| `--bg` | `#0f0f0f` | 主背景 / chat 区 |
+| `--surface` | `#1a1a1a` | 侧栏 / 面板 / 卡片 |
+| `--surface-raised` | `#212121` | hover / 抬起 / 输入框 |
+| `--surface-deep` | `#0f0f0f` | 顶部 header |
+| `--fg` | `#f1f1f1` | 主体文字 |
+| `--fg-2` | `#e6e6e6` | 次要文字 |
+| `--muted` | `#aaaaaa` | 三级/说明 |
+| `--meta` | `#717171` | placeholder |
+| `--accent` | `#007acc` | 按钮 / 链接 / 选中态 |
+| `--accent-hover` | `#0e639c` | 按钮 hover |
+| `--accent-active` | `#094771` | 选中背景 |
 | `--accent-focus` | `#007fd4` | focusBorder |
-| `--success` | `#1d9e7a` | terminal ANSI bright green |
-| `--warn` | `#cca700` | editorWarning.foreground |
-| `--danger` | `#f44747` | editorError.foreground |
-| `--border` | `#353538` | panel.border |
+| `--success` | `#2ba640` | 成功 |
+| `--warn` | `#f9a825` | 警告 |
+| `--danger` | `#ff4d4f` | 错误 |
+| `--border` | `#303030` | 面板分割线 |
 
 ### Light Theme
 
-冷调白底 (R=G, B 偏多 2–9 通道)，accent `#007acc` 跨主题不变。详见 `app/theme/tokens-light.css`。
+YouTube 浅色对应：背景 `#ffffff`，surface `#f9f9f9`，raised `#f1f1f1`，前景 `#0f0f0f`。
+Accent 仍为 `#007acc`。详见 `app/theme/tokens-light.css`。
 
 ## Typography
 
-**字体栈**: UI `-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`；等宽 `"JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace`。基准 15px，`antialiased` + `grayscale` 平滑。
+**字体栈**: UI `Roboto, "YouTube Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`；等宽 `"JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace`。基准 15px，`antialiased` + `grayscale` 平滑。
 
 **字号体系**: `text-xs` 11.5px → `text-sm` 13px → `text-base` 14px → `text-lg` 15px → `text-xl` 18px → `text-2xl` 22px → `text-3xl` 26px。
 
-**排版规则**: 行高 1.6 (正文) / 1.3 (紧凑)，段落间距 14px，标题 weight 600 (不用 700+)，`tabular-nums` 数字对齐。
+**排版规则**: 行高 1.6 (正文) / 1.3 (紧凑)，段落间距 14px，标题 weight 600，`tabular-nums` 数字对齐，大标题 `-0.01em` 字间距。
 
 **Markdown 消息** (`.markdown-body`: 15px, line-height 1.65):
 - h1–h4: weight 600, 18px top / 6px bottom margin
 - 段落: `0 0 14px`, `text-wrap: pretty`
 - 列表: left-padding 1.5em, li 间距 4px
-- 引用块: 左 `--accent-border` 3px solid + `--bg-subtle` 底 + 圆角 6px
-- 内联代码: `--bg-subtle` 底, 0.9em, 圆角 3px, padding 5px
-- 表格: 13px, 斑马纹, 圆角 6px
+- 引用块: 左 `--accent-border` 3px solid + `--bg-subtle` 底 + 圆角 8px
+- 内联代码: `--bg-subtle` 底, 0.9em, 圆角 4px, padding 5px
+- 表格: 13px, 斑马纹, 圆角 12px
 - 链接: `--accent` 色, underline-offset 2px
 
 ## Layout
 
 4px 基础单位间距系统：4 / 8 / 12 / 16 / 20 / 24 / 32 / 48 / 80px。
 
-**三栏布局**: 侧栏 (48px 收起 / 240px 展开) → 对话列表 (280px) → 聊天区 (≥320px, max 820px) → 文件面板 (默认 42vw)。拖拽柄 12px，面板宽度 localStorage 持久化。
+**布局**: 顶部 Header 56px → 左侧 collapsible sidebar（收缩 72px / 展开 240px）→ 主内容区（chat + workspace）。拖拽柄 12px，面板宽度 localStorage 持久化。
 
 ## Elevation & Depth
 
-主靠色值分层，几乎不用阴影：
+主要靠色值分层，配合阴影表达提升：
 - `--elev-flat`: none (默认)
 - `--elev-ring`: `0 0 0 1px var(--border)` (边框替代阴影)
-- `--elev-raised`: `0 2px 8px rgba(0,0,0,0.36)` dark / `0 2px 8px rgba(0,0,0,0.08)` light (弹窗/下拉)
+- `--elev-raised`: `0 4px 12px rgba(0,0,0,0.5)` dark / `0 4px 12px rgba(0,0,0,0.08)` light (卡片/弹窗/下拉)
 
 **Z-index**: `0 → dropdown(100) → sidebar(200) → overlay(500) → modal(1000) → toast(2000) → debug(99999)`
 
-**焦点环**: 1px solid `--accent-focus`，不 blur。
+**焦点环**: 2px solid `--accent-focus`。
 
 ## Shapes
 
-VSCode 式克制圆角：
-- `--radius-sm`: 2px (输入框/按钮)
-- `--radius-md`: 4px (下拉)
-- `--radius-lg`: 6px (消息气泡/表格/面板)
+YouTube 式大圆角：
+- `--radius-sm`: 8px (输入框/按钮/小标签)
+- `--radius-md`: 12px (下拉/卡片/代码块/表格)
+- `--radius-lg`: 18px (消息气泡/大面板)
 - `--radius-pill`: 9999px (badge, 极少用)
 
-**例外**: 消息气泡 12px，代码块/输入框/按钮 0 圆角。
+**例外**: 消息气泡 18px，顶部 header 按钮 9999px (圆形 icon button)。
 
 ## Components
 
+### 顶部 Header
+- 高度 56px，背景 `--bg`，底部 1px `--border`
+- 左侧：菜单按钮 + Logo + 标题
+- 右侧：主题切换、workspace 面板切换等操作
+- 按钮为 40px 圆形 icon button，hover 背景 `--surface-raised`
+
+### 侧边栏 (Sidebar)
+- 收缩 72px，展开 240px，背景 `--surface`
+- 菜单项：8px 圆角，hover 背景 `--surface-raised`
+- 底部 settings 按钮：40px 高，8px 圆角
+
 ### 消息气泡
-- **用户**: `#2c2c30` 底, 无可见边框, 右对齐 max-width 85%, 圆角 12px, padding 12px 16px
-- **Agent**: 主底色纯文本, 左侧 2px `--accent` solid
-- **工具调用**: `#222225` 底, 左 accent 条纹
+- **用户**: `--surface-raised` 底，无可见边框，右对齐 max-width 82%，圆角 18px，padding 14px 18px，阴影 `0 2px 6px rgba(0,0,0,0.28)`
+- **Agent**: 主底色纯文本，左侧 2px `--accent` solid
+- **工具调用**: `--surface` 底，左 accent 条纹
 - **间隔**: 24px
 
 ### 代码块
-背景 `#161618`, 边框 1px solid `--border`, 行号列 `#1e1e20`, 左 2px accent stripe, JetBrains Mono + `tabular-nums`。
+- 背景 `#141414`，边框 1px solid `--border`，行号列 `#181818`，左 2px accent stripe，圆角 12px
 
 ### 输入框
-常态 `#2a2a2e` / 1px solid `#404045`; 聚焦 1px solid `--accent-focus` + `0 0 0 3px rgba(0,127,212,0.22)`; 流式中光环变红。
+- 常态 `--surface-raised` / 1px solid `--border` / 圆角 8px
+- 聚焦 1px solid `--accent-focus` + `0 0 0 3px rgba(0,127,212,0.22)`
+- 流式中光环变红
 
 ### 按钮
-- **主按钮**: `#0e639c` 底 / `#ffffff` 字, hover `#1177bb`
-- **次按钮**: 透明底 / 1px solid `--border`
-- **图标按钮**: 透明底, hover `#2a2a2e`, 28–32px
+- **主按钮**: `--accent` 底 / `#ffffff` 字，hover `--accent-hover`，圆角 8px
+- **次按钮**: `--surface-raised` 底 / 1px solid `--border`，圆角 8px
+- **图标按钮**: 透明底，hover `--surface-raised`，40×40px 圆形
 
-### 侧栏图标 (ActivityBar)
-未激活 rgba(255,255,255,0.48) → Hover rgba(255,255,255,0.72) → 激活 #ffffff → 备选蓝 `--accent`。尺寸 20px。
+### 侧栏图标
+- 未激活 rgba(255,255,255,0.55) → Hover rgba(255,255,255,0.87) → 激活 #ffffff
+- 尺寸 20px
 
 ### 对话列表项
-Hover `#2a2a2e` → 激活 `#094771` (深蓝底) → 失焦选中 `#37373d`。
+- Hover `--surface-raised` → 激活 `rgba(255,255,255,0.15)`
 
 ### 文件树
-条目 hover: rgba 白 4% 暗底; 选中: `--bg-selected`。图标纯 SVG 线描, `--text-dim`, 14px。
+- 条目 hover: `--surface-raised`
+- 选中: `--bg-selected`
+- 图标纯 SVG 线描，`--text-dim`，14px
 
 ### 滚动条
-4px thin, thumb `#3a3a3e` 圆角 2px, hover `#4a4a50`, track 透明。
+- 8px thin, thumb `--ui-scrollbar-thumb` 圆角 4px, hover `--ui-scrollbar-hover`, track 透明
 
 ### Thinking Level 标签
 独立色: off→`--text-dim`, minimal→`#6b7280`, low→`#60a5fa`, medium→`#a78bfa`, high→`#f472b6`, xhigh→`#fb923c`。
@@ -445,20 +461,24 @@ Hover `#2a2a2e` → 激活 `#094771` (深蓝底) → 失焦选中 `#37373d`。
 ≥50 t/s→深蓝底+accent 蓝字, 20–50→深绿底+success 绿字, <20→深琥珀底+warn 琥珀字。
 
 ### 模态/设置面板
-底 `#2a2a2e` (dark) / `#ffffff` (light), 遮罩 `rgba(0,0,0,0.5)` / `rgba(0,0,0,0.28)`。
+- 底 `--surface-raised` (dark) / `#ffffff` (light), 遮罩 `rgba(0,0,0,0.6)` / `rgba(0,0,0,0.28)`。
+- 圆角 12px
 
 ### Tab 切换
-激活: `#1a1a1c` 底 + 顶部 accent 边线; 非激活: `#2a2a2e`; Hover: `#2e2e32`。
+- 激活: `--bg` 底 + 顶部 accent 边线
+- 非激活: `--surface-raised`
+- Hover: `--surface`
 
 ### 表单校验
-Error: `#f77c7c` fg / `#5a1d1d` bg; Warn: `#d6b200` fg / `#4d3f00` bg; Info: `#5eaaff` fg / `#063b5e` bg。
+Error: `#ff8787` fg / `#3a1212` bg; Warn: `#ffd43b` fg / `#332a0d` bg; Info: `#74c0fc` fg / `#0a2540` bg。
 
 ### 动画
-- `--motion-fast`: 80ms (hover 切换)
-- `--motion-base`: 120ms (组件进出)
-- `--ease-standard`: ease-out
+- `--motion-fast`: 120ms
+- `--motion-base`: 200ms
+- `--ease-standard`: cubic-bezier(0.4, 0, 0.2, 1)
 - 主题切换: View Transitions API 280ms crossfade
 - 消息入场: 0.4s ease, translateY(16px) + opacity
+- 按钮 active: scale(0.98)
 - NProgress: speed 400ms, trickleSpeed 200ms, minimum 0.08
 
 ### View Transitions
@@ -472,17 +492,17 @@ Error: `#f77c7c` fg / `#5a1d1d` bg; Warn: `#d6b200` fg / `#4d3f00` bg; Info: `#5
 ## Do's and Don'ts
 
 **Do:**
-1. 优先复用 `--ui-*` CSS token，不从零定义新色
-2. 新色从 VSCode 原生色板取
+1. 优先复用 `--ui-*` CSS token 和 `--surface-*` / `--bg-*` 别名
+2. 新色从 YouTube 色板取
 3. Dark/Light 双主题同步提供变量
 4. 引用 CSS 变量，不写死 inline style
-5. 交互态 (hover/active/focus/disabled) 全定义
+5. 交互态 (hover/active/focus/disabled) 全定义，使用 120-200ms transition
+6. 卡片/面板使用阴影表达层级
+7. 圆角按组件级别：按钮/输入 8px，卡片/下拉 12px，消息气泡 18px
 
 **Don't:**
-1. 不用 glow / 渐变 / `color-mix` — 每种状态独立色值
-2. Accent 蓝 ≤2 处可见 — 主要 action + 选中态
-3. 圆角 ≤6px (消息气泡例外 12px)
-4. 过渡 ≤120ms
-5. 字体 weight ≤600 (不用 700+)
-6. 中性灰必须 R=G=B
-7. 焦点环 1px solid，不 blur
+1. 不使用 glow
+2. 不使用 0 圆角（代码块/输入框/按钮统一 8px 起步）
+3. 不使用 700+ 字体 weight
+4. 焦点环不要 blur
+5. 不要写死色值，必须引用 CSS 变量

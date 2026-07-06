@@ -30,7 +30,6 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "lint:design": "node node_modules/@google/design.md/dist/index.js lint DESIGN.md",
-    "sync:agents": "node -e \"require('fs').copyFileSync('AGENTS.md','CLAUDE.md')\"",
     "release": "npm version patch --no-git-tag-version && npm run build && npm publish --access public",
     "prepare": "husky"
   },
