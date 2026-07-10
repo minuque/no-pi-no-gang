@@ -1,0 +1,337 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "no-pi-no-gang Architecture",
+    "subtitle": "Local Next.js workbench bridging browser UI, API routes, pi AgentSession, and on-disk session history",
+    "output": "no-pi-no-gang-architecture.html",
+    "viewBox": [1180, 820]
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "Developer",
+      "sublabel": "Browser",
+      "pos": [40, 340],
+      "size": [130, 64]
+    },
+    {
+      "id": "shell",
+      "type": "frontend",
+      "label": "AppShell",
+      "sublabel": "chat · sidebar · workspace",
+      "pos": [245, 230],
+      "size": [150, 72],
+      "tag": "CSR"
+    },
+    {
+      "id": "hooks",
+      "type": "frontend",
+      "label": "React Hooks",
+      "sublabel": "session state + SSE",
+      "pos": [245, 420],
+      "size": [150, 72]
+    },
+
+    {
+      "id": "sessions_api",
+      "type": "backend",
+      "label": "/api/sessions",
+      "sublabel": "history list + context",
+      "pos": [500, 110],
+      "size": [150, 64]
+    },
+    {
+      "id": "agent_api",
+      "type": "backend",
+      "label": "/api/agent/*",
+      "sublabel": "commands + events",
+      "pos": [500, 270],
+      "size": [150, 64],
+      "tag": "SSE"
+    },
+    {
+      "id": "files_api",
+      "type": "backend",
+      "label": "/api/files",
+      "sublabel": "workspace preview",
+      "pos": [500, 430],
+      "size": [150, 64]
+    },
+    {
+      "id": "config_api",
+      "type": "backend",
+      "label": "Config APIs",
+      "sublabel": "models · auth · skills",
+      "pos": [500, 590],
+      "size": [150, 64]
+    },
+
+    {
+      "id": "reader",
+      "type": "backend",
+      "label": "session-reader",
+      "sublabel": "SessionManager facade",
+      "pos": [745, 110],
+      "size": [150, 64]
+    },
+    {
+      "id": "bridge",
+      "type": "backend",
+      "label": "session-bridge",
+      "sublabel": "global registry + locks",
+      "pos": [745, 270],
+      "size": [150, 64]
+    },
+    {
+      "id": "dispatcher",
+      "type": "backend",
+      "label": "command dispatcher",
+      "sublabel": "fork · model · tools",
+      "pos": [745, 390],
+      "size": [150, 64]
+    },
+
+    {
+      "id": "pi_sdk",
+      "type": "cloud",
+      "label": "pi SDK",
+      "sublabel": "AgentSession",
+      "pos": [980, 270],
+      "size": [145, 64]
+    },
+    {
+      "id": "project_fs",
+      "type": "database",
+      "label": "Project FS",
+      "sublabel": "cwd files",
+      "pos": [980, 430],
+      "size": [145, 64]
+    },
+    {
+      "id": "pi_data",
+      "type": "database",
+      "label": "~/.pi/agent",
+      "sublabel": "jsonl · models · skills",
+      "pos": [980, 590],
+      "size": [145, 64]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Next.js 16 local server :7777",
+      "wraps": [
+        "shell",
+        "hooks",
+        "sessions_api",
+        "agent_api",
+        "files_api",
+        "config_api",
+        "reader",
+        "bridge",
+        "dispatcher"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Local machine boundary — no business database",
+      "wraps": ["pi_sdk", "project_fs", "pi_data"]
+    }
+  ],
+  "connections": [
+    {
+      "from": "user",
+      "to": "shell",
+      "label": "open UI",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "shell",
+      "to": "hooks",
+      "label": "UI events",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [440, 368]
+    },
+
+    {
+      "from": "hooks",
+      "to": "sessions_api",
+      "label": "GET history",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left",
+      "via": [
+        [425, 456],
+        [425, 142]
+      ]
+    },
+    {
+      "from": "hooks",
+      "to": "agent_api",
+      "label": "POST command",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "via": [
+        [425, 456],
+        [425, 302]
+      ]
+    },
+    {
+      "from": "agent_api",
+      "to": "hooks",
+      "label": "SSE events",
+      "variant": "emphasis",
+      "fromSide": "left",
+      "toSide": "right",
+      "via": [
+        [470, 282],
+        [470, 444]
+      ],
+      "labelDx": -30
+    },
+    {
+      "from": "hooks",
+      "to": "files_api",
+      "label": "file tree/read",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "hooks",
+      "to": "config_api",
+      "label": "settings",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "via": [
+        [320, 540],
+        [475, 622]
+      ]
+    },
+
+    {
+      "from": "sessions_api",
+      "to": "reader",
+      "label": "listAllSessions",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "agent_api",
+      "to": "bridge",
+      "label": "start/send",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "bridge",
+      "to": "dispatcher",
+      "label": "typed commands",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [665, 368]
+    },
+    {
+      "from": "dispatcher",
+      "to": "pi_sdk",
+      "label": "AgentSession APIs",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "via": [
+        [925, 422],
+        [925, 302]
+      ]
+    },
+    {
+      "from": "bridge",
+      "to": "pi_sdk",
+      "label": "create/subscribe",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+
+    {
+      "from": "reader",
+      "to": "pi_data",
+      "label": "read .jsonl",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "top",
+      "via": [
+        [930, 142],
+        [930, 565],
+        [1038, 565]
+      ]
+    },
+    {
+      "from": "pi_sdk",
+      "to": "pi_data",
+      "label": "append events",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [1132, 535]
+    },
+    {
+      "from": "files_api",
+      "to": "project_fs",
+      "label": "safe local read",
+      "variant": "security",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelAt": [805, 505]
+    },
+    {
+      "from": "pi_sdk",
+      "to": "project_fs",
+      "label": "tool I/O",
+      "variant": "security",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [1135, 390]
+    },
+    {
+      "from": "config_api",
+      "to": "pi_data",
+      "label": "models/settings",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Frontend",
+      "items": [
+        "Client-only AppShell owns interaction state",
+        "Hooks multiplex fetch commands and SSE run-state recovery"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Runtime bridge",
+      "items": [
+        "Next API routes translate browser actions into pi commands",
+        "session-bridge keeps AgentSession wrappers in globalThis across requests"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Persistence",
+      "items": [
+        "pi SessionManager reads/writes ~/.pi/agent JSONL history",
+        "Workspace files are read from allowed local cwd roots"
+      ]
+    }
+  ]
+}
