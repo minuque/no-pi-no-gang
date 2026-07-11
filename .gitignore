@@ -35,8 +35,8 @@ yarn-error.log*
 .vscode/*
 .codegraph/*
 .claude/*
+.agents/*
 .reasonix/*
-graphify-out/*
 
 # vercel
 .vercel
@@ -48,4 +48,5 @@ next-env.d.ts
 .codeidx/codeidx-mcp-stdio.js
 .codeidx/mcp-control.json
 .codeidx/mcp-server.json
+skills-lock.json
 nul

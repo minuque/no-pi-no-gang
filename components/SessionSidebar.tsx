@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import Image from "next/image";
+
 import { useTranslations } from "next-intl";
 
 import type { SessionInfo } from "@/lib/types";
@@ -17,6 +19,10 @@ interface Props {
   selectedCwd?: string | null;
   onCwdChange?: (cwd: string | null) => void;
   onSessionsChange?: (sessions: SessionInfo[]) => void;
+  onClose?: () => void;
+  closeLabel?: string;
+  appLogoAlt?: string;
+  title?: string;
 }
 
 function formatRelativeTime(
@@ -239,8 +245,8 @@ function HeaderBtn({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        width: 32,
-        height: 32,
+        width: 28,
+        height: 28,
         padding: 0,
         background: active ? "var(--bg-hover)" : "none",
         border: "none",
@@ -269,6 +275,10 @@ export function SessionSidebar({
   selectedCwd: selCwd,
   onCwdChange,
   onSessionsChange,
+  onClose,
+  closeLabel = "Close sidebar",
+  appLogoAlt = "Pi Agent",
+  title,
 }: Props) {
   const t = useTranslations("SessionSidebar");
   const [allSessions, setAllSessions] = useState<SessionInfo[]>([]);
@@ -476,17 +486,26 @@ export function SessionSidebar({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          height: 52,
-          padding: "0 12px",
+          height: 44,
+          padding: "0 8px",
           borderBottom: "1px solid var(--border)",
           flexShrink: 0,
           gap: 8,
         }}
       >
+        <Image
+          src="/pi-logo-on-dark.svg"
+          alt={appLogoAlt}
+          width={20}
+          height={20}
+          style={{ flexShrink: 0, opacity: 0.9 }}
+        />
         <span
           style={{
+            flex: 1,
+            minWidth: 0,
             fontSize: 15,
-            fontWeight: 600,
+            fontWeight: 700,
             color: "var(--text)",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -494,9 +513,9 @@ export function SessionSidebar({
             letterSpacing: "-0.01em",
           }}
         >
-          {t("sessions")}
+          {title ?? t("sessions")}
         </span>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
           <HeaderBtn
             onClick={() => setSearchOpen(true)}
             title={t("openSearch")}
@@ -511,6 +530,24 @@ export function SessionSidebar({
           >
             <IconPlus />
           </HeaderBtn>
+          {onClose && (
+            <HeaderBtn onClick={onClose} title={closeLabel}>
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <line x1="15" y1="3" x2="15" y2="21" />
+                <polyline points="11 8 7 12 11 16" />
+              </svg>
+            </HeaderBtn>
+          )}
         </div>
       </div>
 
@@ -560,12 +597,16 @@ export function SessionSidebar({
             <section style={{ padding: "8px 0" }}>
               <div
                 style={{
-                  padding: "0 12px 8px",
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 1,
+                  padding: "12px 12px 8px",
                   fontSize: 11,
                   fontWeight: 600,
                   color: "var(--text-dim)",
                   textTransform: "uppercase",
                   letterSpacing: "0.04em",
+                  background: "var(--bg-panel)",
                 }}
               >
                 {t("sessions")}
@@ -604,12 +645,16 @@ export function SessionSidebar({
             <section>
               <div
                 style={{
-                  padding: "12px 12px 6px",
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 1,
+                  padding: "12px 12px 8px",
                   fontSize: 11,
                   fontWeight: 600,
                   color: "var(--text-dim)",
                   textTransform: "uppercase",
                   letterSpacing: "0.04em",
+                  background: "var(--bg-panel)",
                 }}
               >
                 {t("projects")}

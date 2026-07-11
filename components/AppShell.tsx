@@ -13,9 +13,8 @@ import { Toaster } from "sonner";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
 import { useTheme } from "@/hooks/useTheme";
 import { useViewTransition } from "@/hooks/useViewTransition";
-import type { EntryTreeNode, SessionInfo } from "@/lib/types";
+import type { SessionInfo } from "@/lib/types";
 
-import { BranchNavigator } from "./BranchNavigator";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 import { SessionOverviewPanel } from "./SessionOverviewPanel";
 import { SessionSidebar } from "./SessionSidebar";
@@ -49,7 +48,7 @@ export function AppShell() {
   const [skillsConfigOpen, setSkillsConfigOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [workspacePanelOpen, setWorkspacePanelOpen] = useState(true);
+  const [workspacePanelOpen, setWorkspacePanelOpen] = useState(false);
   const SIDEBAR_MIN = 180;
   const SIDEBAR_MAX = 480;
   const CHAT_MIN_WIDTH = 320;
@@ -100,46 +99,9 @@ export function AppShell() {
     onPointerUp: handleRightDragEnd,
   } = rightPanel;
   const chatInputRef = useRef<ChatInputHandle | null>(null);
-  const headerCenterRef = useRef<HTMLDivElement>(null);
 
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
   const [toolPreset, setToolPreset] = useState<"none" | "default" | "full">("default");
-
-  // Branch navigator state 鈥?populated by ChatWindow, rendered in top bar
-  const [branchTree, setBranchTree] = useState<EntryTreeNode[]>([]);
-  const [branchActiveLeafId, setBranchActiveLeafId] = useState<string | null>(null);
-  const branchOnLeafChangeRef = useRef<((leafId: string | null) => void) | null>(null);
-  const [branchDisabled, setBranchDisabled] = useState(false);
-  const handleBranchDataChange = useCallback(
-    (
-      tree: EntryTreeNode[],
-      activeLeafId: string | null,
-      onLeafChange: (leafId: string | null) => void,
-      agentRunning: boolean,
-    ) => {
-      setBranchTree(tree);
-      setBranchActiveLeafId(activeLeafId);
-      branchOnLeafChangeRef.current = onLeafChange;
-      setBranchDisabled(agentRunning);
-    },
-    [],
-  );
-
-  // SSE status from ChatWindow 鈫?displayed in top bar
-  const [sseStatus, setSseStatus] = useState<{
-    label: string;
-    tone: "muted" | "success" | "warn" | "danger";
-  } | null>(null);
-  const handleSseStatusChange = useCallback(
-    (status: { label: string; tone: "muted" | "success" | "warn" | "danger" } | null) => {
-      setSseStatus((prev) => {
-        if (prev === status) return prev;
-        if (!prev || !status) return status;
-        return prev.label === status.label && prev.tone === status.tone ? prev : status;
-      });
-    },
-    [],
-  );
 
   const handleSystemPromptChange = useCallback((prompt: string | null) => {
     setSystemPrompt(prompt);
@@ -371,56 +333,6 @@ export function AppShell() {
 
   const sidebarContent = (
     <>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "12px 12px 8px",
-          flexShrink: 0,
-        }}
-      >
-        <img
-          src="/pi-logo-on-dark.svg"
-          alt={t("appLogoAlt")}
-          width={24}
-          height={24}
-          style={{ flexShrink: 0, opacity: 0.9 }}
-        />
-        <span
-          style={{
-            flex: 1,
-            fontSize: 17,
-            fontWeight: 700,
-            letterSpacing: "-0.02em",
-            color: "var(--text)",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {t("appTitle")}
-        </span>
-        <button
-          onClick={() => vtTransition(() => setSidebarOpen(false))}
-          className="tb-btn"
-          style={{ color: "var(--text-muted)", width: 32, height: 32 }}
-          aria-label={t("hideSidebar")}
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-      </div>
       <SessionSidebar
         selectedSessionId={selectedSession?.id ?? null}
         onSelectSession={handleSelectSession}
@@ -432,119 +344,40 @@ export function AppShell() {
         selectedCwd={selectedSession?.cwd ?? newSessionCwd ?? activeCwd ?? null}
         onCwdChange={handleCwdChange}
         onSessionsChange={setAllSessions}
+        onClose={() => vtTransition(() => setSidebarOpen(false))}
+        closeLabel={t("hideSidebar")}
+        title={t("appTitle")}
       />
-      <div style={{ padding: "8px", flexShrink: 0, position: "relative" }}>
-        <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
-          <LocaleSwitcher />
-          <button
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
-            }}
-            className="tb-btn"
-            style={{ color: "var(--text-muted)", width: 32, height: 32 }}
-          >
-            {isDark ? (
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="5" />
-                <line x1="12" y1="1" x2="12" y2="3" />
-                <line x1="12" y1="21" x2="12" y2="23" />
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                <line x1="1" y1="12" x2="3" y2="12" />
-                <line x1="21" y1="12" x2="23" y2="12" />
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-              </svg>
-            ) : (
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-            )}
-          </button>
-          <button
-            onClick={() => vtTransition(() => setWorkspacePanelOpen((v) => !v))}
-            className="tb-btn"
-            style={{
-              color: workspacePanelOpen ? "var(--text)" : "var(--text-muted)",
-              width: 32,
-              height: 32,
-            }}
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <line x1="15" y1="3" x2="15" y2="21" />
-            </svg>
-          </button>
-        </div>
+      <div
+        style={{
+          flexShrink: 0,
+          padding: "6px 8px",
+          borderTop: "1px solid var(--border)",
+          position: "relative",
+        }}
+      >
         <button
           onClick={() => setSettingsMenuOpen((v) => !v)}
           title={t("settings")}
-          className="sidebar-btn"
+          className="tb-btn"
           style={{
-            background: settingsMenuOpen ? "var(--bg-hover)" : "none",
             color: settingsMenuOpen ? "var(--text)" : "var(--text-muted)",
+            width: 32,
+            height: 32,
           }}
         >
-          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-            {t("settings")}
-          </span>
           <svg
-            width="10"
-            height="10"
-            viewBox="0 0 10 10"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="1.6"
+            strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            style={{
-              transform: settingsMenuOpen ? "rotate(180deg)" : "none",
-              transition: "transform 0.15s",
-              opacity: 0.55,
-            }}
           >
-            <polyline points="2 3.5 5 6.5 8 3.5" />
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
         </button>
         {settingsMenuOpen && (
@@ -580,29 +413,6 @@ export function AppShell() {
                   preload: () => {
                     (ModelsConfig as { preload?: () => void }).preload?.();
                   },
-                  icon: (
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <rect x="4" y="4" width="16" height="16" rx="2" />
-                      <rect x="9" y="9" width="6" height="6" />
-                      <line x1="9" y1="1" x2="9" y2="4" />
-                      <line x1="15" y1="1" x2="15" y2="4" />
-                      <line x1="9" y1="20" x2="9" y2="23" />
-                      <line x1="15" y1="20" x2="15" y2="23" />
-                      <line x1="20" y1="9" x2="23" y2="9" />
-                      <line x1="20" y1="14" x2="23" y2="14" />
-                      <line x1="1" y1="9" x2="4" y2="9" />
-                      <line x1="1" y1="14" x2="4" y2="14" />
-                    </svg>
-                  ),
                 },
                 {
                   label: t("skills"),
@@ -615,24 +425,8 @@ export function AppShell() {
                   preload: () => {
                     (SkillsConfig as { preload?: () => void }).preload?.();
                   },
-                  icon: (
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                      <path d="M2 17l10 5 10-5" />
-                      <path d="M2 12l10 5 10-5" />
-                    </svg>
-                  ),
                 },
-              ].map(({ label, onClick, disabled, icon, preload, id }) => (
+              ].map(({ label, onClick, disabled, preload, id }) => (
                 <button
                   key={id}
                   onClick={onClick}
@@ -669,7 +463,6 @@ export function AppShell() {
                     }
                   }}
                 >
-                  {icon}
                   {label}
                 </button>
               ))}
@@ -791,80 +584,95 @@ export function AppShell() {
               overflow: "hidden",
               minWidth: CHAT_MIN_WIDTH,
               background: "var(--bg)",
+              position: "relative",
             }}
           >
-            {/* Top bar: SSE status + BranchNavigator */}
+            {/* Floating toolbar pill */}
             {showChat && (
               <div
-                ref={headerCenterRef}
                 style={{
+                  position: "absolute",
+                  top: 12,
+                  right: 12,
+                  zIndex: 20,
                   display: "flex",
                   alignItems: "center",
-                  gap: 8,
-                  padding: "0 12px",
-                  height: 36,
-                  flexShrink: 0,
-                  borderBottom: "1px solid var(--border)",
-                  background: "var(--bg)",
-                  overflow: "hidden",
-                  minWidth: 0,
+                  gap: 2,
+                  padding: 4,
+                  background: "var(--bg-panel)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 9999,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
                 }}
               >
-                {sseStatus && (
-                  <div
-                    title={`SSE: ${sseStatus.label}`}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 5,
-                      height: 22,
-                      padding: "0 8px",
-                      borderRadius: 4,
-                      background:
-                        sseStatus.tone === "danger"
-                          ? "color-mix(in oklab, var(--danger), transparent 88%)"
-                          : sseStatus.tone === "warn"
-                            ? "color-mix(in oklab, var(--warn), transparent 88%)"
-                            : sseStatus.tone === "success"
-                              ? "color-mix(in oklab, var(--success), transparent 90%)"
-                              : "var(--bg-hover)",
-                      border: "1px solid var(--border)",
-                      color:
-                        sseStatus.tone === "danger"
-                          ? "var(--danger)"
-                          : sseStatus.tone === "warn"
-                            ? "var(--warn)"
-                            : sseStatus.tone === "success"
-                              ? "var(--success)"
-                              : "var(--text-muted)",
-                      fontSize: 11.5,
-                      fontFamily: "var(--font-mono)",
-                      lineHeight: "22px",
-                      flexShrink: 0,
-                    }}
+                <LocaleSwitcher />
+                <button
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+                  }}
+                  className="tb-btn"
+                  style={{ color: "var(--text-muted)", width: 28, height: 28 }}
+                >
+                  {isDark ? (
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <circle cx="12" cy="12" r="5" />
+                      <line x1="12" y1="1" x2="12" y2="3" />
+                      <line x1="12" y1="21" x2="12" y2="23" />
+                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                      <line x1="1" y1="12" x2="3" y2="12" />
+                      <line x1="21" y1="12" x2="23" y2="12" />
+                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                    </svg>
+                  ) : (
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  onClick={() => vtTransition(() => setWorkspacePanelOpen((v) => !v))}
+                  className="tb-btn"
+                  style={{
+                    color: workspacePanelOpen ? "var(--text)" : "var(--text-muted)",
+                    width: 28,
+                    height: 28,
+                  }}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   >
-                    <span
-                      style={{
-                        width: 5,
-                        height: 5,
-                        borderRadius: "50%",
-                        background: "currentColor",
-                        flexShrink: 0,
-                      }}
-                    />
-                    {sseStatus.label}
-                  </div>
-                )}
-                <BranchNavigator
-                  tree={branchTree}
-                  activeLeafId={branchActiveLeafId}
-                  onLeafChange={(id) => branchOnLeafChangeRef.current?.(id)}
-                  inline
-                  containerRef={headerCenterRef}
-                  hasSession={!!selectedSession}
-                  disabled={branchDisabled}
-                  hideWhenEmpty
-                />
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <line x1="15" y1="3" x2="15" y2="21" />
+                  </svg>
+                </button>
               </div>
             )}
             {/* Chat content */}
@@ -878,12 +686,10 @@ export function AppShell() {
                 onSessionForked={handleSessionForked}
                 modelsRefreshKey={modelsRefreshKey}
                 chatInputRef={chatInputRef}
-                onBranchDataChange={handleBranchDataChange}
                 onSystemPromptChange={handleSystemPromptChange}
                 onSessionStatsChange={handleSessionStatsChange}
                 onContextUsageChange={handleContextUsageChange}
                 onLoadingChange={handleChatLoadingChange}
-                onSseStatusChange={handleSseStatusChange}
                 recentCwds={recentCwds}
                 homeDir={homeDir}
                 onCwdSelect={handleCwdChange}

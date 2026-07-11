@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useTranslations } from "next-intl";
 
-import type { SlashCommandItem } from "@/lib/pi-resources";
 import type { SessionInfo } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -25,18 +24,6 @@ const TOOL_PRESET_TOOLS: Record<string, string[]> = {
   none: [],
   default: ["read", "bash", "edit", "write"],
   full: ["read", "bash", "edit", "write", "grep", "find", "ls"],
-};
-
-const COMMAND_SOURCE_COLORS: Record<string, string> = {
-  extension: "#60a5fa",
-  prompt: "#f472b6",
-  skill: "#a78bfa",
-};
-
-const COMMAND_SOURCE_LABELS: Record<string, string> = {
-  extension: "ext",
-  prompt: "prompt",
-  skill: "skill",
 };
 
 // ---------------------------------------------------------------------------
@@ -160,59 +147,6 @@ function ChipRow({ items }: { items: string[] }) {
       {items.map((item) => (
         <Tag key={item} label={item} />
       ))}
-    </div>
-  );
-}
-
-/** A single command row — compact, no description in default view. */
-function CmdRow({ cmd }: { cmd: SlashCommandItem }) {
-  const source = cmd.source ?? "extension";
-  const sc = COMMAND_SOURCE_COLORS[source] ?? "var(--text-dim)";
-  const sl = COMMAND_SOURCE_LABELS[source] ?? source;
-  const name = cmd.name.startsWith("skill:") ? cmd.name.slice(6) : `/${cmd.name}`;
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "baseline",
-        gap: 5,
-        padding: "2px 0",
-        fontSize: 12,
-        lineHeight: 1.45,
-      }}
-    >
-      <span
-        style={{
-          width: 7,
-          height: 7,
-          borderRadius: "50%",
-          background: sc,
-          flexShrink: 0,
-          marginTop: 4,
-        }}
-      />
-      <span
-        style={{
-          color: "var(--text)",
-          fontFamily: "var(--font-mono)",
-          fontWeight: 500,
-        }}
-        title={cmd.description}
-      >
-        {name}
-      </span>
-      <span
-        style={{
-          color: "var(--text-dim)",
-          fontSize: 10,
-          fontFamily: "var(--font-mono)",
-          marginLeft: "auto",
-          flexShrink: 0,
-        }}
-      >
-        {sl}
-      </span>
     </div>
   );
 }
@@ -348,8 +282,6 @@ interface Props {
   toolPreset: "none" | "default" | "full";
 }
 
-type Tab = "skills" | "commands";
-
 export function SessionOverviewPanel({
   session,
   cwd,
@@ -360,76 +292,12 @@ export function SessionOverviewPanel({
   toolPreset,
 }: Props) {
   const t = useTranslations("SessionOverviewPanel");
-  const [skillsData, setSkillsData] = useState<Array<{
-    name: string;
-    description: string;
-    source: string;
-  }> | null>(null);
-  const [commandsData, setCommandsData] = useState<SlashCommandItem[] | null>(null);
-  const [tab, setTab] = useState<Tab>("skills");
   const [promptModalOpen, setPromptModalOpen] = useState(false);
-
-  // Fetch skills + commands
-  useEffect(() => {
-    if (!cwd) {
-      setSkillsData(null);
-      setCommandsData(null);
-      return;
-    }
-    let cancelled = false;
-    fetch(`/api/skills?cwd=${encodeURIComponent(cwd)}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<{
-          skills?: Array<{ name?: string; description?: string; sourceInfo?: { scope?: string } }>;
-          commands?: SlashCommandItem[];
-        }>;
-      })
-      .then((data) => {
-        if (cancelled) return;
-        setSkillsData(
-          (data.skills ?? []).map((s) => ({
-            name: s.name ?? "",
-            description: s.description ?? "",
-            source: s.sourceInfo?.scope ?? "project",
-          })),
-        );
-        setCommandsData(data.commands ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setSkillsData(null);
-          setCommandsData(null);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [cwd]);
 
   const toolNames = useMemo(() => TOOL_PRESET_TOOLS[toolPreset] ?? [], [toolPreset]);
 
-  // Grouped commands
-  const cmdGroups = useMemo(() => {
-    if (!commandsData) return null;
-    const groups: Record<string, SlashCommandItem[]> = {};
-    for (const c of commandsData) {
-      const src = c.source ?? "extension";
-      (groups[src] ??= []).push(c);
-    }
-    // stable order: extension → prompt → skill
-    return ["extension", "prompt", "skill"]
-      .filter((k) => groups[k]?.length)
-      .map((k) => ({ key: k, label: COMMAND_SOURCE_LABELS[k] ?? k, items: groups[k] }));
-  }, [commandsData]);
-
-  const totalCommands = commandsData?.length ?? 0;
-  const totalSkills = skillsData?.length ?? 0;
-
   const model = session?.model;
   const thinkingLevel = session?.agentState?.thinkingLevel;
-
-  const toggleTab = useCallback((t: Tab) => setTab(t), []);
 
   if (!session && !cwd) {
     return <EmptyState />;
@@ -794,163 +662,6 @@ export function SessionOverviewPanel({
         <div>
           <SectionLabel label={t("tools")} count={toolNames.length} />
           <ChipRow items={toolNames} />
-        </div>
-
-        {/* ── Skills / Commands tabs ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 0, flex: 1, minHeight: 0 }}>
-          <div
-            style={{
-              display: "flex",
-              gap: 1,
-              marginBottom: 10,
-              background: "var(--bg-panel)",
-              borderRadius: "var(--radius-sm)",
-              padding: 2,
-            }}
-          >
-            {(
-              [
-                ["skills", totalSkills],
-                ["commands", totalCommands],
-              ] as const
-            ).map(([key, count]) => (
-              <button
-                key={key}
-                onClick={() => toggleTab(key)}
-                style={{
-                  flex: 1,
-                  padding: "5px 0",
-                  border: "none",
-                  borderRadius: "var(--radius-sm)",
-                  background: tab === key ? "var(--bg)" : "transparent",
-                  color: tab === key ? "var(--text)" : "var(--text-dim)",
-                  fontWeight: tab === key ? 600 : 400,
-                  fontSize: 12,
-                  cursor: "pointer",
-                  transition: "background 0.12s, color 0.12s",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 5,
-                }}
-              >
-                <span>{t(key)}</span>
-                <span
-                  style={{
-                    fontSize: 10.5,
-                    fontFamily: "var(--font-mono)",
-                    opacity: tab === key ? 1 : 0.55,
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {count}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {/* Tab content */}
-          <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
-            {tab === "skills" &&
-              (skillsData ? (
-                skillsData.length > 0 ? (
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    {skillsData.map((s) => (
-                      <div
-                        key={s.name}
-                        title={s.description || undefined}
-                        style={{
-                          display: "flex",
-                          alignItems: "baseline",
-                          gap: 10,
-                          padding: "3px 0",
-                          fontSize: 12,
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 7,
-                            height: 7,
-                            borderRadius: "50%",
-                            background: s.source === "global" ? "var(--text-dim)" : "var(--accent)",
-                            flexShrink: 0,
-                            marginTop: 5,
-                          }}
-                        />
-                        <span
-                          style={{
-                            color: "var(--text)",
-                            fontFamily: "var(--font-mono)",
-                            fontWeight: 500,
-                            flexShrink: 0,
-                          }}
-                        >
-                          {s.name}
-                        </span>
-                        {s.description && (
-                          <span
-                            style={{
-                              color: "var(--text-dim)",
-                              fontSize: 11,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                              marginLeft: 2,
-                            }}
-                          >
-                            {s.description.replace(/\s+/g, " ").trim()}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ fontSize: 12, color: "var(--text-dim)", padding: "4px 0" }}>
-                    {t("noSkillsInstalled")}
-                  </div>
-                )
-              ) : (
-                <div style={{ fontSize: 12, color: "var(--text-dim)", padding: "4px 0" }}>
-                  {t("loading")}
-                </div>
-              ))}
-
-            {tab === "commands" &&
-              (cmdGroups ? (
-                cmdGroups.length > 0 ? (
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    {cmdGroups.map((g) => (
-                      <div key={g.key} style={{ marginBottom: 8 }}>
-                        <div
-                          style={{
-                            fontSize: 10,
-                            fontWeight: 600,
-                            color: COMMAND_SOURCE_COLORS[g.key] ?? "var(--text-dim)",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.04em",
-                            marginBottom: 2,
-                          }}
-                        >
-                          {g.label}
-                        </div>
-                        {g.items.map((cmd) => (
-                          <CmdRow key={cmd.name} cmd={cmd} />
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ fontSize: 12, color: "var(--text-dim)", padding: "4px 0" }}>
-                    {t("noCommandsAvailable")}
-                  </div>
-                )
-              ) : (
-                <div style={{ fontSize: 12, color: "var(--text-dim)", padding: "4px 0" }}>
-                  {t("loading")}
-                </div>
-              ))}
-          </div>
         </div>
       </div>
     </div>

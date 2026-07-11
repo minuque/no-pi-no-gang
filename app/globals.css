@@ -724,6 +724,35 @@ html.theme-switching [style*="border"] {
   }
 }
 
+@keyframes thinking-max-breathe {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.16);
+  }
+}
+
+@keyframes thinking-max-thumb {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+.thinking-level-max-fill,
+.thinking-level-max-icon {
+  animation: thinking-max-breathe 1.8s var(--ease-standard) infinite;
+}
+
+.thinking-level-max-thumb {
+  animation: thinking-max-thumb 1.8s var(--ease-standard) infinite;
+}
+
 /* ── Streaming message animations ── */
 @keyframes think-pulse {
   0%,
@@ -1397,6 +1426,12 @@ html.theme-switching [style*="border"] {
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
+  .thinking-level-max-fill,
+  .thinking-level-max-icon,
+  .thinking-level-max-thumb {
+    animation: none;
+  }
+
   ::view-transition-old(*),
   ::view-transition-new(*),
   ::view-transition-group(*) {

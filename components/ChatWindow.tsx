@@ -47,9 +47,6 @@ interface Props {
     usage: { percent: number | null; contextWindow: number; tokens: number | null } | null,
   ) => void;
   onLoadingChange?: (loading: boolean) => void;
-  onSseStatusChange?: (
-    status: { label: string; tone: "muted" | "success" | "warn" | "danger" } | null,
-  ) => void;
   recentCwds?: string[];
   homeDir?: string;
   onCwdSelect?: (cwd: string) => void;
@@ -135,16 +132,6 @@ function getUserMessageTitle(message: AgentMessage): string | undefined {
   return getMessageText(message).replace(/\s+/g, " ").trim() || undefined;
 }
 
-function formatTurnElapsed(seconds: number): string {
-  if (seconds < 1) return "<1s";
-  if (seconds < 60) return `${Math.round(seconds)}s`;
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.round(seconds % 60);
-  if (mins < 60) return `${mins}m ${secs}s`;
-  const hrs = Math.floor(mins / 60);
-  return `${hrs}h ${mins % 60}m`;
-}
-
 function Typewriter({ phrases }: { phrases: string[] }) {
   const [phraseIdx, setPhraseIdx] = useState(() => Math.floor(Math.random() * phrases.length));
   const [text, setText] = useState("");
@@ -193,7 +180,6 @@ export const ChatWindow = memo(function ChatWindow({
   onSessionStatsChange,
   onContextUsageChange,
   onLoadingChange,
-  onSseStatusChange,
   recentCwds,
   homeDir = "",
   onCwdSelect,
@@ -221,7 +207,6 @@ export const ChatWindow = memo(function ChatWindow({
     displayModel: displayModelValue,
     sessionStats,
     agentPhase,
-    eventStatus,
     sessionStatus,
     activeLeafId,
     isNew,
@@ -374,27 +359,6 @@ export const ChatWindow = memo(function ChatWindow({
     [data?.tree, activeLeafId],
   );
 
-  const sseStatus = useMemo(() => {
-    if (sessionStatus.destroyed) return { label: "会话已销毁", tone: "danger" as const };
-    if (eventStatus === "reconnecting") return { label: "reconnecting", tone: "warn" as const };
-    if (sessionStatus.readonly || eventStatus === "readonly") {
-      return { label: "readonly", tone: "muted" as const };
-    }
-    if (eventStatus === "connecting") return { label: "connecting", tone: "muted" as const };
-    if (eventStatus === "connected") return { label: "connected", tone: "success" as const };
-    if (sessionStatus.exists) return { label: "idle", tone: "muted" as const };
-    return null;
-  }, [eventStatus, sessionStatus.destroyed, sessionStatus.readonly, sessionStatus.exists]);
-  const sseStatusKey = sseStatus ? `${sseStatus.label}|${sseStatus.tone}` : "null";
-  const lastReportedSseStatusKey = useRef<string | null>(null);
-
-  // Push SSE status upward to AppShell top bar
-  useEffect(() => {
-    if (lastReportedSseStatusKey.current === sseStatusKey) return;
-    lastReportedSseStatusKey.current = sseStatusKey;
-    onSseStatusChange?.(sseStatus);
-  }, [sseStatus, sseStatusKey, onSseStatusChange]);
-
   // ── Native scroll controller (replaces Virtuoso) ──
   const {
     containerRef: scrollContainerRef,
@@ -539,23 +503,6 @@ export const ChatWindow = memo(function ChatWindow({
     return { items, lastAssistantIdx };
   }, [messages, entryIds, streamState.isStreaming, streamState.streamingMessage]);
 
-  // Pre-compute turn dividers: elapsed time before each user message (except first)
-  const turnDividers = useMemo(() => {
-    const dividers = new Map<number, string>(); // itemIndex → elapsed string
-    let prevTs: number | undefined;
-    for (let i = 0; i < renderedMessages.items.length; i++) {
-      const { msg } = renderedMessages.items[i];
-      if (msg.role === "user" && msg.timestamp) {
-        if (prevTs !== undefined) {
-          const elapsed = (msg.timestamp - prevTs) / 1000;
-          dividers.set(i, formatTurnElapsed(elapsed));
-        }
-        prevTs = msg.timestamp;
-      }
-    }
-    return dividers;
-  }, [renderedMessages]);
-
   const userMessageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [activeUserAnchorId, setActiveUserAnchorId] = useState<string | null>(null);
   const [showUserAnchorPanel, setShowUserAnchorPanel] = useState(false);
@@ -670,15 +617,6 @@ export const ChatWindow = memo(function ChatWindow({
       homeDir={homeDir}
       onCwdSelect={onCwdSelect}
       toolPreset={toolPreset}
-      agentStatus={
-        sessionStatus.destroyed
-          ? "会话已销毁"
-          : sessionStatus.isCompacting
-            ? "Compacting..."
-            : agentRunning
-              ? phaseLabel(agentPhase)
-              : undefined
-      }
     />
   );
 
@@ -892,7 +830,6 @@ export const ChatWindow = memo(function ChatWindow({
                       !streamState.isStreaming;
                     const messageAnchorId = entryId ?? `message-${originalIndex}`;
                     const isUserMessage = msg.role === "user";
-                    const turnElapsed = turnDividers.get(idx);
 
                     return (
                       <div
@@ -907,44 +844,6 @@ export const ChatWindow = memo(function ChatWindow({
                         }
                         className="relative mx-auto max-w-[1280px] px-6 max-md:px-4"
                       >
-                        {/* Turn divider — before user messages (except first) */}
-                        {isUserMessage && turnElapsed && (
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 10,
-                              marginBottom: 10,
-                              paddingTop: 4,
-                            }}
-                          >
-                            <div
-                              style={{
-                                flex: 1,
-                                height: 1,
-                                background: "var(--border)",
-                              }}
-                            />
-                            <span
-                              style={{
-                                fontFamily: "var(--font-mono)",
-                                fontSize: 11,
-                                color: "var(--text-dim)",
-                                whiteSpace: "nowrap",
-                                flexShrink: 0,
-                              }}
-                            >
-                              {turnElapsed}
-                            </span>
-                            <div
-                              style={{
-                                flex: 1,
-                                height: 1,
-                                background: "var(--border)",
-                              }}
-                            />
-                          </div>
-                        )}
                         <MessageView
                           message={msg}
                           isStreaming={itemStreaming}

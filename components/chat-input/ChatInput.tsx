@@ -48,7 +48,6 @@ interface Props {
   homeDir?: string;
   onCwdSelect?: (cwd: string) => void;
   toolPreset?: "none" | "default" | "full";
-  agentStatus?: string;
 }
 
 export interface ChatInputHandle {
@@ -60,6 +59,15 @@ export interface ChatInputHandle {
 const WHITESPACE_RE = /\s+/g;
 
 const THINKING_LEVELS = ["auto", "off", "minimal", "low", "medium", "high", "xhigh"] as const;
+const THINKING_LEVEL_COLORS: Record<(typeof THINKING_LEVELS)[number], string> = {
+  auto: "color-mix(in srgb, var(--accent) 18%, var(--bg-hover))",
+  off: "color-mix(in srgb, var(--accent) 30%, var(--bg-hover))",
+  minimal: "color-mix(in srgb, var(--accent) 38%, var(--bg-hover))",
+  low: "color-mix(in srgb, var(--accent) 46%, var(--bg-hover))",
+  medium: "color-mix(in srgb, var(--accent) 56%, var(--bg-hover))",
+  high: "color-mix(in srgb, var(--accent) 72%, var(--bg-hover))",
+  xhigh: "var(--accent)",
+};
 
 function getCommandSourceLabel(source: SlashCommandItem["source"]): string {
   if (source === "extension") return "EXT";
@@ -111,7 +119,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
     homeDir = "",
     onCwdSelect,
     toolPreset = "default",
-    agentStatus,
   }: Props,
   ref,
 ) {
@@ -127,7 +134,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
   };
   const [value, setValue] = useState("");
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
-  const [thinkingDropdownOpen, setThinkingDropdownOpen] = useState(false);
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [showCommands, setShowCommands] = useState(false);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
@@ -146,7 +152,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const modelDropdownPanelRef = useRef<HTMLDivElement>(null);
-  const thinkingDropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isComposingRef = useRef(false);
   const commandDropdownRef = useRef<HTMLDivElement>(null);
@@ -616,8 +621,32 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
     const mapped = thinkingLevelMap[lvl];
     return mapped != null ? mapped : lvl;
   })();
+  const availableThinkingOptions = THINKING_LEVELS.filter((level) => {
+    if (!availableThinkingLevels || level === "auto") return true;
+    return availableThinkingLevels.includes(level);
+  });
+  const currentThinkingIndex = Math.max(
+    0,
+    availableThinkingOptions.indexOf(thinkingLevel ?? "auto"),
+  );
+  const currentThinkingProgress =
+    availableThinkingOptions.length === 1
+      ? 1
+      : currentThinkingIndex / (availableThinkingOptions.length - 1);
+  const currentThinkingColor = THINKING_LEVEL_COLORS[thinkingLevel ?? "auto"];
+  const currentThinkingIsMax = thinkingLevel === "xhigh";
+  const selectThinkingFromPointer = (clientX: number, element: HTMLDivElement) => {
+    const rect = element.getBoundingClientRect();
+    const trackInset = 9;
+    const ratio = Math.max(
+      0,
+      Math.min(1, (clientX - rect.left - trackInset) / (rect.width - trackInset * 2)),
+    );
+    const index = Math.round(ratio * (availableThinkingOptions.length - 1));
+    const level = availableThinkingOptions[index];
+    if (level && level !== (thinkingLevel ?? "auto")) onThinkingLevelChange?.(level);
+  };
 
-  const showStatusLine = !!agentStatus;
   const selectedCommand = commandFiltered[selectedCommandIndex] ?? commandFiltered[0] ?? null;
   const selectedCommandDescription = selectedCommand
     ? normalizeCommandDescription(selectedCommand.description)
@@ -641,9 +670,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
         !modelDropdownPanelRef.current.contains(e.target as Node)
       ) {
         setModelDropdownOpen(false);
-      }
-      if (thinkingDropdownRef.current && !thinkingDropdownRef.current.contains(e.target as Node)) {
-        setThinkingDropdownOpen(false);
       }
       if (commandDropdownRef.current && !commandDropdownRef.current.contains(e.target as Node)) {
         setShowCommands(false);
@@ -781,60 +807,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                 </button>
               </div>
             ))}
-          </div>
-        )}
-
-        {/* Agent status line */}
-        {showStatusLine && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              marginBottom: 8,
-              minHeight: 20,
-              fontSize: 12,
-              color: "var(--text-dim)",
-              fontFamily: "var(--font-mono)",
-              overflow: "hidden",
-            }}
-          >
-            {agentStatus && (
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  minWidth: 0,
-                  color: "var(--text-muted)",
-                  animation: "codex-status-enter 160ms ease-out both",
-                }}
-              >
-                <span
-                  aria-hidden
-                  style={{
-                    width: 5,
-                    height: 5,
-                    borderRadius: "50%",
-                    flexShrink: 0,
-                    background: "currentColor",
-                    boxShadow: "0 0 0 0 color-mix(in oklab, currentColor, transparent 45%)",
-                    animation: "codex-status-dot 1.25s ease-in-out infinite",
-                  }}
-                />
-                <span
-                  style={{
-                    minWidth: 0,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    animation: "codex-status-breathe 1.8s ease-in-out infinite",
-                  }}
-                >
-                  {agentStatus}
-                </span>
-              </span>
-            )}
           </div>
         )}
 
@@ -1734,6 +1706,164 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                           </div>
                         </div>
                       )}
+                      {onThinkingLevelChange && (
+                        <div
+                          style={{
+                            padding: "8px 10px 9px",
+                            borderBottom: "1px solid var(--border)",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: 8,
+                            }}
+                          >
+                            <div style={{ minWidth: 0 }}>
+                              <div
+                                style={{
+                                  color: "var(--text)",
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  textTransform: "capitalize",
+                                }}
+                              >
+                                {currentThinkingLabel}
+                              </div>
+                              <div
+                                style={{
+                                  marginTop: 1,
+                                  overflow: "hidden",
+                                  color: "var(--text-dim)",
+                                  fontSize: 10,
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {THINKING_LEVEL_DESC[thinkingLevel ?? "auto"]}
+                              </div>
+                            </div>
+                            <svg
+                              className={
+                                currentThinkingIsMax ? "thinking-level-max-icon" : undefined
+                              }
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke={currentThinkingColor}
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              aria-hidden="true"
+                              style={{ flexShrink: 0 }}
+                            >
+                              <path d="m13 2-9 12h8l-1 8 9-12h-8l1-8z" />
+                            </svg>
+                          </div>
+                          <div
+                            role="radiogroup"
+                            aria-label="Thinking level"
+                            onPointerDown={(event) => {
+                              event.currentTarget.setPointerCapture(event.pointerId);
+                              selectThinkingFromPointer(event.clientX, event.currentTarget);
+                            }}
+                            onPointerMove={(event) => {
+                              if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                                selectThinkingFromPointer(event.clientX, event.currentTarget);
+                              }
+                            }}
+                            style={{
+                              position: "relative",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              height: 26,
+                              marginTop: 7,
+                              padding: "0 9px",
+                              border: "1px solid var(--border)",
+                              borderRadius: 9999,
+                              background: "var(--bg-hover)",
+                              overflow: "hidden",
+                              touchAction: "none",
+                              cursor: "grab",
+                            }}
+                          >
+                            <div
+                              className={
+                                currentThinkingIsMax ? "thinking-level-max-fill" : undefined
+                              }
+                              aria-hidden="true"
+                              style={{
+                                position: "absolute",
+                                inset: 0,
+                                width: `calc(${currentThinkingProgress * 100}% + ${
+                                  18 - currentThinkingProgress * 18
+                                }px)`,
+                                background: currentThinkingColor,
+                                borderRadius: 9999,
+                                transition:
+                                  "width var(--motion-base) var(--ease-standard), background var(--motion-base)",
+                              }}
+                            />
+                            {availableThinkingOptions.map((level, index) => {
+                              const isActive = (thinkingLevel ?? "auto") === level;
+                              return (
+                                <button
+                                  key={level}
+                                  type="button"
+                                  role="radio"
+                                  aria-checked={isActive}
+                                  aria-label={`${level}: ${THINKING_LEVEL_DESC[level]}`}
+                                  title={`${level}: ${THINKING_LEVEL_DESC[level]}`}
+                                  onClick={(event) => {
+                                    if (event.detail === 0 && !isActive) {
+                                      onThinkingLevelChange(level);
+                                    }
+                                  }}
+                                  style={{
+                                    position: "relative",
+                                    zIndex: 1,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    width: 18,
+                                    height: "100%",
+                                    flexShrink: 0,
+                                    padding: 0,
+                                    background: "transparent",
+                                    border: "none",
+                                    cursor: "inherit",
+                                  }}
+                                >
+                                  <span
+                                    className={
+                                      isActive && level === "xhigh"
+                                        ? "thinking-level-max-thumb"
+                                        : undefined
+                                    }
+                                    style={{
+                                      width: isActive ? 18 : 4,
+                                      height: isActive ? 18 : 4,
+                                      borderRadius: "50%",
+                                      background: isActive
+                                        ? "var(--text)"
+                                        : index <= currentThinkingIndex
+                                          ? "color-mix(in srgb, var(--text) 52%, transparent)"
+                                          : "var(--text-dim)",
+                                      boxShadow: isActive ? "0 1px 5px rgba(0,0,0,0.32)" : "none",
+                                      transition:
+                                        "width var(--motion-fast), height var(--motion-fast), background var(--motion-fast)",
+                                    }}
+                                  />
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                       {modelsByProvider.map((group, gi) => (
                         <div key={group.provider}>
                           {modelsByProvider.length > 1 && (
@@ -1811,159 +1941,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                   )}
                 </div>
               )}
-              {!isStreaming && onThinkingLevelChange && (
-                <div ref={thinkingDropdownRef} style={{ position: "relative" }}>
-                  <button
-                    onClick={() => !isStreaming && setThinkingDropdownOpen((v) => !v)}
-                    disabled={isStreaming}
-                    title={`Thinking: ${currentThinkingLabel}`}
-                    aria-label="Thinking level"
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: 28,
-                      height: 28,
-                      padding: 0,
-                      background: thinkingDropdownOpen
-                        ? "color-mix(in srgb, var(--text-muted) 14%, transparent)"
-                        : "none",
-                      border: "none",
-                      borderRadius: 9999,
-                      color: "var(--text-muted)",
-                      cursor: isStreaming ? "not-allowed" : "pointer",
-                      fontSize: 12,
-                      opacity: isStreaming ? 0.5 : 1,
-                      transition: "background 0.12s, color 0.12s",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (isStreaming) return;
-                      e.currentTarget.style.background =
-                        "color-mix(in srgb, var(--text-muted) 14%, transparent)";
-                      e.currentTarget.style.color = "var(--text)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = thinkingDropdownOpen
-                        ? "color-mix(in srgb, var(--text-muted) 14%, transparent)"
-                        : "none";
-                      e.currentTarget.style.color = "var(--text-muted)";
-                    }}
-                  >
-                    <svg
-                      width="15"
-                      height="15"
-                      viewBox="-2.5 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      style={{ flexShrink: 0 }}
-                    >
-                      <path d="M9.5 2A5.5 5.5 0 0 0 4 7.5c0 1.7.78 3.21 2 4.21V14a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-2.29c1.22-1 2-2.51 2-4.21A5.5 5.5 0 0 0 9.5 2z" />
-                      <line x1="7" y1="18" x2="12" y2="18" />
-                      <line x1="8" y1="21" x2="11" y2="21" />
-                    </svg>
-                  </button>
-                  {thinkingDropdownOpen && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        bottom: "calc(100% + 6px)",
-                        right: 0,
-                        zIndex: 100,
-                        background: "var(--bg)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "var(--radius-sm)",
-                        boxShadow: "0 -4px 16px rgba(0,0,0,0.30)",
-                        overflow: "hidden",
-                        minWidth: 180,
-                      }}
-                    >
-                      {THINKING_LEVELS.filter((lvl) => {
-                        if (!availableThinkingLevels) return true;
-                        if (lvl === "auto") return true;
-                        return availableThinkingLevels.includes(lvl);
-                      }).map((lvl) => {
-                        const isActive = (thinkingLevel ?? "auto") === lvl;
-                        const desc = THINKING_LEVEL_DESC[lvl];
-                        const mappedVal =
-                          lvl !== "auto" && thinkingLevelMap ? thinkingLevelMap[lvl] : undefined;
-                        const displayLabel =
-                          mappedVal != null && mappedVal !== lvl ? mappedVal : lvl;
-                        const showOriginal = mappedVal != null && mappedVal !== lvl;
-                        return (
-                          <button
-                            key={lvl}
-                            onClick={() => {
-                              setThinkingDropdownOpen(false);
-                              if (!isActive) onThinkingLevelChange(lvl);
-                            }}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                              width: "100%",
-                              padding: "7px 12px",
-                              background: isActive ? "var(--bg-selected)" : "none",
-                              border: "none",
-                              color: isActive ? "var(--text)" : "var(--text-muted)",
-                              cursor: "pointer",
-                              fontSize: 12,
-                              textAlign: "left",
-                              fontWeight: isActive ? 600 : 400,
-                              whiteSpace: "nowrap",
-                            }}
-                            onMouseEnter={(e) => {
-                              if (!isActive) e.currentTarget.style.background = "var(--bg-hover)";
-                            }}
-                            onMouseLeave={(e) => {
-                              if (!isActive) e.currentTarget.style.background = "none";
-                            }}
-                          >
-                            {isActive ? (
-                              <svg
-                                width="10"
-                                height="10"
-                                viewBox="0 0 10 10"
-                                fill="none"
-                                stroke="var(--accent)"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                style={{ flexShrink: 0 }}
-                              >
-                                <polyline points="1.5 5 4 7.5 8.5 2.5" />
-                              </svg>
-                            ) : (
-                              <span style={{ width: 10, flexShrink: 0 }} />
-                            )}
-                            <span style={{ flex: 1 }}>
-                              {displayLabel}
-                              {showOriginal && (
-                                <span
-                                  style={{
-                                    fontSize: 12,
-                                    color: "var(--text-dim)",
-                                    fontFamily: "var(--font-mono)",
-                                    marginLeft: 5,
-                                  }}
-                                >
-                                  ({lvl})
-                                </span>
-                              )}
-                            </span>
-                            <span style={{ fontSize: 12, color: "var(--text-dim)", marginLeft: 8 }}>
-                              {desc}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
               {isStreaming ? (
                 <button
                   onClick={onAbort}

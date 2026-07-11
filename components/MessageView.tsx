@@ -1351,7 +1351,7 @@ function ThinkingBlock({
           border: "none",
           color: "var(--text-dim)",
           cursor: "pointer",
-          fontSize: 15,
+          fontSize: 14,
           lineHeight: "24px",
           fontFamily: "inherit",
         }}
@@ -1447,7 +1447,7 @@ function ToolCallBlock({
           border: "none",
           color: "var(--text-muted)",
           cursor: "pointer",
-          fontSize: 15,
+          fontSize: 14,
           fontFamily: "inherit",
           textAlign: "left",
           minWidth: 0,
