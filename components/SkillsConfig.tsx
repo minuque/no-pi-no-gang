@@ -180,33 +180,36 @@ function AddSkillPanel({ cwd, onInstalled }: { cwd: string; onInstalled: () => v
     inputRef.current?.focus();
   }, []);
 
-  const search = useCallback(async (q: string) => {
-    if (!q.trim()) return;
-    setSearching(true);
-    setSearchError(null);
-    setResults([]);
-    try {
-      const res = await fetch("/api/skills/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q.trim() }),
-      });
-      const d = (await res.json()) as {
-        results?: SkillSearchResult[];
-        error?: string;
-      };
-      if (d.error) {
-        setSearchError(d.error);
-        return;
+  const search = useCallback(
+    async (q: string) => {
+      if (!q.trim()) return;
+      setSearching(true);
+      setSearchError(null);
+      setResults([]);
+      try {
+        const res = await fetch("/api/skills/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: q.trim() }),
+        });
+        const d = (await res.json()) as {
+          results?: SkillSearchResult[];
+          error?: string;
+        };
+        if (d.error) {
+          setSearchError(d.error);
+          return;
+        }
+        setResults(d.results ?? []);
+        if ((d.results ?? []).length === 0) setSearchError(tAdd("noSkillsFound"));
+      } catch (e) {
+        setSearchError(String(e));
+      } finally {
+        setSearching(false);
       }
-      setResults(d.results ?? []);
-      if ((d.results ?? []).length === 0) setSearchError(tAdd("noSkillsFound"));
-    } catch (e) {
-      setSearchError(String(e));
-    } finally {
-      setSearching(false);
-    }
-  }, []);
+    },
+    [tAdd],
+  );
 
   const install = useCallback(
     async (pkg: string) => {

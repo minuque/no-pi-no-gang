@@ -33,6 +33,7 @@ function SsrFallback() {
       }}
     >
       {/* Large logo acts as LCP element — loaded from HTML, no JS needed */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- intentional SSR-only loading state */}
       <img
         src="/pi-logo-on-dark.svg"
         alt={t("ssrLoadingAlt")}

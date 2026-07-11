@@ -476,7 +476,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   useEffect(() => {
     if (!onBranchDataChange) return;
     onBranchDataChange(data?.tree ?? [], activeLeafId, handleLeafChange, agentRunning);
-  }, [data?.tree, activeLeafId, handleLeafChange, onBranchDataChange]);
+  }, [data?.tree, activeLeafId, handleLeafChange, onBranchDataChange, agentRunning]);
 
   // Compact error auto-dismiss
   useEffect(() => {

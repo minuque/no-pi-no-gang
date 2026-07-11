@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: Pi Agent — YouTube Dark
- description: >
+description: >
   YouTube 网页端深色设计语言：深黑底 #0f0f0f、大圆角 8–18px、Roboto 字体、
   卡片阴影与 hover 抬升。Accent 保留原项目蓝色 #007acc。
 colors:

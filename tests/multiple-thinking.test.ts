@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  agentEventReducer,
-  initialAgentEventState,
-} from "../lib/agent-event-reducer";
+import { agentEventReducer, initialAgentEventState } from "../lib/agent-event-reducer";
 import type { AgentEvent } from "../lib/agent-event-reducer";
 import type { AssistantMessage } from "../lib/types";
 
@@ -41,13 +38,42 @@ describe("multiple thinking blocks", () => {
     // Normal streaming: message_start → message_update (new block) → message_end
     const events: { event: AgentEvent; eventAt: string }[] = [
       // t0: first thinking block appears
-      { event: { type: "message_start", message: assistantMsg([thinkingBlock("step 1")]) }, eventAt: T0 },
+      {
+        event: { type: "message_start", message: assistantMsg([thinkingBlock("step 1")]) },
+        eventAt: T0,
+      },
       // t1: second thinking block appears
-      { event: { type: "message_update", message: assistantMsg([thinkingBlock("step 1"), thinkingBlock("step 2")]) }, eventAt: T1 },
+      {
+        event: {
+          type: "message_update",
+          message: assistantMsg([thinkingBlock("step 1"), thinkingBlock("step 2")]),
+        },
+        eventAt: T1,
+      },
       // t3: text block appears
-      { event: { type: "message_update", message: assistantMsg([thinkingBlock("step 1"), thinkingBlock("step 2"), textBlock("answer")]) }, eventAt: T2 },
+      {
+        event: {
+          type: "message_update",
+          message: assistantMsg([
+            thinkingBlock("step 1"),
+            thinkingBlock("step 2"),
+            textBlock("answer"),
+          ]),
+        },
+        eventAt: T2,
+      },
       // t6: message complete
-      { event: { type: "message_end", message: assistantMsg([thinkingBlock("step 1"), thinkingBlock("step 2"), textBlock("answer")]) }, eventAt: T3 },
+      {
+        event: {
+          type: "message_end",
+          message: assistantMsg([
+            thinkingBlock("step 1"),
+            thinkingBlock("step 2"),
+            textBlock("answer"),
+          ]),
+        },
+        eventAt: T3,
+      },
     ];
 
     let state = initialAgentEventState();
@@ -69,9 +95,35 @@ describe("multiple thinking blocks", () => {
     // Both thinking blocks arrive together in the same message_start event.
     // The reducer distributes the time window proportionally among them.
     const events: { event: AgentEvent; eventAt: string }[] = [
-      { event: { type: "message_start", message: assistantMsg([thinkingBlock("step 1"), thinkingBlock("step 2")]) }, eventAt: T0 },
-      { event: { type: "message_update", message: assistantMsg([thinkingBlock("step 1"), thinkingBlock("step 2"), textBlock("answer")]) }, eventAt: T2 },
-      { event: { type: "message_end", message: assistantMsg([thinkingBlock("step 1"), thinkingBlock("step 2"), textBlock("answer")]) }, eventAt: T3 },
+      {
+        event: {
+          type: "message_start",
+          message: assistantMsg([thinkingBlock("step 1"), thinkingBlock("step 2")]),
+        },
+        eventAt: T0,
+      },
+      {
+        event: {
+          type: "message_update",
+          message: assistantMsg([
+            thinkingBlock("step 1"),
+            thinkingBlock("step 2"),
+            textBlock("answer"),
+          ]),
+        },
+        eventAt: T2,
+      },
+      {
+        event: {
+          type: "message_end",
+          message: assistantMsg([
+            thinkingBlock("step 1"),
+            thinkingBlock("step 2"),
+            textBlock("answer"),
+          ]),
+        },
+        eventAt: T3,
+      },
     ];
 
     let state = initialAgentEventState();
@@ -93,8 +145,20 @@ describe("multiple thinking blocks", () => {
 
   it("single thinking block with adjacent text in same event gets correct duration", () => {
     const events: { event: AgentEvent; eventAt: string }[] = [
-      { event: { type: "message_start", message: assistantMsg([thinkingBlock("reasoning"), textBlock("answer")]) }, eventAt: T0 },
-      { event: { type: "message_end", message: assistantMsg([thinkingBlock("reasoning"), textBlock("answer")]) }, eventAt: T2 },
+      {
+        event: {
+          type: "message_start",
+          message: assistantMsg([thinkingBlock("reasoning"), textBlock("answer")]),
+        },
+        eventAt: T0,
+      },
+      {
+        event: {
+          type: "message_end",
+          message: assistantMsg([thinkingBlock("reasoning"), textBlock("answer")]),
+        },
+        eventAt: T2,
+      },
     ];
 
     let state = initialAgentEventState();
@@ -111,9 +175,37 @@ describe("multiple thinking blocks", () => {
 
   it("three consecutive thinking blocks share their time window evenly", () => {
     const events: { event: AgentEvent; eventAt: string }[] = [
-      { event: { type: "message_start", message: assistantMsg([thinkingBlock("a"), thinkingBlock("b"), thinkingBlock("c")]) }, eventAt: T0 },
-      { event: { type: "message_update", message: assistantMsg([thinkingBlock("a"), thinkingBlock("b"), thinkingBlock("c"), textBlock("answer")]) }, eventAt: T2 },
-      { event: { type: "message_end", message: assistantMsg([thinkingBlock("a"), thinkingBlock("b"), thinkingBlock("c"), textBlock("answer")]) }, eventAt: T3 },
+      {
+        event: {
+          type: "message_start",
+          message: assistantMsg([thinkingBlock("a"), thinkingBlock("b"), thinkingBlock("c")]),
+        },
+        eventAt: T0,
+      },
+      {
+        event: {
+          type: "message_update",
+          message: assistantMsg([
+            thinkingBlock("a"),
+            thinkingBlock("b"),
+            thinkingBlock("c"),
+            textBlock("answer"),
+          ]),
+        },
+        eventAt: T2,
+      },
+      {
+        event: {
+          type: "message_end",
+          message: assistantMsg([
+            thinkingBlock("a"),
+            thinkingBlock("b"),
+            thinkingBlock("c"),
+            textBlock("answer"),
+          ]),
+        },
+        eventAt: T3,
+      },
     ];
 
     let state = initialAgentEventState();
@@ -122,7 +214,7 @@ describe("multiple thinking blocks", () => {
     }
 
     const finalMsg = state.messages[0] as AssistantMessage;
-    const blocks = finalMsg.content.map(b => (b as { type: string; _duration?: number }));
+    const blocks = finalMsg.content.map((b) => b as { type: string; _duration?: number });
 
     // Run of 3 at T0, next block at T2 (3s window)
     // perBlockMs = 3000/3 = 1000ms → round(1) = 1

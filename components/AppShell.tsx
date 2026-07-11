@@ -164,7 +164,7 @@ export function AppShell() {
   useEffect(() => {
     const name = effectiveCwd ? effectiveCwd.split(/[/\\]/).filter(Boolean).pop() : null;
     document.title = name ?? t("documentTitle");
-  }, [effectiveCwd]);
+  }, [effectiveCwd, t]);
 
   useEffect(() => {
     fetch("/api/home")

@@ -53,6 +53,7 @@ interface Props {
   onToolPresetChange?: (preset: "none" | "default" | "full") => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- retained for phase status UI
 function phaseLabel(phase: AgentPhase): string {
   if (phase?.kind === "running_skill") {
     return `Running skill: ${phase.skill}...`;
@@ -206,7 +207,9 @@ export const ChatWindow = memo(function ChatWindow({
     forkingEntryId,
     displayModel: displayModelValue,
     sessionStats,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- retained for phase status UI
     agentPhase,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- retained for session status UI
     sessionStatus,
     activeLeafId,
     isNew,
@@ -425,6 +428,7 @@ export const ChatWindow = memo(function ChatWindow({
       }
     }
     return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- preserve existing branch invalidation
   }, [messages, entryIds, activePathIds, activeLeafId, activeBranch]);
 
   const renderedMessages = useMemo(() => {
@@ -735,6 +739,7 @@ export const ChatWindow = memo(function ChatWindow({
                   lineHeight: 1.4,
                 }}
               >
+                {/* eslint-disable-next-line @next/next/no-img-element -- theme-specific static logo */}
                 <img
                   src={isDark ? "/pi-logo-on-dark.svg" : "/pi-logo-on-light.svg"}
                   alt="No Pi No Gang"

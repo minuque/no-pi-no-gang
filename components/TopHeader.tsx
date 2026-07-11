@@ -133,6 +133,7 @@ export function TopHeader({
           <IconMenu size={20} />
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element -- fixed local SVG logo */}
           <img
             src="/pi-logo-on-dark.svg"
             alt={t("appLogoAlt")}

@@ -129,6 +129,7 @@ export function FilePreviewContent({ filePath }: FilePreviewContentProps) {
           backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
         }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element -- previews arbitrary local blob URLs */}
         <img
           src={src}
           alt={filePath}

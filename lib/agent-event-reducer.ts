@@ -111,8 +111,8 @@ function updateStreamingBlockTimings(
  */
 function distributeSameStartDurations(
   runFrom: number,
-  runTo: number,        // exclusive end — blocks [runFrom, runTo) share start time
-  nextStart: number | undefined,  // the following block's start, or undefined
+  runTo: number, // exclusive end — blocks [runFrom, runTo) share start time
+  nextStart: number | undefined, // the following block's start, or undefined
   startTimes: Map<number, number>,
   durations: Map<number, number>,
   eventAtMs: number,
@@ -148,7 +148,10 @@ function finalizeStreamingBlockDurations(
 
   let i = 0;
   while (i < contentLength) {
-    if (!startTimes.has(i)) { i++; continue; }
+    if (!startTimes.has(i)) {
+      i++;
+      continue;
+    }
     const t = startTimes.get(i)!;
     let j = i + 1;
     while (j < contentLength && startTimes.get(j) === t) j++;
