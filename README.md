@@ -60,8 +60,10 @@ npm run start
 
 | Command | Description |
 | --- | --- |
-| `npm run dev` | Start the development server through the watchdog |
-| `npm run dev:raw` | Start Next dev directly on port 7777 |
+| `npm run dev` | Start Next dev with webpack on port 7777 |
+| `npm run dev:turbo` | Try the faster Turbopack development server |
+| `npm run dev:debug` | Start server-side debugging on port 9229 |
+| `npm run dev:profile` | Capture CPU profiles under `.next/cpu-profiles/` |
 | `npm run dev:light` | Start a lower-memory dev mode on port 7777 |
 | `npm run build` | Build for production and generate the external modules manifest |
 | `npm run start` | Start the production server on port 7777 |
@@ -126,7 +128,7 @@ lib/types/            Message, session, and RPC types
 docs/                 Architecture diagrams and supplementary docs
 bin/                  npm CLI entry
 public/               Static assets
-scripts/              Dev watchdog and build helper scripts
+scripts/              Build helper scripts
 tests/                Vitest tests
 ```
 

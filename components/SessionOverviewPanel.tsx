@@ -64,7 +64,6 @@ function fmtShortDate(iso: string): string {
 
 /** Section header — sentence case, subtly larger, with optional count badge. */
 function SectionLabel({ label, count }: { label: string; count?: number }) {
-  const t = useTranslations("SessionOverviewPanel");
   return (
     <div
       style={{
@@ -275,7 +274,6 @@ function ContextBar({
 
 /** Inline stat cell for token grid. */
 function StatCell({ label, value }: { label: string; value: string }) {
-  const t = useTranslations("SessionOverviewPanel");
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
       <span

@@ -29,7 +29,6 @@ interface Props {
   agentRunning?: boolean;
   streamBlockStart?: number;
   toolResults?: Map<string, ToolResultMessage>;
-  modelNames?: Record<string, string>;
   entryId?: string;
   onFork?: (entryId: string) => void;
   forking?: boolean;
@@ -162,13 +161,6 @@ function getToolStateColor(state: ToolCallState): string {
   return "var(--text-dim)";
 }
 
-function getToolStateLabel(state: ToolCallState): string {
-  if (state === "error") return "error";
-  if (state === "done") return "done";
-  if (state === "running") return "running";
-  return "pending";
-}
-
 function ToolStateDot({ state }: { state: ToolCallState }) {
   const color = getToolStateColor(state);
   return (
@@ -209,8 +201,8 @@ function BlockLine({
     <div
       style={{
         position: "relative",
-        paddingLeft: 20,
-        paddingBottom: isLast ? 0 : 10,
+        paddingLeft: 28,
+        paddingBottom: isLast ? 0 : 18,
         ...(isStreaming ? { animation: "block-enter 0.35s ease both" } : {}),
       }}
     >
@@ -219,13 +211,13 @@ function BlockLine({
         aria-hidden
         style={{
           position: "absolute",
-          left: 3,
-          top: 10,
+          left: 2,
+          top: 7,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          width: 9,
-          height: 9,
+          width: 11,
+          height: 11,
           background: "var(--bg)",
           borderRadius: "50%",
         }}
@@ -243,7 +235,6 @@ export function MessageView({
   agentRunning,
   streamBlockStart,
   toolResults,
-  modelNames,
   entryId,
   onFork,
   forking,
@@ -277,7 +268,6 @@ export function MessageView({
         agentRunning={agentRunning}
         streamBlockStart={streamBlockStart}
         toolResults={toolResults}
-        modelNames={modelNames}
         entryId={entryId}
         onNavigate={onNavigate}
         showTimestamp={showTimestamp}
@@ -779,7 +769,6 @@ function AssistantMessageView({
   agentRunning,
   streamBlockStart,
   toolResults,
-  modelNames,
   entryId,
   onNavigate,
   showTimestamp,
@@ -791,7 +780,6 @@ function AssistantMessageView({
   agentRunning?: boolean;
   streamBlockStart?: number;
   toolResults?: Map<string, ToolResultMessage>;
-  modelNames?: Record<string, string>;
   entryId?: string;
   onNavigate?: (entryId: string) => void;
   showTimestamp?: boolean;
@@ -799,7 +787,7 @@ function AssistantMessageView({
   onRetry?: () => void;
 }) {
   const time = showTimestamp ? formatTime(message.timestamp) : null;
-  const blocks = message.content ?? [];
+  const blocks = useMemo(() => message.content ?? [], [message.content]);
   const [hovered, setHovered] = useState(false);
   const [actionsFocused, setActionsFocused] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -906,7 +894,6 @@ function AssistantMessageView({
           toolResults={toolResults}
           isStreaming={isStreaming}
           streamBlockStart={streamBlockStart}
-          entryId={entryId}
           streamingDurations={streamingDurations}
           thinkingDurationFromFile={thinkingDurationFromFile}
           toolCallDurations={toolCallDurations}
@@ -1090,7 +1077,6 @@ function BlockView({
   toolResults,
   isStreaming,
   streamBlockStart,
-  entryId,
   streamingDurations,
   thinkingDurationFromFile,
   toolCallDurations,
@@ -1099,7 +1085,6 @@ function BlockView({
   toolResults?: Map<string, ToolResultMessage>;
   isStreaming?: boolean;
   streamBlockStart?: number;
-  entryId?: string;
   streamingDurations: Map<number, number>;
   thinkingDurationFromFile?: number;
   toolCallDurations: Map<string, number>;
@@ -1125,7 +1110,6 @@ function BlockView({
           result={result}
           isRunning={toolBlockIsStreaming && !result}
           duration={toolCallDurations?.get(toolBlock.toolCallId)}
-          entryId={entryId}
           isLast={isLast}
         />,
       );
@@ -1178,8 +1162,8 @@ function BlockView({
         style={{
           position: "absolute",
           left: 7,
-          top: 14.5,
-          bottom: 14.5,
+          top: 12,
+          bottom: 12,
           width: 1,
           background: LINE_COLOR,
         }}
@@ -1361,14 +1345,14 @@ function ThinkingBlock({
         style={{
           display: "inline-flex",
           alignItems: "center",
-          gap: 6,
+          gap: 8,
           padding: 0,
           background: "none",
           border: "none",
           color: "var(--text-dim)",
           cursor: "pointer",
-          fontSize: 13,
-          lineHeight: "20px",
+          fontSize: 15,
+          lineHeight: "24px",
           fontFamily: "inherit",
         }}
       >
@@ -1414,18 +1398,16 @@ function ToolCallBlock({
   result,
   isRunning,
   duration,
-  entryId,
   isLast,
 }: {
   block: ToolCallContent;
   result?: ToolResultMessage;
   isRunning?: boolean;
   duration?: number;
-  entryId?: string;
   isLast?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const inputStr = JSON.stringify(block.input, null, 2);
+  const inputStr = getToolInputText(block);
   const resultText = getToolResultText(result);
   const resultIsEmpty = isEmptyToolResult(resultText);
   const isError = result?.isError ?? false;
@@ -1453,18 +1435,19 @@ function ToolCallBlock({
     <BlockLine isLast={isLast} isStreaming={isRunning} dot={<ToolStateDot state={state} />}>
       <button
         onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 10,
+          gap: 12,
           width: "100%",
           minHeight: 26,
-          padding: "3px 0",
+          padding: "1px 0 5px",
           background: "none",
           border: "none",
           color: "var(--text-muted)",
           cursor: "pointer",
-          fontSize: 13,
+          fontSize: 15,
           fontFamily: "inherit",
           textAlign: "left",
           minWidth: 0,
@@ -1490,10 +1473,10 @@ function ToolCallBlock({
         >
           <span
             style={{
-              color: getToolStateColor(state),
+              color: "var(--text)",
               fontWeight: 600,
               flexShrink: 0,
-              maxWidth: 120,
+              maxWidth: 160,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
@@ -1505,7 +1488,7 @@ function ToolCallBlock({
           {getToolDescription(block) && (
             <span
               style={{
-                color: "var(--text-dim)",
+                color: "var(--text-muted)",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
@@ -1567,11 +1550,11 @@ function ToolCallBlock({
       {expanded && (
         <div
           style={{
-            margin: "4px 0 8px 20px",
+            margin: "0 0 2px",
             border: "1px solid var(--border)",
-            borderRadius: "var(--radius-sm)",
+            borderRadius: "var(--radius-md)",
             overflow: "hidden",
-            background: "var(--bg-subtle)",
+            background: "var(--ui-code-bg)",
             animation: "fade-in-up 160ms ease",
           }}
         >
@@ -1630,6 +1613,16 @@ function getToolDescription(block: ToolCallContent): string {
   return "";
 }
 
+function getToolInputText(block: ToolCallContent): string {
+  const input = block.input;
+  if (block.toolName?.toLowerCase() === "bash") {
+    const command = input.command;
+    if (typeof command === "string") return command;
+  }
+
+  return JSON.stringify(input, null, 2);
+}
+
 function InOutSection({
   label,
   children,
@@ -1645,17 +1638,21 @@ function InOutSection({
     <div
       style={{
         borderTop: first ? "none" : "1px solid var(--border)",
-        padding: "10px 12px 12px",
+        display: "grid",
+        gridTemplateColumns: "44px minmax(0, 1fr)",
+        alignItems: "start",
+        gap: 14,
+        padding: "12px 14px",
         background: isError ? "color-mix(in oklab, var(--danger), transparent 94%)" : "transparent",
       }}
     >
       <div
         style={{
           color: "var(--text-dim)",
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 600,
           letterSpacing: 0.6,
-          marginBottom: 6,
+          paddingTop: 1,
           fontFamily: "var(--font-mono)",
           textTransform: "uppercase",
         }}
@@ -1674,7 +1671,7 @@ function CodePre({ children }: { children: ReactNode }) {
         margin: 0,
         padding: 0,
         color: "var(--text-muted)",
-        fontSize: 13,
+        fontSize: 14,
         lineHeight: 1.55,
         whiteSpace: "pre-wrap",
         wordBreak: "break-all",

@@ -47,7 +47,6 @@ interface Props {
   recentCwds?: string[];
   homeDir?: string;
   onCwdSelect?: (cwd: string) => void;
-  onCwdDefault?: () => void;
   toolPreset?: "none" | "default" | "full";
   agentStatus?: string;
 }
@@ -111,7 +110,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
     recentCwds = [],
     homeDir = "",
     onCwdSelect,
-    onCwdDefault,
     toolPreset = "default",
     agentStatus,
   }: Props,
@@ -496,7 +494,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
     setIsDragOver(true);
   }, []);
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
+  const handleDragLeave = useCallback(() => {
     setIsDragOver(false);
   }, []);
 
@@ -1854,7 +1852,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     <svg
                       width="15"
                       height="15"
-                      viewBox="0 0 24 24"
+                      viewBox="-2.5 0 24 24"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="1.8"

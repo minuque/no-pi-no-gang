@@ -102,12 +102,11 @@ interface FileData {
 
 interface FilePreviewContentProps {
   filePath: string;
-  cwd?: string;
 }
 
 // ── FilePreviewContent ──────────────────────────────────────────────────────
 
-export function FilePreviewContent({ filePath, cwd }: FilePreviewContentProps) {
+export function FilePreviewContent({ filePath }: FilePreviewContentProps) {
   const { isDark } = useTheme();
 
   // ── Image ──

@@ -421,10 +421,10 @@ YouTube 式大圆角：
 - 底部 settings 按钮：40px 高，8px 圆角
 
 ### 消息气泡
-- **用户**: `--surface-raised` 底，无可见边框，右对齐 max-width 82%，圆角 18px，padding 14px 18px，阴影 `0 2px 6px rgba(0,0,0,0.28)`
+- **用户**: `--surface-raised` 底，无可见边框，右对齐 max-width 82%，圆角 18px，padding 10px 14px，阴影 `0 2px 6px rgba(0,0,0,0.28)`
 - **Agent**: 主底色纯文本，左侧 2px `--accent` solid
 - **工具调用**: `--surface` 底，左 accent 条纹
-- **间隔**: 24px
+- **间隔**: 16px
 
 ### 代码块
 - 背景 `#141414`，边框 1px solid `--border`，行号列 `#181818`，左 2px accent stripe，圆角 12px

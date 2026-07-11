@@ -2,8 +2,7 @@
 @import "./theme/tokens-dark.css";
 @import "./theme/tokens-light.css";
 
-/* ═══════════════════════════════════════════════════════════════════════
- * Tailwind v4 @theme — 映射 DESIGN.md token → CSS 变量
+/* Tailwind v4 @theme — 映射 DESIGN.md token → CSS 变量
  *
  * DESIGN.md 是 tokens 的单一数据源 (authoritative source)。
  * 运行时值由 ./theme/tokens-dark.css / tokens-light.css 提供，

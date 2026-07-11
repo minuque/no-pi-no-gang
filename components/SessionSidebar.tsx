@@ -514,89 +514,120 @@ export function SessionSidebar({
         </div>
       </div>
 
-      {/* Session list */}
-      <div style={{ flex: "1 1 auto", overflowY: "auto", overflowX: "hidden", minHeight: 80 }}>
-        {loading && (
-          <div
-            style={{
-              padding: "20px 16px",
-              color: "var(--text-dim)",
-              fontSize: 12,
-              letterSpacing: "0.02em",
-            }}
-          >
-            {t("loadingSessions")}
-          </div>
-        )}
-        {error && (
-          <div style={{ padding: "12px 16px", color: "var(--danger)", fontSize: 12 }}>{error}</div>
-        )}
-        {!loading && !error && allSessions.length === 0 && (
-          <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 12 }}>
-            {t("noSessions")}
-          </div>
-        )}
-
-        {/* Sessions section — flat cards */}
-        {!loading && !error && allSessionsSorted.length > 0 && (
-          <section style={{ padding: "8px 0" }}>
+      {/* Session list + Projects — 60/40 split */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          minHeight: 0,
+        }}
+      >
+        <div
+          style={{
+            flex: "1 1 60%",
+            overflowY: "auto",
+            overflowX: "hidden",
+            minHeight: 80,
+          }}
+        >
+          {loading && (
             <div
               style={{
-                padding: "0 12px 8px",
-                fontSize: 11,
-                fontWeight: 600,
+                padding: "20px 16px",
                 color: "var(--text-dim)",
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
+                fontSize: 12,
+                letterSpacing: "0.02em",
               }}
             >
-              {t("sessions")}
+              {t("loadingSessions")}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 8px" }}>
-              {allSessionsSorted.map((session) => (
-                <SessionCard
-                  key={session.id}
-                  session={session}
-                  selectedSessionId={selectedSessionId}
-                  cwdLabel={session.cwd ? getCwdLabel(session.cwd, t) : undefined}
-                  onSelectSession={onSelectSession}
-                  onRenamed={loadSessions}
-                  onSessionDeleted={(id) => {
-                    onSessionDeleted?.(id);
-                    loadSessions();
-                  }}
-                />
-              ))}
+          )}
+          {error && (
+            <div style={{ padding: "12px 16px", color: "var(--danger)", fontSize: 12 }}>
+              {error}
             </div>
-          </section>
-        )}
+          )}
+          {!loading && !error && allSessions.length === 0 && (
+            <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 12 }}>
+              {t("noSessions")}
+            </div>
+          )}
+
+          {/* Sessions section — flat cards */}
+          {!loading && !error && allSessionsSorted.length > 0 && (
+            <section style={{ padding: "8px 0" }}>
+              <div
+                style={{
+                  padding: "0 12px 8px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--text-dim)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                {t("sessions")}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 8px" }}>
+                {allSessionsSorted.map((session) => (
+                  <SessionCard
+                    key={session.id}
+                    session={session}
+                    selectedSessionId={selectedSessionId}
+                    cwdLabel={session.cwd ? getCwdLabel(session.cwd, t) : undefined}
+                    onSelectSession={onSelectSession}
+                    onRenamed={loadSessions}
+                    onSessionDeleted={(id) => {
+                      onSessionDeleted?.(id);
+                      loadSessions();
+                    }}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
 
         {/* Projects section — collapsible project list */}
         {!loading && !error && cwdGroups.length > 0 && (
-          <section style={{ borderTop: "1px solid var(--border)", marginTop: 4 }}>
-            <div
-              style={{
-                padding: "12px 12px 6px",
-                fontSize: 11,
-                fontWeight: 600,
-                color: "var(--text-dim)",
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-              }}
-            >
-              {t("projects")}
-            </div>
-            <div style={{ padding: "0 8px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
-              {cwdGroups.map((group) => (
-                <CwdGroupSection
-                  key={group.cwd}
-                  group={group}
-                  isActive={group.cwd === selCwd}
-                  onSelectCwd={handleSelectCwd}
-                />
-              ))}
-            </div>
-          </section>
+          <div
+            style={{
+              flex: "1 1 40%",
+              overflowY: "auto",
+              overflowX: "hidden",
+              minHeight: 80,
+              borderTop: "1px solid var(--border)",
+            }}
+          >
+            <section>
+              <div
+                style={{
+                  padding: "12px 12px 6px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--text-dim)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                {t("projects")}
+              </div>
+              <div
+                style={{ padding: "0 8px 8px", display: "flex", flexDirection: "column", gap: 4 }}
+              >
+                {cwdGroups.map((group) => (
+                  <CwdGroupSection
+                    key={group.cwd}
+                    group={group}
+                    isActive={group.cwd === selCwd}
+                    onSelectCwd={handleSelectCwd}
+                  />
+                ))}
+              </div>
+            </section>
+          </div>
         )}
       </div>
       {searchOpen && (

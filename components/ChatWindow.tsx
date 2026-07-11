@@ -53,7 +53,6 @@ interface Props {
   recentCwds?: string[];
   homeDir?: string;
   onCwdSelect?: (cwd: string) => void;
-  onCwdDefault?: () => void;
   onToolPresetChange?: (preset: "none" | "default" | "full") => void;
 }
 
@@ -198,7 +197,6 @@ export const ChatWindow = memo(function ChatWindow({
   recentCwds,
   homeDir = "",
   onCwdSelect,
-  onCwdDefault,
   onToolPresetChange,
 }: Props) {
   const {
@@ -231,7 +229,6 @@ export const ChatWindow = memo(function ChatWindow({
     handleAbort,
     handleFork,
     handleNavigate,
-    handleLeafChange,
     handleModelChange,
     handleThinkingLevelChange,
   } = useAgentSession({
@@ -672,7 +669,6 @@ export const ChatWindow = memo(function ChatWindow({
       recentCwds={recentCwds}
       homeDir={homeDir}
       onCwdSelect={onCwdSelect}
-      onCwdDefault={onCwdDefault}
       toolPreset={toolPreset}
       agentStatus={
         sessionStatus.destroyed
@@ -778,7 +774,7 @@ export const ChatWindow = memo(function ChatWindow({
           className="flex flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-8"
           style={{ animation: "fade-in-up 0.4s ease both" }}
         >
-          <div className="w-full max-w-[1148px]">
+          <div className="w-full max-w-[918px]">
             <div
               className="mb-3"
               style={{
@@ -894,10 +890,6 @@ export const ChatWindow = memo(function ChatWindow({
                       msg.role === "assistant" &&
                       idx === renderedMessages.lastAssistantIdx &&
                       !streamState.isStreaming;
-                    const isCurrentPath = entryId
-                      ? activePathIds.size === 0 || activePathIds.has(entryId)
-                      : false;
-
                     const messageAnchorId = entryId ?? `message-${originalIndex}`;
                     const isUserMessage = msg.role === "user";
                     const turnElapsed = turnDividers.get(idx);
@@ -913,7 +905,7 @@ export const ChatWindow = memo(function ChatWindow({
                               }
                             : undefined
                         }
-                        className="relative mx-auto max-w-[1148px] px-4"
+                        className="relative mx-auto max-w-[1280px] px-6 max-md:px-4"
                       >
                         {/* Turn divider — before user messages (except first) */}
                         {isUserMessage && turnElapsed && (
@@ -959,7 +951,6 @@ export const ChatWindow = memo(function ChatWindow({
                           agentRunning={agentRunning}
                           streamBlockStart={streamBlockStart}
                           toolResults={toolResultsMap}
-                          modelNames={modelNames}
                           entryId={entryId}
                           onFork={
                             agentRunning || isNew || (idx === 0 && msg.role === "user")

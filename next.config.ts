@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 import { readFileSync } from "fs";
-import path, { join } from "path";
+import { join } from "path";
 
 const { version } = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf8")) as {
   version: string;
@@ -19,16 +19,9 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@earendil-works/pi-coding-agent", "@earendil-works/pi-ai"],
   allowedDevOrigins: ["127.0.0.1", "localhost", "192.168.*.*"],
   experimental: {
-    turbopackFileSystemCacheForDev: true,
     viewTransition: true,
   },
-  turbopack: {
-    root: path.resolve(),
-    // root: process.cwd(),
-  },
-  // turbopack.root omitted — __dirname in git worktrees on Windows causes
-  // EPERM scandir into protected directories from glob expansion. Next.js
-  // autodetects the project root correctly without it.
+  turbopack: {},
   env: {
     NEXT_PUBLIC_APP_VERSION: version,
     NEXT_PUBLIC_PI_VERSION: piVersion,
@@ -56,7 +49,7 @@ const nextConfig: NextConfig = {
       ...(isDev ? [] : (["upgrade-insecure-requests"] as string[])),
     ].join("; ");
 
-    return [
+    const headers = [
       {
         source: "/:path*",
         headers: [
@@ -73,19 +66,14 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains; preload",
           },
-          ...(isDev ? [{ key: "Clear-Site-Data", value: '"cache"' }] : []),
         ],
       },
-      // 构建资源 (_next/static) —— 一年强缓存
-      {
-        source: "/_next/static/(.*)",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: isDev ? "no-store, must-revalidate" : "public, max-age=31536000, immutable",
-          },
-        ],
-      },
+    ];
+
+    if (isDev) return headers;
+
+    return [
+      ...headers,
       // favicon —— 1 天缓存
       {
         source: "/favicon.ico",
@@ -100,8 +88,8 @@ const nextConfig: NextConfig = {
   },
   compress: true,
 
-  webpack: (config) => {
-    if (config.optimization?.splitChunks) {
+  webpack: (config, { dev }) => {
+    if (!dev && config.optimization?.splitChunks) {
       config.optimization.splitChunks.cacheGroups = {
         ...config.optimization.splitChunks.cacheGroups,
         // Heavy markdown/code libs shared by multiple dynamic chunks

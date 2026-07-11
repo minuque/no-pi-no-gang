@@ -111,8 +111,6 @@ interface DirEntry {
   modified: string;
 }
 
-type PreviewKind = "file" | "dir" | "loading" | "error";
-
 async function fetchDirEntries(dirPath: string): Promise<DirEntry[]> {
   const encoded = encodeFilePathForApi(dirPath);
   const res = await fetch(`/api/files/${encoded}?type=list`);
@@ -365,8 +363,6 @@ export default function WorkspacePreview({ filePath, cwd, onNavigateToDir, onOpe
 
   // Determine preview type for the header area
   const isDirectoryPreview = isDir === true;
-  const fileName = getFileName(filePath);
-
   return (
     <div
       style={{
@@ -460,7 +456,7 @@ export default function WorkspacePreview({ filePath, cwd, onNavigateToDir, onOpe
         ) : errorKind ? (
           <PreviewError kind={errorKind} filePath={filePath} cwd={cwd} />
         ) : (
-          <FilePreviewContent filePath={filePath} cwd={cwd} />
+          <FilePreviewContent filePath={filePath} />
         )}
       </div>
     </div>

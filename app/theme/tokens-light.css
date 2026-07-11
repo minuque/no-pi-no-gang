@@ -157,9 +157,9 @@ html.light {
   --ui-msg-user-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
   --ui-msg-user-hover-bg: #dbdbdb;
   --ui-msg-agent-accent-line: 2px solid var(--accent);
-  --ui-msg-padding: 14px 18px;
+  --ui-msg-padding: 10px 14px;
   --ui-msg-radius: 18px;
-  --ui-msg-gap: 24px;
+  --ui-msg-gap: 16px;
   --ui-msg-max-width: 82%;
 
   /* --- 代码块 --- */

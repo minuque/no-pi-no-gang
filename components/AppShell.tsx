@@ -11,13 +11,14 @@ import "nprogress/nprogress.css";
 import { Toaster } from "sonner";
 
 import { useResizablePanel } from "@/hooks/useResizablePanel";
+import { useTheme } from "@/hooks/useTheme";
 import { useViewTransition } from "@/hooks/useViewTransition";
 import type { EntryTreeNode, SessionInfo } from "@/lib/types";
 
 import { BranchNavigator } from "./BranchNavigator";
+import { LocaleSwitcher } from "./LocaleSwitcher";
 import { SessionOverviewPanel } from "./SessionOverviewPanel";
 import { SessionSidebar } from "./SessionSidebar";
-import { TopHeader } from "./TopHeader";
 import type { ChatInputHandle } from "./chat-input";
 
 const ChatWindow = dynamic(() => import("./ChatWindow").then((m) => m.ChatWindow), { ssr: false });
@@ -34,6 +35,7 @@ export function AppShell() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const vtTransition = useViewTransition();
+  const { isDark, toggleTheme } = useTheme();
   const [selectedSession, setSelectedSession] = useState<SessionInfo | null>(null);
   const selectedSessionRef = useRef(selectedSession);
   selectedSessionRef.current = selectedSession;
@@ -190,10 +192,6 @@ export function AppShell() {
     }
   }, []);
 
-  const handleAtMention = useCallback((relativePath: string) => {
-    chatInputRef.current?.insertText("`" + relativePath + "`");
-  }, []);
-
   const [initialSessionId] = useState<string | null>(() => searchParams.get("session"));
   const [activeCwd, setActiveCwd] = useState<string | null>(null);
   const [homeDir, setHomeDir] = useState("");
@@ -229,9 +227,7 @@ export function AppShell() {
   }, [allSessions]);
 
   // True once the initial ?session= URL param has been resolved (or confirmed absent)
-  const [initialSessionRestored, setInitialSessionRestored] = useState<boolean>(
-    () => !searchParams.get("session"),
-  );
+  const [, setInitialSessionRestored] = useState<boolean>(() => !searchParams.get("session"));
 
   // Handle cwd from query param (from directory picker navigation)
   useEffect(() => {
@@ -273,16 +269,6 @@ export function AppShell() {
     },
     [router],
   );
-
-  const handleCwdDefault = useCallback(async () => {
-    try {
-      const res = await fetch("/api/default-cwd", { method: "POST" });
-      const data = (await res.json()) as { cwd?: string };
-      if (data.cwd) handleCwdChange(data.cwd);
-    } catch {
-      /* ignore */
-    }
-  }, [handleCwdChange]);
 
   const handleSelectSession = useCallback(
     (session: SessionInfo, isRestore = false) => {
@@ -385,6 +371,56 @@ export function AppShell() {
 
   const sidebarContent = (
     <>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "12px 12px 8px",
+          flexShrink: 0,
+        }}
+      >
+        <img
+          src="/pi-logo-on-dark.svg"
+          alt={t("appLogoAlt")}
+          width={24}
+          height={24}
+          style={{ flexShrink: 0, opacity: 0.9 }}
+        />
+        <span
+          style={{
+            flex: 1,
+            fontSize: 17,
+            fontWeight: 700,
+            letterSpacing: "-0.02em",
+            color: "var(--text)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {t("appTitle")}
+        </span>
+        <button
+          onClick={() => vtTransition(() => setSidebarOpen(false))}
+          className="tb-btn"
+          style={{ color: "var(--text-muted)", width: 32, height: 32 }}
+          aria-label={t("hideSidebar")}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
       <SessionSidebar
         selectedSessionId={selectedSession?.id ?? null}
         onSelectSession={handleSelectSession}
@@ -398,6 +434,76 @@ export function AppShell() {
         onSessionsChange={setAllSessions}
       />
       <div style={{ padding: "8px", flexShrink: 0, position: "relative" }}>
+        <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+          <LocaleSwitcher />
+          <button
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              toggleTheme({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+            }}
+            className="tb-btn"
+            style={{ color: "var(--text-muted)", width: 32, height: 32 }}
+          >
+            {isDark ? (
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+            ) : (
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            )}
+          </button>
+          <button
+            onClick={() => vtTransition(() => setWorkspacePanelOpen((v) => !v))}
+            className="tb-btn"
+            style={{
+              color: workspacePanelOpen ? "var(--text)" : "var(--text-muted)",
+              width: 32,
+              height: 32,
+            }}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <line x1="15" y1="3" x2="15" y2="21" />
+            </svg>
+          </button>
+        </div>
         <button
           onClick={() => setSettingsMenuOpen((v) => !v)}
           title={t("settings")}
@@ -579,81 +685,53 @@ export function AppShell() {
       <div
         style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}
       >
-        <TopHeader
-          sidebarOpen={sidebarOpen}
-          onToggleSidebar={() => vtTransition(() => setSidebarOpen((v) => !v))}
-          workspacePanelOpen={workspacePanelOpen}
-          onToggleWorkspacePanel={() => vtTransition(() => setWorkspacePanelOpen((v) => !v))}
-          centerRef={headerCenterRef}
-        >
-          {showChat && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                minWidth: 0,
-                overflow: "hidden",
-              }}
+        {/* Floating hamburger when sidebar is closed */}
+        {!sidebarOpen && (
+          <button
+            onClick={() => vtTransition(() => setSidebarOpen(true))}
+            style={{
+              position: "fixed",
+              top: 8,
+              left: 8,
+              zIndex: "var(--z-sidebar)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 40,
+              height: 40,
+              padding: 0,
+              borderRadius: "50%",
+              background: "var(--bg-panel)",
+              border: "1px solid var(--border)",
+              cursor: "pointer",
+              color: "var(--text-muted)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+              transition: "background 0.12s, color 0.12s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--bg-hover)";
+              e.currentTarget.style.color = "var(--text)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "var(--bg-panel)";
+              e.currentTarget.style.color = "var(--text-muted)";
+            }}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
             >
-              {sseStatus && (
-                <div
-                  title={`SSE: ${sseStatus.label}`}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 5,
-                    height: 22,
-                    padding: "0 8px",
-                    borderRadius: 4,
-                    background:
-                      sseStatus.tone === "danger"
-                        ? "color-mix(in oklab, var(--danger), transparent 88%)"
-                        : sseStatus.tone === "warn"
-                          ? "color-mix(in oklab, var(--warn), transparent 88%)"
-                          : sseStatus.tone === "success"
-                            ? "color-mix(in oklab, var(--success), transparent 90%)"
-                            : "var(--bg-hover)",
-                    border: "1px solid var(--border)",
-                    color:
-                      sseStatus.tone === "danger"
-                        ? "var(--danger)"
-                        : sseStatus.tone === "warn"
-                          ? "var(--warn)"
-                          : sseStatus.tone === "success"
-                            ? "var(--success)"
-                            : "var(--text-muted)",
-                    fontSize: 11.5,
-                    fontFamily: "var(--font-mono)",
-                    lineHeight: "22px",
-                    flexShrink: 0,
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 5,
-                      height: 5,
-                      borderRadius: "50%",
-                      background: "currentColor",
-                      flexShrink: 0,
-                    }}
-                  />
-                  {sseStatus.label}
-                </div>
-              )}
-              <BranchNavigator
-                tree={branchTree}
-                activeLeafId={branchActiveLeafId}
-                onLeafChange={(id) => branchOnLeafChangeRef.current?.(id)}
-                inline
-                containerRef={headerCenterRef}
-                hasSession={!!selectedSession}
-                disabled={branchDisabled}
-                hideWhenEmpty
-              />
-            </div>
-          )}
-        </TopHeader>
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+        )}
 
         <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
           {/* Mobile overlay backdrop */}
@@ -677,6 +755,7 @@ export function AppShell() {
             className={`sidebar-container${sidebarOpen ? " sidebar-open" : " sidebar-closed"}`}
             style={{
               background: "var(--bg-panel)",
+              borderRight: "1px solid var(--border)",
               display: "flex",
               flexDirection: "column",
               flexShrink: 0,
@@ -714,7 +793,81 @@ export function AppShell() {
               background: "var(--bg)",
             }}
           >
-            {/* Chat content — always render ChatWindow; it handles empty/loading/error states internally */}
+            {/* Top bar: SSE status + BranchNavigator */}
+            {showChat && (
+              <div
+                ref={headerCenterRef}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "0 12px",
+                  height: 36,
+                  flexShrink: 0,
+                  borderBottom: "1px solid var(--border)",
+                  background: "var(--bg)",
+                  overflow: "hidden",
+                  minWidth: 0,
+                }}
+              >
+                {sseStatus && (
+                  <div
+                    title={`SSE: ${sseStatus.label}`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      height: 22,
+                      padding: "0 8px",
+                      borderRadius: 4,
+                      background:
+                        sseStatus.tone === "danger"
+                          ? "color-mix(in oklab, var(--danger), transparent 88%)"
+                          : sseStatus.tone === "warn"
+                            ? "color-mix(in oklab, var(--warn), transparent 88%)"
+                            : sseStatus.tone === "success"
+                              ? "color-mix(in oklab, var(--success), transparent 90%)"
+                              : "var(--bg-hover)",
+                      border: "1px solid var(--border)",
+                      color:
+                        sseStatus.tone === "danger"
+                          ? "var(--danger)"
+                          : sseStatus.tone === "warn"
+                            ? "var(--warn)"
+                            : sseStatus.tone === "success"
+                              ? "var(--success)"
+                              : "var(--text-muted)",
+                      fontSize: 11.5,
+                      fontFamily: "var(--font-mono)",
+                      lineHeight: "22px",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: "currentColor",
+                        flexShrink: 0,
+                      }}
+                    />
+                    {sseStatus.label}
+                  </div>
+                )}
+                <BranchNavigator
+                  tree={branchTree}
+                  activeLeafId={branchActiveLeafId}
+                  onLeafChange={(id) => branchOnLeafChangeRef.current?.(id)}
+                  inline
+                  containerRef={headerCenterRef}
+                  hasSession={!!selectedSession}
+                  disabled={branchDisabled}
+                  hideWhenEmpty
+                />
+              </div>
+            )}
+            {/* Chat content */}
             <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
               <ChatWindow
                 key={sessionKey}
@@ -734,7 +887,6 @@ export function AppShell() {
                 recentCwds={recentCwds}
                 homeDir={homeDir}
                 onCwdSelect={handleCwdChange}
-                onCwdDefault={handleCwdDefault}
                 onToolPresetChange={handleToolPresetChange}
               />
             </div>
