@@ -23,7 +23,11 @@
     "build": "next build --turbopack",
     "postbuild": "node scripts/generate-external-modules-manifest.js",
     "start": "next start -p 7788",
+    "start:test": "next start -p 30142 --hostname 127.0.0.1",
     "test": "vitest run",
+    "playwright:install": "playwright install chromium",
+    "test:e2e": "playwright test",
+    "pack:smoke": "node scripts/pack-smoke.js",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -31,7 +35,8 @@
     "lint:design": "node node_modules/@google/design.md/dist/index.js lint DESIGN.md",
     "verify:fast": "npm run typecheck && npm run lint && npm run test",
     "verify": "npm run format:check && npm run lint:design && npm run verify:fast && npm run build",
-    "release": "npm version patch --no-git-tag-version && npm run build && npm publish --access public",
+    "verify:release": "npm run verify && npm run playwright:install && npm run test:e2e && npm run pack:smoke",
+    "release": "npm run verify:release && npm version patch --no-git-tag-version && npm run build && npm publish --access public",
     "prepare": "husky"
   },
   "dependencies": {
@@ -54,6 +59,7 @@
   },
   "devDependencies": {
     "@google/design.md": "^0.3.0",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.2.2",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@types/node": "^25",

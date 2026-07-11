@@ -117,7 +117,7 @@ const url = `http://${hostname ?? "localhost"}:${port}`;
 child.stdout.on("data", (chunk) => {
   const text = chunk.toString();
   process.stdout.write(text);
-  if (!browserOpened && text.includes("Ready")) {
+  if (!browserOpened && process.env.NO_OPEN !== "1" && text.includes("Ready")) {
     browserOpened = true;
     const isWindows = process.platform === "win32";
     const isMac = process.platform === "darwin";
@@ -125,5 +125,11 @@ child.stdout.on("data", (chunk) => {
     spawn(openCmd, [url], { shell: isWindows, stdio: "ignore", detached: true }).unref();
   }
 });
+
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.on(signal, () => {
+    if (!child.killed) child.kill(signal);
+  });
+}
 
 child.on("exit", (code) => process.exit(code ?? 0));
