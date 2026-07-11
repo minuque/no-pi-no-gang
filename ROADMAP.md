@@ -1,6 +1,6 @@
 # ROADMAP — no-pi-no-gang
 
-> 项目目标：可观测、完全透明、轻量、开发者友好且可扩展的 **Pi Agent Workbench**。
+> 项目目标：可观测、透明、轻量、可扩展的开发者友好且可扩展的 **Pi Agent Workbench**。
 > 基于 [Pi SDK](https://pi.dev/docs/latest/sdk)。
 >
 > 本文件记录产品策略、交互设计、架构、可视化和治理方向的所有已决策项。
@@ -14,13 +14,13 @@
 
 ### 核心场景
 
-| 场景 | 优先级 |
-|------|--------|
-| 查看历史 session / branch / fork / clone | P0 |
-| 随时观察 agent 当前在做什么 | P0 |
-| 控制危险操作（审批） | P0 |
-| 恢复中断运行 | P1 |
-| 审计 agent 做过什么 | P0 |
+| 场景                                     | 优先级 |
+| ---------------------------------------- | ------ |
+| 查看历史 session / branch / fork / clone | P0     |
+| 随时观察 agent 当前在做什么              | P0     |
+| 控制危险操作（审批）                     | P0     |
+| 恢复中断运行                             | P1     |
+| 审计 agent 做过什么                      | P0     |
 
 ### 不做
 
@@ -32,12 +32,12 @@
 
 ### Session 实体模型（基于 Pi SDK 语义）
 
-| 概念 | SDK 映射 | 用户操作 | UI 标识 |
-|------|----------|----------|---------|
-| Session | 一个 JSONL 文件 | 点击/新建 | ChatList 中的一行 |
-| Branch | `sessionManager.branch(entryId)` — 原地移叶指针 | 翻到旧消息，"从这里继续" | 同一 Session 内 breadcrumb |
-| Fork | `runtime.fork(entryId)` — 新 session 文件 | "以此为基础开新会话" | tag badge `← fork of ...` |
-| Clone | `createBranchedSession()` / `fork(position:"at")` | Fork 的变体 | tag badge（同 Fork） |
+| 概念    | SDK 映射                                              | 用户操作                 | UI 标识                     |
+| ------- | ----------------------------------------------------- | ------------------------ | --------------------------- |
+| Session | 一个 JSONL 文件                                       | 点击/新建                | ChatList 中的一行           |
+| Branch  | `sessionManager.branch(entryId)` — 原地移叶指针    | 翻到旧消息，"从这里继续" | 同一 Session 内 breadcrumb  |
+| Fork    | `runtime.fork(entryId)` — 新 session 文件          | "以此为基础开新会话"     | tag badge`← fork of ...` |
+| Clone   | `createBranchedSession()` / `fork(position:"at")` | Fork 的变体              | tag badge（同 Fork）        |
 
 - 所有 Branch/Fork/Clone 的溯源关系只通过 tag badge 标识，不做 DAG 图
 - 历史列表：flat session list，不渲染 entry tree
@@ -157,12 +157,12 @@ AgentSessionWrapper (SSE 推 + HTTP API 收)
 
 参考 Claude Code，支持：
 
-| 操作 | 行为 |
-|------|------|
-| Approve once | 放行这一次 |
-| Approve for session | 本会话内同 pattern 不再弹 |
-| Deny | 拒绝，可附理由 |
-| 理由 | 流入 `permissions:decision` 的 `denialReason`，可追溯 |
+| 操作                | 行为                                                     |
+| ------------------- | -------------------------------------------------------- |
+| Approve once        | 放行这一次                                               |
+| Approve for session | 本会话内同 pattern 不再弹                                |
+| Deny                | 拒绝，可附理由                                           |
+| 理由                | 流入`permissions:decision` 的 `denialReason`，可追溯 |
 
 ### 配置
 
@@ -202,36 +202,3 @@ Pi SDK (不 fork, 不修改)
 3. Wrapper 监听 bridge:permission_prompt → 推 SSE
 4. 前端弹 Modal → 审批 → POST API → bridge:permission_decision
 5. `registerToolInputFormatter` 为 write/edit 注册预览
-
----
-
-## 6. Visual Taste：视觉语言
-
-**已定（DESIGN.md）。** VSCode Dark Modern 同源色板：
-
-- 中性灰表面（R=G=B），蓝色单 accent `#007acc`
-- 零光效零渐变，每种状态独立色值
-- 圆角克制（≤6px，消息气泡例外 12px）
-- 过渡 ≤120ms
-- 字重 ≤600
-
-Dark/Light 双主题同步提供，`View Transitions API` 280ms crossfade 切换。
-
-### TODO 提示
-
-- 所有组件使用 CSS token（`--ui-*`），不从零定义新色
-- 新色从 VSCode 原生色板取
-- 交互态（hover/active/focus/disabled）全定义
-
----
-
-## 决策状态快照
-
-| 领域 | 已决 | 暂缓 | 待定 |
-|------|------|------|------|
-| 产品定位 | Session/Branch/Fork 语义、不做 DAG、不做社交 | — | — |
-| 交互 | 三栏布局、双层 ChatList、输入区 slash 补全 | 快捷键 | 审批 Modal 具体视觉稿 |
-| 可观测 | 双通道 SSE、Trace Span 模型、右侧 Overview+Dialog | Inspector↔Chat 联动 | — |
-| 治理 | pi-permission-system、bridge 扩展、Approve Once/ForSession/Deny+理由 | — | UI 规则编辑器 |
-| 架构 | 厚投影层增量建设、不 fork SDK | controller 重构 | 投影层事件类型定义 |
-| 视觉 | VSCode Dark Modern（DESIGN.md） | — | — |
