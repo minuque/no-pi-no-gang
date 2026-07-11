@@ -5,13 +5,12 @@
 ### 每次改动后（快速循环，<10s）
 
 ```
-node_modules/.bin/tsc --noEmit          # 零 error
-node node_modules/next/dist/bin/next lint  # 零 error + warning
+npm run verify:fast  # 类型、Lint（零 warning）、单元测试
 ```
 ### 提交前（最终闸门）
 
 ```
-node node_modules/next/dist/bin/next build  # 生产构建，捕获 dev 模式遗漏的 SSR/动态 import 错误
+npm run verify  # 格式、设计规范、快速检查、Turbopack 生产构建及 postbuild
 ```
 
 ## UI / 设计系统规则
