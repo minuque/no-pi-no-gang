@@ -7,6 +7,7 @@
 ```
 npm run verify:fast  # 类型、Lint（零 warning）、单元测试
 ```
+
 ### 提交前（最终闸门）
 
 ```

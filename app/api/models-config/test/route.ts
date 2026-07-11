@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { type AssistantMessage, completeSimple } from "@earendil-works/pi-ai";
+import { type ProviderResponse } from "@earendil-works/pi-ai";
+import { type AssistantMessage, completeSimple } from "@earendil-works/pi-ai/compat";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { mkdtempSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
@@ -103,7 +104,7 @@ export async function POST(req: Request) {
           maxRetries: 0,
           cacheRetention: "none",
           signal: controller.signal,
-          onResponse: (response) => {
+          onResponse: (response: ProviderResponse) => {
             status = response.status;
           },
         },
