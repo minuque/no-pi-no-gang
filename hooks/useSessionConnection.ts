@@ -20,7 +20,7 @@ export interface SessionData {
   };
 }
 
-export interface TransportAgentState {
+export interface SessionConnectionAgentState {
   running: boolean;
   state?: {
     isStreaming?: boolean;
@@ -38,13 +38,13 @@ export interface TransportAgentState {
   };
 }
 
-export type SessionLoadResult = (SessionData & { agentState?: TransportAgentState }) | null;
+export type SessionLoadResult = (SessionData & { agentState?: SessionConnectionAgentState }) | null;
 
 export interface SessionContextResult {
   context: { messages: AgentMessage[]; entryIds: string[] };
 }
 
-interface UseTransportOptions {
+interface UseSessionConnectionOptions {
   isAgentRunning?: () => boolean;
   onStatusChange?: (status: AgentEventStatus) => void;
   onDestroyed?: () => void;
@@ -55,7 +55,7 @@ export function resolveSessionId(sessionId: string | null): string {
   return sessionId;
 }
 
-export function useTransport(sessionId: string | null, options: UseTransportOptions = {}) {
+export function useSessionConnection(sessionId: string | null, options: UseSessionConnectionOptions = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingError, setLoadingError] = useState<string | null>(null);

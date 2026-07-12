@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ToolEntry } from "@/components/session/ToolPanel";
 import { deriveContextUsage, useAgentState } from "@/hooks/useAgentState";
 import { useModelList } from "@/hooks/useModelList";
+import { type SessionData, useSessionConnection } from "@/hooks/useSessionConnection";
 import { useSessionCreator } from "@/hooks/useSessionCreator";
-import { type SessionData, useTransport } from "@/hooks/useTransport";
 import { agentEventReducer, mergeToolCallMessages } from "@/lib/agent/agent-event-reducer";
 import type { AnyAgentEvent as AgentEvent } from "@/lib/events/event-types";
 import type { AgentMessage } from "@/lib/types";
@@ -105,7 +105,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     connectEvents: connectTransportEvents,
     disconnectEvents,
     sendAgentCommand,
-  } = useTransport(session?.id ?? null, {
+  } = useSessionConnection(session?.id ?? null, {
     isAgentRunning: () => agentRunningRef.current,
     onStatusChange: setEventStatus,
     onDestroyed: () => {

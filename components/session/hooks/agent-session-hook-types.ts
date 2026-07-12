@@ -1,5 +1,5 @@
 import type { AgentPhase } from "@/hooks/useAgentState";
-import type { SessionData } from "@/hooks/useTransport";
+import type { SessionData } from "@/hooks/useSessionConnection";
 import type { AgentEventStatus } from "@/lib/events/event-types";
 import type { EntryTreeNode, SessionInfo } from "@/lib/types";
 

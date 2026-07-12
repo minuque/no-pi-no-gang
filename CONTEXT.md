@@ -64,8 +64,9 @@ _Avoid_: Command（会产生歧义）
 
 ### UI 与通信
 
-**Transport**:
-客户端与 AgentSession 之间的实时通信抽象。SSE 从 `/api/agent/:id/events` 接收实时事件，REST 发送命令和读取会话数据。由 `useTransport` hook 管理。
+**SessionConnection**:
+客户端与 AgentSession 之间的实时通信抽象。SSE 从 `/api/agent/:id/events` 接收实时事件，REST 发送命令和读取会话数据。由 `useSessionConnection` hook 管理。
+_Avoid_: Transport, WebSocket
 
 **AgentEventStatus**:
 UI 与会话 AgentSession 之间的连接状态枚举：`idle`、`connecting`、`connected`、`reconnecting`、`readonly`、`destroyed`。

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveSessionId } from "../../hooks/useTransport";
+import { resolveSessionId } from "../../hooks/useSessionConnection";
 
-describe("useTransport", () => {
+describe("useSessionConnection", () => {
   it("throws before sending when sessionId is null", () => {
     expect(() => resolveSessionId(null)).toThrow("sessionId is required");
   });
