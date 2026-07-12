@@ -11,7 +11,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 
-import { dedupeSlashCommands, getProjectResourceLoaderOptions } from "@/lib/pi-resources";
+import { dedupeSlashCommands, getProjectResourceLoaderOptions } from "@/lib/pi/pi-resources";
 
 export const dynamic = "force-dynamic";
 

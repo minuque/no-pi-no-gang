@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeToolCalls } from "../lib/normalize";
+import { normalizeToolCalls } from "../lib/agent/normalize";
 import type { AgentMessage } from "../lib/types";
 
 describe("normalizeToolCalls", () => {

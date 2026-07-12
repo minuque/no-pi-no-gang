@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { AgentSessionLike } from "../lib/pi-types";
-import { AgentSessionWrapper } from "../lib/session-bridge";
+import type { AgentSessionLike } from "../lib/pi/pi-types";
+import { AgentSessionWrapper } from "../lib/session/session-bridge";
 
 const { mockCommandHandler } = vi.hoisted(() => ({
   mockCommandHandler: vi.fn(),

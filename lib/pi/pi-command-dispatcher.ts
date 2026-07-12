@@ -1,9 +1,9 @@
 import { DEFAULT_COMPACTION_SETTINGS, SessionManager, findCutPoint } from "@earendil-works/pi-coding-agent";
 
-import { dedupeSlashCommands } from "../pi-resources";
-import type { AgentSessionLike, SlashCommandInfoLike, ToolInfo } from "../pi-types";
-import { cacheSessionPath } from "../session-reader";
+import { cacheSessionPath } from "../session/session-reader";
 import type { AgentSessionState } from "../types";
+import { dedupeSlashCommands } from "./pi-resources";
+import type { AgentSessionLike, SlashCommandInfoLike, ToolInfo } from "./pi-types";
 
 type CommandImage = { type: "image"; data: string; mimeType: string };
 

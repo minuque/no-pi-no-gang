@@ -6,8 +6,8 @@ import "@fontsource/jetbrains-mono/500.css";
 import "@fontsource/jetbrains-mono/600.css";
 import "@fontsource/jetbrains-mono/700.css";
 
-import Agentator from "@/components/Agentator";
-import { I18nProvider } from "@/components/I18nProvider";
+import Agentator from "@/components/shared/Agentator";
+import { I18nProvider } from "@/components/shared/I18nProvider";
 
 import "./globals.css";
 

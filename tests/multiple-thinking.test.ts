@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { agentEventReducer, initialAgentEventState } from "../lib/agent-event-reducer";
-import type { AgentEvent } from "../lib/agent-event-reducer";
+import { agentEventReducer, initialAgentEventState } from "../lib/agent/agent-event-reducer";
+import type { AgentEvent } from "../lib/agent/agent-event-reducer";
 import type { AssistantMessage } from "../lib/types";
 
 // ---------------------------------------------------------------------------

@@ -10,11 +10,15 @@ import {
   useState,
 } from "react";
 
-import { type AgentEventState, type AgentPhase, initialAgentEventState } from "../lib/agent-event-reducer";
+import {
+  type AgentEventState,
+  type AgentPhase,
+  initialAgentEventState,
+} from "../lib/agent/agent-event-reducer";
 import type { AgentEventStatus, StreamAction } from "../lib/events/event-types";
 import type { AgentMessage, AssistantMessage } from "../lib/types";
 
-export type { AgentPhase } from "../lib/agent-event-reducer";
+export type { AgentPhase } from "../lib/agent/agent-event-reducer";
 export type { StreamAction } from "../lib/events/event-types";
 
 export interface StreamingState {

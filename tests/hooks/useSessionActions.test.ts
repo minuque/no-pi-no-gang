@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveSlashCommand } from "../../hooks/useSessionActions";
-import type { SlashCommandItem } from "../../lib/pi-resources";
+import { resolveSlashCommand } from "../../components/session/hooks/useSessionActions";
+import type { SlashCommandItem } from "../../lib/pi/pi-resources";
 
 const commands: SlashCommandItem[] = [
   { name: "review", description: "Review code", source: "skill" },

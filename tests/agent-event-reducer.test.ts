@@ -5,8 +5,8 @@ import {
   initialAgentEventState,
   isToolCallOnly,
   mergeToolCallMessages,
-} from "../lib/agent-event-reducer";
-import type { AgentEvent, AgentEventState } from "../lib/agent-event-reducer";
+} from "../lib/agent/agent-event-reducer";
+import type { AgentEvent, AgentEventState } from "../lib/agent/agent-event-reducer";
 import type { AgentMessage, AssistantMessage, ToolCallContent } from "../lib/types";
 
 // ---------------------------------------------------------------------------

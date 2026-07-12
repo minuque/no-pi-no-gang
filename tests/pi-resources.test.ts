@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { dedupeSlashCommands, getProjectResourceLoaderOptions } from "../lib/pi-resources";
+import { dedupeSlashCommands, getProjectResourceLoaderOptions } from "../lib/pi/pi-resources";
 
 const createdRoots: string[] = [];
 

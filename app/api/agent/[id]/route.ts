@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 
-import { getAgentSession, startAgentSession } from "@/lib/session-bridge";
-import { resolveSessionPath } from "@/lib/session-reader";
+import { getAgentSession, startAgentSession } from "@/lib/session/session-bridge";
+import { resolveSessionPath } from "@/lib/session/session-reader";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

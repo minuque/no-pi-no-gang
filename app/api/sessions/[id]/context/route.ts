@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 
-import { buildSessionContext, resolveSessionPath } from "@/lib/session-reader";
+import { buildSessionContext, resolveSessionPath } from "@/lib/session/session-reader";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { existsSync } from "fs";
 
-import { startAgentSession } from "@/lib/session-bridge";
+import { startAgentSession } from "@/lib/session/session-bridge";
 
 export async function POST(req: Request) {
   try {

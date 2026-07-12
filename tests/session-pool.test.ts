@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { AgentSessionLike } from "../lib/pi-types";
-import { AgentSessionWrapper, getRegistry } from "../lib/session-bridge";
-import { SessionPool } from "../lib/session-pool";
+import type { AgentSessionLike } from "../lib/pi/pi-types";
+import { AgentSessionWrapper, getRegistry } from "../lib/session/session-bridge";
+import { SessionPool } from "../lib/session/session-pool";
 
 vi.mock("@earendil-works/pi-coding-agent", () => ({
   createAgentSession: vi.fn(),

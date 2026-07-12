@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { sendAgentCommand as postAgentCommand } from "../lib/agent-client";
+import { sendAgentCommand as postAgentCommand } from "../lib/agent/agent-client";
 import type { AnyAgentEvent as AgentEvent, AgentEventStatus } from "../lib/events/event-types";
 import type { AgentMessage, EntryTreeNode, SessionInfo } from "../lib/types";
 

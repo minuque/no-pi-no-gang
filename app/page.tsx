@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { useTranslations } from "next-intl";
 
-import { AppShell } from "@/components/AppShell";
+import { AppShell } from "@/components/workbench/AppShell";
 
 function SsrFallback() {
   const t = useTranslations("Page");

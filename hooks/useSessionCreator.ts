@@ -46,7 +46,7 @@ async function responseError(res: Response): Promise<string> {
 }
 
 async function resolveToolNames(toolPreset: ToolPreset): Promise<string[]> {
-  const { PRESET_DEFAULT, PRESET_FULL, PRESET_NONE } = await import("../components/ToolPanel");
+  const { PRESET_DEFAULT, PRESET_FULL, PRESET_NONE } = await import("../components/session/ToolPanel");
   if (toolPreset === "none") return PRESET_NONE;
   if (toolPreset === "default") return PRESET_DEFAULT;
   return PRESET_FULL;

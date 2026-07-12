@@ -2,7 +2,13 @@
 
 ## 决策
 
-前端实现按工作台、聊天、会话、工作区和设置功能域组织；原 `components` 与 `hooks` 路径仅保留 re-export 兼容门面。
+前端实现按工作台、聊天、会话、工作区、设置和共享组件 6 个功能域组织，置于 `components/` 目录下：
+
+```
+components/{workbench,chat,session,workspace,settings,shared}/
+```
+
+`hooks/` 目录保持扁平（hook 天然跨域），不再有 re-export 兼容门面。
 
 进程内运行对象统一称为 AgentSession。`RPC` 仅指 Pi SDK 的真实 JSON-RPC 运行模式，不能用于本项目的会话包装器、状态或启动函数。
 

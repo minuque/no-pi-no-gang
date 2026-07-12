@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { mergeSessionNodeState } from "@/lib/session-bridge";
-import { listAllSessions } from "@/lib/session-reader";
+import { mergeSessionNodeState } from "@/lib/session/session-bridge";
+import { listAllSessions } from "@/lib/session/session-reader";
 
 export async function GET() {
   try {

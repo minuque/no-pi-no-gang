@@ -1,7 +1,7 @@
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 
-import { getAgentSession, startAgentSession } from "@/lib/session-bridge";
-import { resolveSessionPath } from "@/lib/session-reader";
+import { getAgentSession, startAgentSession } from "@/lib/session/session-bridge";
+import { resolveSessionPath } from "@/lib/session/session-reader";
 
 export const dynamic = "force-dynamic";
 

@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-import { listAllSessions } from "@/lib/session-reader";
+import { listAllSessions } from "@/lib/session/session-reader";
 
 export const IGNORED_NAMES = new Set([
   "node_modules",

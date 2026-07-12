@@ -1,20 +1,5 @@
 <div align="center">
 
-# no-pi-no-gang
-
-<img src="public/pi-logo.svg" alt="pi logo" width="100" />
-
-**[pi.dev](https://github.com/badlogic/pi-mono) Web UI**
-
-<img src="https://img.shields.io/badge/version-0.0.7-blue" alt="version" />
-<img src="https://img.shields.io/badge/license-MIT-green" alt="license" />
-<img src="https://img.shields.io/badge/Next.js-16-black" alt="Next.js 16" />
-<img src="https://img.shields.io/badge/React-19-149eca" alt="React 19" />
-
-English | [Chinese](README_ZH.md)
-
-</div>
-
 ## Overview
 
 no-pi-no-gang is a local Web UI for [pi.dev](https://github.com/badlogic/pi-mono). It brings session browsing, real-time chat, branch navigation, a file workspace, model configuration, and skill management into one browser-based workbench.
@@ -23,16 +8,16 @@ The app follows pi's `.jsonl` session history and `AgentSession` execution model
 
 ## Features
 
-| Feature | Description |
-| --- | --- |
-| Session browsing | Group local pi sessions by working directory and inspect history, messages, and branch trees |
-| Real-time chat | Stream replies, tool calls, thinking state, and compression state over SSE |
-| Branch operations | Fork sessions, fork from file context, and navigate message branches |
-| File workspace | Browse the active working directory, preview files, and insert file context |
-| Model configuration | Manage providers, models, API keys, and OAuth login from the UI |
-| Skill management | Search, install, and inspect local skill configuration |
-| Run-state recovery | Detect running sessions after refresh and reconnect the event stream |
-| Resizable layout | Dark-first three-column workspace with draggable sidebar and workspace panels |
+| Feature             | Description                                                                                  |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| Session browsing    | Group local pi sessions by working directory and inspect history, messages, and branch trees |
+| Real-time chat      | Stream replies, tool calls, thinking state, and compression state over SSE                   |
+| Branch operations   | Fork sessions, fork from file context, and navigate message branches                         |
+| File workspace      | Browse the active working directory, preview files, and insert file context                  |
+| Model configuration | Manage providers, models, API keys, and OAuth login from the UI                              |
+| Skill management    | Search, install, and inspect local skill configuration                                       |
+| Run-state recovery  | Detect running sessions after refresh and reconnect the event stream                         |
+| Resizable layout    | Dark-first three-column workspace with draggable sidebar and workspace panels                |
 
 ## Quick Start
 
@@ -58,20 +43,20 @@ npm run start
 
 ## Scripts
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Start Next dev with webpack on port 7777 |
-| `npm run dev:turbo` | Try the faster Turbopack development server |
-| `npm run dev:debug` | Start server-side debugging on port 9229 |
-| `npm run dev:profile` | Capture CPU profiles under `.next/cpu-profiles/` |
-| `npm run dev:light` | Start a lower-memory dev mode on port 7777 |
-| `npm run build` | Build for production and generate the external modules manifest |
-| `npm run start` | Start the production server on port 7777 |
-| `npm run typecheck` | Run TypeScript type checking |
-| `npm run lint` | Run ESLint across the repository |
-| `npm run test` | Run Vitest |
-| `npm run format:check` | Check formatting with Prettier |
-| `npm run lint:design` | Validate DESIGN.md |
+| Command                  | Description                                                     |
+| ------------------------ | --------------------------------------------------------------- |
+| `npm run dev`          | Start Next dev with webpack on port 7777                        |
+| `npm run dev:turbo`    | Try the faster Turbopack development server                     |
+| `npm run dev:debug`    | Start server-side debugging on port 9229                        |
+| `npm run dev:profile`  | Capture CPU profiles under`.next/cpu-profiles/`               |
+| `npm run dev:light`    | Start a lower-memory dev mode on port 7777                      |
+| `npm run build`        | Build for production and generate the external modules manifest |
+| `npm run start`        | Start the production server on port 7777                        |
+| `npm run typecheck`    | Run TypeScript type checking                                    |
+| `npm run lint`         | Run ESLint across the repository                                |
+| `npm run test`         | Run Vitest                                                      |
+| `npm run format:check` | Check formatting with Prettier                                  |
+| `npm run lint:design`  | Validate DESIGN.md                                              |
 
 ## Verification
 
@@ -94,8 +79,6 @@ See [AGENTS.md](AGENTS.md) for repository-specific agent workflow and verificati
 
 The browser owns interaction and display state. The Next.js API layer handles local file access, session history reads, command forwarding, and SSE. pi's `AgentSession` performs the actual agent work and keeps writing session history to the local pi data directory.
 
-![Architecture Overview](docs/architecture.svg)
-
 ### Data Directory
 
 ```text
@@ -107,14 +90,14 @@ The browser owns interaction and display state. The Next.js API layer handles lo
 
 ### Core Paths
 
-| Path | Entry | Core module | Output |
-| --- | --- | --- | --- |
-| History read | `GET /api/sessions` | `lib/session-reader.ts` | Session lists, messages, branch context |
-| Command send | `POST /api/agent/*` | `lib/session-bridge.ts`, `lib/pi/pi-command-dispatcher.ts` | Messages, forks, navigation, compression actions |
-| Event stream | `GET /api/agent/[id]/events` | `lib/session-pool.ts`, `AgentSession.subscribe()` | SSE messages, tool calls, run state |
-| Model config | `/api/models*`, `/api/models-config*` | pi model configuration read/write | Providers, models, authentication state |
-| Skill config | `/api/skills*` | Skill search, install, and list APIs | Local skill lists and install results |
-| File reads | `/api/files/[...path]` | Local path validation and file reads | Workspace file content |
+| Path         | Entry                                     | Core module                                                    | Output                                           |
+| ------------ | ----------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------ |
+| History read | `GET /api/sessions`                     | `lib/session-reader.ts`                                      | Session lists, messages, branch context          |
+| Command send | `POST /api/agent/*`                     | `lib/session-bridge.ts`, `lib/pi/pi-command-dispatcher.ts` | Messages, forks, navigation, compression actions |
+| Event stream | `GET /api/agent/[id]/events`            | `lib/session-pool.ts`, `AgentSession.subscribe()`          | SSE messages, tool calls, run state              |
+| Model config | `/api/models*`, `/api/models-config*` | pi model configuration read/write                              | Providers, models, authentication state          |
+| Skill config | `/api/skills*`                          | Skill search, install, and list APIs                           | Local skill lists and install results            |
+| File reads   | `/api/files/[...path]`                  | Local path validation and file reads                           | Workspace file content                           |
 
 ## Project Structure
 

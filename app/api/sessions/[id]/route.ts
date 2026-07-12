@@ -4,14 +4,14 @@ import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from "fs";
 import { join } from "path";
 
-import { getAgentSession, getSessionNodeAgentState } from "@/lib/session-bridge";
+import { getAgentSession, getSessionNodeAgentState } from "@/lib/session/session-bridge";
 import {
   buildSessionContext,
   getSessionMetadata,
   invalidateSessionPathCache,
   listAllSessions,
   resolveSessionPath,
-} from "@/lib/session-reader";
+} from "@/lib/session/session-reader";
 import type { AgentSessionState, SessionEntry, SessionInfo } from "@/lib/types";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
