@@ -92,7 +92,7 @@ export function AddProviderPicker({
           overflow: "hidden",
         }}
       >
-        {/* Search */}
+        {}
         <div
           style={{
             padding: "10px 14px",
@@ -137,7 +137,7 @@ export function AddProviderPicker({
           />
         </div>
 
-        {/* Card grid */}
+        {}
         <div style={{ flex: 1, overflowY: "auto", padding: 14 }}>
           {totalCount === 0 ? (
             <div

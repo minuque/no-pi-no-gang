@@ -53,7 +53,6 @@ async function searchSkillsApi(query: string, limit: number): Promise<SkillSearc
     .sort((a, b) => parseInstallCount(b.installs) - parseInstallCount(a.installs));
 }
 
-// POST /api/skills/search  body: { query: string, limit?: number }
 export async function POST(req: Request) {
   try {
     const { query, limit: rawLimit } = (await req.json()) as { query?: string; limit?: unknown };

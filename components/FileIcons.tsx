@@ -1,5 +1,3 @@
-// Flat monochrome file & folder icons — all use currentColor / var(--text-dim)
-
 interface IconProps {
   size?: number;
 }
@@ -7,8 +5,6 @@ interface IconProps {
 const DIM = "var(--text-dim)";
 const FILE = "color-mix(in srgb, var(--text-dim) 78%, transparent)";
 const FOLDER = "#a8843a";
-
-// ── Folder ────────────────────────────────────────────────────────────────
 
 export function FolderIcon({ size = 14, open = false }: IconProps & { open?: boolean }) {
   if (open) {
@@ -32,8 +28,6 @@ export function FolderIcon({ size = 14, open = false }: IconProps & { open?: boo
   );
 }
 
-// ── Generic file (fallback) ────────────────────────────────────────────────
-
 export function GenericFileIcon({ size = 14 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
@@ -43,11 +37,8 @@ export function GenericFileIcon({ size = 14 }: IconProps) {
   );
 }
 
-// ── File with label text (used for most types) ────────────────────────────
-// Renders the file outline + a short text badge
-
 function LabelFileIcon({ label, size = 14 }: { label: string; size?: number }) {
-  const s = size / 14; // scale factor
+  const s = size / 14;
   return (
     <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
       <path
@@ -74,8 +65,6 @@ function LabelFileIcon({ label, size = 14 }: { label: string; size?: number }) {
     </svg>
   );
 }
-
-// ── Specific icons ────────────────────────────────────────────────────────
 
 export function TypeScriptIcon({ size = 14 }: IconProps) {
   return <LabelFileIcon label="TS" size={size} />;
@@ -105,7 +94,6 @@ export function HtmlIcon({ size = 14 }: IconProps) {
   return <LabelFileIcon label="HTM" size={size} />;
 }
 export function MarkdownIcon({ size = 14 }: IconProps) {
-  // file outline + M↓ symbol
   return (
     <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
       <path
@@ -117,7 +105,6 @@ export function MarkdownIcon({ size = 14 }: IconProps) {
         strokeLinejoin="round"
       />
       <path d="M8.5 1v3h3" stroke={DIM} strokeWidth="0.9" fill="none" strokeLinejoin="round" />
-      {/* M */}
       <path
         d="M3.5 9.5V7l1.5 1.5L6.5 7v2.5"
         stroke={DIM}
@@ -126,7 +113,7 @@ export function MarkdownIcon({ size = 14 }: IconProps) {
         strokeLinejoin="round"
         fill="none"
       />
-      {/* down arrow */}
+      {}
       <path
         d="M8 7v2.5M7 9l1 1.5 1-1.5"
         stroke={DIM}
@@ -145,7 +132,6 @@ export function TomlIcon({ size = 14 }: IconProps) {
   return <LabelFileIcon label="TOM" size={size} />;
 }
 export function ShellIcon({ size = 14 }: IconProps) {
-  // file outline + > prompt
   return (
     <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
       <path
@@ -185,7 +171,6 @@ export function TerraformIcon({ size = 14 }: IconProps) {
   return <LabelFileIcon label="TF" size={size} />;
 }
 export function DockerfileIcon({ size = 14 }: IconProps) {
-  // file outline + container stack
   return (
     <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
       <path
@@ -204,7 +189,6 @@ export function DockerfileIcon({ size = 14 }: IconProps) {
   );
 }
 export function EnvIcon({ size = 14 }: IconProps) {
-  // file outline + key symbol
   return (
     <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
       <path
@@ -222,7 +206,6 @@ export function EnvIcon({ size = 14 }: IconProps) {
   );
 }
 export function GitIcon({ size = 14 }: IconProps) {
-  // file outline + git branch lines
   return (
     <svg width={size} height={size} viewBox="0 0 14 14" fill="none">
       <path
@@ -293,8 +276,6 @@ export function ConfigIcon({ size = 14 }: IconProps) {
     </svg>
   );
 }
-
-// ── Main resolver ─────────────────────────────────────────────────────────
 
 export function getFileIcon(name: string, size = 14): React.ReactNode {
   const lower = name.toLowerCase();

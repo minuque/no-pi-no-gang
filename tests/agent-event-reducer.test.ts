@@ -10,7 +10,7 @@ import type { AgentEvent, AgentEventState } from "../lib/agent-event-reducer";
 import type { AgentMessage, AssistantMessage, ToolCallContent } from "../lib/types";
 
 // ---------------------------------------------------------------------------
-// Helpers
+
 // ---------------------------------------------------------------------------
 
 const NOW = "2026-07-05T12:00:00.000Z";
@@ -34,7 +34,6 @@ function assistantMsg(overrides?: Partial<AssistantMessage>): AssistantMessage {
   };
 }
 
-/** Chain multiple events through the reducer, returning final state. */
 function applyEvents(events: { event: AgentEvent; eventAt?: string }[]): AgentEventState {
   let s = initialAgentEventState();
   for (const { event, eventAt } of events) {
@@ -43,7 +42,6 @@ function applyEvents(events: { event: AgentEvent; eventAt?: string }[]): AgentEv
   return s;
 }
 
-/** SSE-format toolCall block: uses `id`/`name`/`arguments` instead of canonical fields. */
 const sseToolCallBlock = {
   type: "toolCall" as const,
   id: "sse_1",
@@ -52,7 +50,7 @@ const sseToolCallBlock = {
 };
 
 // ---------------------------------------------------------------------------
-// 1. initialAgentEventState
+
 // ---------------------------------------------------------------------------
 describe("initialAgentEventState", () => {
   it("returns correct default values", () => {
@@ -73,7 +71,7 @@ describe("initialAgentEventState", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 2. agent_start
+
 // ---------------------------------------------------------------------------
 describe("agent_start", () => {
   it("sets running flags and waiting_model phase from idle", () => {
@@ -101,7 +99,7 @@ describe("agent_start", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. agent_end
+
 // ---------------------------------------------------------------------------
 describe("agent_end", () => {
   it("resets all running flags and clears phase / retryInfo", () => {
@@ -141,7 +139,7 @@ describe("agent_end", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. message_start / message_update with assistant msg
+
 // ---------------------------------------------------------------------------
 describe("message_start / message_update (assistant)", () => {
   it("dispatches streamAction update with normalized tool calls", () => {
@@ -163,7 +161,7 @@ describe("message_start / message_update (assistant)", () => {
     expect(blocks[0].toolCallId).toBe("sse_1");
     expect(blocks[0].toolName).toBe("bash");
     expect(blocks[0].input).toEqual({ cmd: "ls" });
-    // SSE fields should not leak through
+
     expect(blocks[0]).not.toHaveProperty("id");
     expect(blocks[0]).not.toHaveProperty("name");
   });
@@ -192,7 +190,7 @@ describe("message_start / message_update (assistant)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. message_start / message_update with user msg
+
 // ---------------------------------------------------------------------------
 describe("message_start / message_update (user)", () => {
   it("returns state unchanged and effects all null", () => {
@@ -211,7 +209,7 @@ describe("message_start / message_update (user)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 6. message_end with assistant msg
+
 // ---------------------------------------------------------------------------
 describe("message_end (assistant)", () => {
   it("appends normalized message and tags toolCall-only blocks with _sourceTs", () => {
@@ -273,7 +271,7 @@ describe("message_end (assistant)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 7. message_end with user msg
+
 // ---------------------------------------------------------------------------
 describe("message_end (user)", () => {
   it("does not append message, but resets stream and sets waiting_model", () => {
@@ -289,7 +287,7 @@ describe("message_end (user)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 8. tool_execution_start
+
 // ---------------------------------------------------------------------------
 describe("tool_execution_start", () => {
   it("transitions from waiting_model to running_tools with one tool", () => {
@@ -344,7 +342,7 @@ describe("tool_execution_start", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 9. tool_execution_end
+
 // ---------------------------------------------------------------------------
 describe("tool_execution_end", () => {
   it("removes the specified tool and returns to waiting_model when empty", () => {
@@ -389,7 +387,7 @@ describe("tool_execution_end", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 10. auto_retry_start
+
 // ---------------------------------------------------------------------------
 describe("auto_retry_start", () => {
   it("sets retryInfo with attempt, maxAttempts, and optional errorMessage", () => {
@@ -412,7 +410,7 @@ describe("auto_retry_start", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 11. auto_retry_end
+
 // ---------------------------------------------------------------------------
 describe("auto_retry_end", () => {
   it("clears retryInfo to null", () => {
@@ -426,7 +424,7 @@ describe("auto_retry_end", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 12. compaction_start
+
 // ---------------------------------------------------------------------------
 describe("compaction_start", () => {
   it("sets isCompacting and agentStateCompacting, clears compactError", () => {
@@ -443,7 +441,7 @@ describe("compaction_start", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 13. compaction_end (clean)
+
 // ---------------------------------------------------------------------------
 describe("compaction_end (clean)", () => {
   it("clears compacting flags, bumps loadGen, emits compactionEndedClean", () => {
@@ -462,7 +460,7 @@ describe("compaction_end (clean)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 14. compaction_end with errorMessage
+
 // ---------------------------------------------------------------------------
 describe("compaction_end (error)", () => {
   it("sets compactError, clears isCompacting, does NOT bump loadGen", () => {
@@ -480,7 +478,7 @@ describe("compaction_end (error)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 15. compaction_end aborted
+
 // ---------------------------------------------------------------------------
 describe("compaction_end (aborted)", () => {
   it("clears isCompacting but keeps compactError and loadGen unchanged", () => {
@@ -498,7 +496,7 @@ describe("compaction_end (aborted)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 16. loadGen accumulation across events
+
 // ---------------------------------------------------------------------------
 describe("loadGen accumulation", () => {
   it("increments across agent_end then compaction_end clean", () => {
@@ -516,7 +514,7 @@ describe("loadGen accumulation", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 17. unknown event type
+
 // ---------------------------------------------------------------------------
 describe("unknown event type", () => {
   it("returns state unchanged and effects all null", () => {
@@ -531,7 +529,7 @@ describe("unknown event type", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 18. isToolCallOnly
+
 // ---------------------------------------------------------------------------
 describe("isToolCallOnly", () => {
   it("returns true for assistant with all toolCall blocks", () => {
@@ -557,7 +555,7 @@ describe("isToolCallOnly", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 19. mergeToolCallMessages
+
 // ---------------------------------------------------------------------------
 describe("mergeToolCallMessages", () => {
   it("tags toolCall-only message blocks with _sourceTs from msg.timestamp", () => {
@@ -593,15 +591,15 @@ describe("mergeToolCallMessages", () => {
       }),
     ];
     const merged = mergeToolCallMessages(msgs);
-    // First is toolCall-only — tagged
+
     expect((merged[0] as AssistantMessage).content[0]).toHaveProperty("_sourceTs", 333);
-    // Second is mixed — not tagged
+
     expect((merged[1] as AssistantMessage).content[0]).not.toHaveProperty("_sourceTs");
   });
 });
 
 // ---------------------------------------------------------------------------
-// 20. pure function / no side effects
+
 // ---------------------------------------------------------------------------
 describe("pure function", () => {
   it("does not mutate the input state object", () => {

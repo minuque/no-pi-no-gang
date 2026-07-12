@@ -4,7 +4,7 @@ import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from "fs";
 import { join } from "path";
 
-import { getRpcSession, getRpcSessionNodeState } from "@/lib/session-bridge";
+import { getAgentSession, getSessionNodeAgentState } from "@/lib/session-bridge";
 import {
   buildSessionContext,
   getSessionMetadata,
@@ -12,7 +12,7 @@ import {
   listAllSessions,
   resolveSessionPath,
 } from "@/lib/session-reader";
-import type { RpcSessionState, SessionEntry, SessionInfo } from "@/lib/types";
+import type { AgentSessionState, SessionEntry, SessionInfo } from "@/lib/types";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -34,7 +34,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     try {
       modified = statSync(filePath).mtime.toISOString();
     } catch {
-      /* use header timestamp */
+      /* 文件元数据不可读时使用会话头时间。 */
     }
     const allSessions = await listAllSessions();
     const listedInfo = allSessions.find((s) => s.id === id);
@@ -69,11 +69,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const url = new URL(req.url);
     const includeState = url.searchParams.has("includeState");
-    let agentState: { running: boolean; state?: RpcSessionState } | undefined;
+    let agentState: { running: boolean; state?: AgentSessionState } | undefined;
     if (url.searchParams.has("includeState")) {
-      const rpc = getRpcSession(id);
-      if (rpc?.isAlive()) {
-        const state = (await rpc.send({ type: "get_state" })) as RpcSessionState;
+      const agentSession = getAgentSession(id);
+      if (agentSession?.isAlive()) {
+        // 仅请求实时状态时访问运行中会话，避免读取历史会话触发启动。
+        const state = (await agentSession.send({ type: "get_state" })) as AgentSessionState;
         agentState = { running: true, state };
       } else {
         agentState = { running: false };
@@ -83,7 +84,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       includeState && info
         ? {
             ...info,
-            agentState: getRpcSessionNodeState(id),
+            agentState: getSessionNodeAgentState(id),
           }
         : info;
 
@@ -101,7 +102,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 }
 
-// PATCH /api/sessions/[id]  body: { name: string }
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
@@ -121,7 +121,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 }
 
-// DELETE /api/sessions/[id]
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
@@ -130,18 +129,16 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    // Read header before deleting to get parentSession path
     const firstLine = readFileSync(filePath, "utf8").split("\n")[0];
     let parentSessionPath: string | undefined;
     try {
       const header = JSON.parse(firstLine) as { type?: string; parentSession?: string };
       if (header.type === "session") parentSessionPath = header.parentSession;
     } catch {
-      /* ignore */
+      /* 非法头部无法提供父会话信息。 */
     }
 
-    // Re-attach all direct children to this session's parent (cascade re-parent)
-    // Scan sibling files in the same directory
+    // 删除父会话前重连直属子会话，保留 fork 溯源链。
     const dir = filePath.replace(/\\/g, "/").split("/").slice(0, -1).join("/");
     try {
       const files = readdirSync(dir).filter((f) => f.endsWith(".jsonl") && join(dir, f) !== filePath);
@@ -152,20 +149,19 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
           const lines = content.split("\n");
           const header = JSON.parse(lines[0]) as { type?: string; parentSession?: string };
           if (header.type === "session" && header.parentSession === filePath) {
-            // Rewrite header with new parentSession
             header.parentSession = parentSessionPath;
             lines[0] = JSON.stringify(header);
             writeFileSync(childPath, lines.join("\n"));
           }
         } catch {
-          /* skip malformed */
+          /* 跳过损坏的会话文件。 */
         }
       }
     } catch {
-      /* skip if dir unreadable */
+      /* 目录不可读时由后续删除流程处理。 */
     }
 
-    getRpcSession(id)?.destroy();
+    getAgentSession(id)?.destroy();
     unlinkSync(filePath);
     invalidateSessionPathCache(id);
     return NextResponse.json({ ok: true });

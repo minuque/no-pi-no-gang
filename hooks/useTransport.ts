@@ -103,9 +103,7 @@ export function useTransport(sessionId: string | null, options: UseTransportOpti
         try {
           const event = JSON.parse(e.data) as AgentEvent;
           onEventRef.current?.(event);
-        } catch {
-          // Ignore malformed SSE frames.
-        }
+        } catch {}
       };
       es.onerror = () => {
         if (eventSourceRef.current !== es) return;

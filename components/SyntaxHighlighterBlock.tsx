@@ -12,7 +12,6 @@ import markup from "react-syntax-highlighter/dist/cjs/languages/prism/markup";
 import python from "react-syntax-highlighter/dist/cjs/languages/prism/python";
 import rust from "react-syntax-highlighter/dist/cjs/languages/prism/rust";
 import sql from "react-syntax-highlighter/dist/cjs/languages/prism/sql";
-/* register the most common code-block languages to avoid loading all ~200 */
 import tsx from "react-syntax-highlighter/dist/cjs/languages/prism/tsx";
 import typescript from "react-syntax-highlighter/dist/cjs/languages/prism/typescript";
 import yaml from "react-syntax-highlighter/dist/cjs/languages/prism/yaml";

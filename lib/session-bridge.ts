@@ -5,14 +5,9 @@ import { getProjectResourceLoaderOptions } from "./pi-resources";
 import type { AgentSessionLike } from "./pi-types";
 import { piCommandHandlers } from "./pi/pi-command-dispatcher";
 import { cacheSessionPath } from "./session-reader";
-import type { RpcSessionState, SessionInfo, SessionNodeAgentState } from "./types";
+import type { AgentSessionState, SessionInfo, SessionNodeAgentState } from "./types";
 
 type EventListener = (event: AgentEvent) => void;
-
-// ============================================================================
-// AgentSessionWrapper
-// Wraps AgentSession with the same interface the rest of the app expects
-// ============================================================================
 
 export class AgentSessionWrapper {
   private listeners: EventListener[] = [];
@@ -42,6 +37,7 @@ export class AgentSessionWrapper {
   }
 
   start(): void {
+    // 会话替换后订阅会失效；包装器在此统一重建事件通道并刷新空闲计时。
     this.unsubscribe = this.inner.subscribe((event: AgentEvent) => {
       this.resetIdleTimer();
       this.lastUpdatedAt = Date.now();
@@ -85,7 +81,7 @@ export class AgentSessionWrapper {
     this.onDestroyCallback?.();
   }
 
-  getSnapshotState(): RpcSessionState & {
+  getSnapshotState(): AgentSessionState & {
     autoCompactionEnabled?: boolean;
     autoRetryEnabled?: boolean;
   } {
@@ -117,29 +113,15 @@ export class AgentSessionWrapper {
   }
 }
 
-// ============================================================================
-// Session registry
-// ============================================================================
-
 declare global {
   var __piSessions: Map<string, AgentSessionWrapper> | undefined;
   var __piStartLocks:
     Map<string, Promise<{ session: AgentSessionWrapper; realSessionId: string }>> | undefined;
 }
 
-/**
- * Get or create the global session registry stored on globalThis.
- *
- * NOTE: This uses globalThis rather than a module-scoped variable by design.
- * AgentSessionWrapper is the runtime side of a long-lived Agent session that
- * must survive across hot-reload cycles and across individual HTTP requests
- * in the Next.js App Router. A module-level Map would be re-created on each
- * module reload, losing all active sessions. globalThis gives us a single
- * mutable store that lives for the lifetime of the Node process, shared
- * across all request contexts — not a per-request shared-state anti-pattern.
- */
 export function getRegistry(): Map<string, AgentSessionWrapper> {
   if (!globalThis.__piSessions) {
+    // 热更新会重载模块；会话注册表必须挂在进程全局对象上。
     globalThis.__piSessions = new Map();
     const cleanup = () => globalThis.__piSessions?.forEach((s) => s.destroy());
     process.once("exit", cleanup);
@@ -150,16 +132,17 @@ export function getRegistry(): Map<string, AgentSessionWrapper> {
 }
 
 export function getLocks(): Map<string, Promise<{ session: AgentSessionWrapper; realSessionId: string }>> {
+  // 同一会话的并发启动共用 Promise，避免重复创建底层 AgentSession。
   if (!globalThis.__piStartLocks) globalThis.__piStartLocks = new Map();
   return globalThis.__piStartLocks;
 }
 
-export function getRpcSession(sessionId: string): AgentSessionWrapper | undefined {
+export function getAgentSession(sessionId: string): AgentSessionWrapper | undefined {
   return getRegistry().get(sessionId);
 }
 
-export function getRpcSessionNodeState(sessionId: string): SessionNodeAgentState {
-  const session = getRpcSession(sessionId);
+export function getSessionNodeAgentState(sessionId: string): SessionNodeAgentState {
+  const session = getAgentSession(sessionId);
   if (!session?.isAlive()) {
     return {
       exists: false,
@@ -182,7 +165,7 @@ export function getRpcSessionNodeState(sessionId: string): SessionNodeAgentState
 
 export function mergeSessionNodeState<T extends SessionInfo>(
   session: T,
-  agentState = getRpcSessionNodeState(session.id),
+  agentState = getSessionNodeAgentState(session.id),
 ): T {
   return {
     ...session,
@@ -190,12 +173,7 @@ export function mergeSessionNodeState<T extends SessionInfo>(
   };
 }
 
-/**
- * Get or create an AgentSession for the given session.
- * For new sessions (sessionFile === ""), pi generates its own id.
- * Pass toolNames to pre-configure active tools (empty array = all tools disabled).
- */
-export async function startRpcSession(
+export async function startAgentSession(
   sessionId: string,
   sessionFile: string,
   cwd: string,
@@ -225,9 +203,7 @@ export async function startRpcSession(
       ? SessionManager.open(sessionFile, undefined)
       : SessionManager.create(cwd, undefined);
 
-    // Determine which tools to pass based on requested toolNames.
-    // Since v0.68.0, createAgentSession expects string[] tool names instead of Tool[] instances.
-    // Pass all built-in coding tool names by default; for "all off", pass empty array.
+    // Pi 仅接受工具名；空数组表示明确禁用全部内置工具。
     const allCodingToolNames = ["read", "bash", "edit", "write", "grep", "find", "ls"];
     let toolsOption: string[] | undefined;
     if (toolNames !== undefined) {
@@ -251,15 +227,12 @@ export async function startRpcSession(
       },
     });
 
-    // If specific tool names were requested (non-empty), narrow active tools now
     if (toolNames && toolNames.length > 0) {
       inner.setActiveToolsByName(toolNames);
     }
 
-    // When all tools are disabled, clear the system prompt entirely.
-    // pi's buildSystemPrompt always produces a non-empty prompt even with no tools;
-    // the only way to truly clear it is to call agent.setSystemPrompt directly.
     if (toolNames?.length === 0) {
+      // Pi 即使无工具仍会生成提示词；此处确保“无工具”语义同时清空提示词。
       inner.agent.state.systemPrompt = "";
     }
 
@@ -269,6 +242,7 @@ export async function startRpcSession(
     const realSessionFile = inner.sessionFile as string | undefined;
     if (realSessionFile) cacheSessionPath(realSessionId, realSessionFile);
 
+    // 销毁时同时移除注册项，后续请求才能按持久化会话重新初始化。
     wrapper.onDestroy(() => registry.delete(realSessionId));
     registry.set(realSessionId, wrapper);
 

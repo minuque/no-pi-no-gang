@@ -1,16 +1,14 @@
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 
-import { getRpcSession, startRpcSession } from "@/lib/session-bridge";
+import { getAgentSession, startAgentSession } from "@/lib/session-bridge";
 import { resolveSessionPath } from "@/lib/session-reader";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/agent/[id]/events - SSE stream of agent events
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  // Fast path: already-running session
-  let session = getRpcSession(id);
+  let session = getAgentSession(id);
   if (!session || !session.isAlive()) {
     const filePath = await resolveSessionPath(id);
     if (!filePath) {
@@ -18,7 +16,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
     const cwd = SessionManager.open(filePath).getHeader()?.cwd ?? process.cwd();
     try {
-      ({ session } = await startRpcSession(id, filePath, cwd));
+      // 事件路由按需恢复会话，避免列表浏览时无谓地启动 AgentSession。
+      ({ session } = await startAgentSession(id, filePath, cwd));
     } catch (error) {
       return new Response(`Failed to start agent: ${error}`, { status: 500 });
     }
@@ -31,30 +30,27 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         controller.enqueue(new TextEncoder().encode(text));
       };
 
-      // Send initial connected event
       encode({ type: "connected", sessionId: id });
 
       const unsubscribe = session.onEvent((event) => {
         encode(event);
       });
 
-      // Heartbeat every 30s to prevent server/proxy timeout (Next.js default ~120-150s)
+      // 心跳避免代理在长时间无事件时关闭 SSE 连接。
       const heartbeat = setInterval(() => {
         try {
           controller.enqueue(new TextEncoder().encode(":\n\n"));
         } catch {
-          // controller already closed
+          // 客户端已断开时无需额外处理。
         }
       }, 30_000);
 
-      // Cleanup when client disconnects
       const cleanup = () => {
         clearInterval(heartbeat);
         unsubscribe();
         controller.close();
       };
 
-      // Detect client disconnect via abort signal
       req.signal?.addEventListener("abort", cleanup);
     },
   });

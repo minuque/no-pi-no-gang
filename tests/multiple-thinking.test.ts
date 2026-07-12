@@ -5,7 +5,7 @@ import type { AgentEvent } from "../lib/agent-event-reducer";
 import type { AssistantMessage } from "../lib/types";
 
 // ---------------------------------------------------------------------------
-// Helpers
+
 // ---------------------------------------------------------------------------
 
 const T0 = "2026-07-05T12:00:00.000Z";
@@ -31,18 +31,16 @@ function assistantMsg(content: unknown[]) {
 }
 
 // ---------------------------------------------------------------------------
-// Multiple thinking blocks — isolation & individual timing
+
 // ---------------------------------------------------------------------------
 describe("multiple thinking blocks", () => {
   it("each thinking block gets its own duration when arriving in separate events", () => {
-    // Normal streaming: message_start → message_update (new block) → message_end
     const events: { event: AgentEvent; eventAt: string }[] = [
-      // t0: first thinking block appears
       {
         event: { type: "message_start", message: assistantMsg([thinkingBlock("step 1")]) },
         eventAt: T0,
       },
-      // t1: second thinking block appears
+
       {
         event: {
           type: "message_update",
@@ -50,7 +48,7 @@ describe("multiple thinking blocks", () => {
         },
         eventAt: T1,
       },
-      // t3: text block appears
+
       {
         event: {
           type: "message_update",
@@ -58,7 +56,7 @@ describe("multiple thinking blocks", () => {
         },
         eventAt: T2,
       },
-      // t6: message complete
+
       {
         event: {
           type: "message_end",
@@ -77,15 +75,12 @@ describe("multiple thinking blocks", () => {
     const block0 = finalMsg.content[0] as { type: string; _duration?: number };
     const block1 = finalMsg.content[1] as { type: string; _duration?: number };
 
-    // thinking1 appeared at T0, thinking2 at T1 → thinking1 duration = 1s
     expect(block0._duration).toBe(1);
-    // thinking2 appeared at T1, text at T2 → thinking2 duration = 2s
+
     expect(block1._duration).toBe(2);
   });
 
   it("same-start-time thinking blocks get proportionally split duration", () => {
-    // Both thinking blocks arrive together in the same message_start event.
-    // The reducer distributes the time window proportionally among them.
     const events: { event: AgentEvent; eventAt: string }[] = [
       {
         event: {
@@ -119,10 +114,9 @@ describe("multiple thinking blocks", () => {
     const block0 = finalMsg.content[0] as { type: string; _duration?: number };
     const block1 = finalMsg.content[1] as { type: string; _duration?: number };
 
-    // Both started at T0, text at T2 (3s window). Split 2 blocks → ~1.5s → 2 each
     expect(block0._duration).toBe(2);
     expect(block1._duration).toBe(2);
-    // Neither should use the inflated total elapsed T3-T0=6s (the old bug)
+
     expect(block0._duration).toBeLessThan(3);
     expect(block1._duration).toBeLessThan(3);
   });
@@ -152,8 +146,7 @@ describe("multiple thinking blocks", () => {
 
     const finalMsg = state.messages[0] as AssistantMessage;
     const block = finalMsg.content[0] as { type: string; _duration?: number };
-    // Both blocks start at T0 (same-start run of 2), text at (virtual) T2
-    // thinking+text share T0, 2 blocks, 3s window → 1.5s → round=2 each
+
     expect(block._duration).toBe(2);
   });
 
@@ -200,8 +193,6 @@ describe("multiple thinking blocks", () => {
     const finalMsg = state.messages[0] as AssistantMessage;
     const blocks = finalMsg.content.map((b) => b as { type: string; _duration?: number });
 
-    // Run of 3 at T0, next block at T2 (3s window)
-    // perBlockMs = 3000/3 = 1000ms → round(1) = 1
     expect(blocks[0]._duration).toBe(1);
     expect(blocks[1]._duration).toBe(1);
     expect(blocks[2]._duration).toBe(1);

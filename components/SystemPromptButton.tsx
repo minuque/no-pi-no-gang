@@ -60,7 +60,7 @@ export function SystemPromptButton({ systemPrompt }: Props) {
             justifyContent: "center",
           }}
         >
-          {/* Backdrop */}
+          {}
           <div
             style={{
               position: "absolute",
@@ -70,7 +70,7 @@ export function SystemPromptButton({ systemPrompt }: Props) {
             }}
             onClick={() => setOpen(false)}
           />
-          {/* Modal panel */}
+          {}
           <div
             style={{
               position: "relative",
@@ -85,7 +85,7 @@ export function SystemPromptButton({ systemPrompt }: Props) {
               animation: "fade-in-up 0.2s ease both",
             }}
           >
-            {/* Title bar */}
+            {}
             <div
               style={{
                 display: "flex",
@@ -176,7 +176,7 @@ export function SystemPromptButton({ systemPrompt }: Props) {
                 </svg>
               </button>
             </div>
-            {/* Content */}
+            {}
             <div
               style={{
                 flex: 1,

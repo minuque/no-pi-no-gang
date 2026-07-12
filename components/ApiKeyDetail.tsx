@@ -12,7 +12,6 @@ export function ApiKeyDetail({ provider, onRefresh }: { provider: ApiKeyProvider
   const [error, setError] = useState<string | null>(null);
   const [savedOk, setSavedOk] = useState(false);
 
-  // Reset state when provider changes
   useEffect(() => {
     setApiKey("");
     setError(null);

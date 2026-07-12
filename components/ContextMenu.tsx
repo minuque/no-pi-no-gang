@@ -22,7 +22,6 @@ export function ContextMenu({ items, point, onClose, minWidth = 160 }: Props) {
   const menuRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
-  // ── Positioning (auto-flip when near edge) ────────────────────────────
   useEffect(() => {
     if (!point || !menuRef.current) return;
 
@@ -43,11 +42,9 @@ export function ContextMenu({ items, point, onClose, minWidth = 160 }: Props) {
     menu.style.top = `${y}px`;
   }, [point, items.length, minWidth]);
 
-  // ── Dismiss handlers ──────────────────────────────────────────────────
   useEffect(() => {
     if (!point) return;
 
-    // Save previous focus
     previousFocusRef.current = document.activeElement as HTMLElement;
 
     function handleClickOutside(e: MouseEvent) {
@@ -62,8 +59,6 @@ export function ContextMenu({ items, point, onClose, minWidth = 160 }: Props) {
       }
     }
 
-    // Delay adding the mousedown listener so the right-click event
-    // that opened the menu doesn't immediately close it.
     const timeoutId = setTimeout(() => {
       document.addEventListener("mousedown", handleClickOutside);
     }, 0);
@@ -75,7 +70,6 @@ export function ContextMenu({ items, point, onClose, minWidth = 160 }: Props) {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleKeyDown);
 
-      // Restore focus
       if (previousFocusRef.current) {
         previousFocusRef.current.focus();
       }

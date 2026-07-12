@@ -6,7 +6,6 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ provider: string }> };
 
-// GET /api/auth/api-key/[provider] — returns auth status (never returns the actual key)
 export async function GET(_req: Request, { params }: Params) {
   const { provider } = await params;
   const authStorage = AuthStorage.create();
@@ -23,7 +22,6 @@ export async function GET(_req: Request, { params }: Params) {
   });
 }
 
-// POST /api/auth/api-key/[provider]  body: { apiKey: string }
 export async function POST(req: Request, { params }: Params) {
   const { provider } = await params;
   try {
@@ -39,7 +37,6 @@ export async function POST(req: Request, { params }: Params) {
   }
 }
 
-// DELETE /api/auth/api-key/[provider] — removes stored API key
 export async function DELETE(_req: Request, { params }: Params) {
   const { provider } = await params;
   try {

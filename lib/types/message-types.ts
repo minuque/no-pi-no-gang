@@ -16,7 +16,7 @@ export interface ImageContent {
 export interface ThinkingContent {
   type: "thinking";
   thinking: string;
-  _duration?: number; // frontend-observed duration in seconds, persisted on message_end
+  _duration?: number;
 }
 
 export interface ToolCallContent {
@@ -24,7 +24,7 @@ export interface ToolCallContent {
   toolCallId: string;
   toolName: string;
   input: Record<string, unknown>;
-  _sourceTs?: number; // original message timestamp when merged from another message
+  _sourceTs?: number;
   _entryId?: string;
 }
 
@@ -34,7 +34,7 @@ export interface UserMessage {
   role: "user";
   content: string | (TextContent | ImageContent)[];
   timestamp?: number;
-  /** Skill name when this message is a slash-command invocation (e.g. "/review") */
+
   skillCommand?: string;
 }
 

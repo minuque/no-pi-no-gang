@@ -20,10 +20,9 @@ export interface AgentEventState {
   isCompacting: boolean;
   compactError: string | null;
   loadGen: number;
-  // Last injected event timestamp; pure reducer must not call new Date itself.
+
   lastEventAt: string | null;
-  // Frontend-observed block timing for the current streaming assistant message.
-  // Keys are block indices within the streaming message's content array.
+
   blockStartTimes: Map<number, number>;
   streamingBlockDurations: Map<number, number>;
 }
@@ -35,11 +34,6 @@ export type AgentPhase =
   | { kind: "running_command"; command: string }
   | null;
 
-/**
- * Returns true when an assistant message's content is exclusively toolCall
- * blocks (and at least one).  Such messages are merged into the previous
- * assistant turn and need their toolCall blocks tagged with _sourceTs.
- */
 export function isToolCallOnly(msg: AgentMessage): msg is AssistantMessage & { content: ToolCallContent[] } {
   if (msg.role !== "assistant") return false;
   const content = msg.content;
@@ -50,10 +44,6 @@ export function isToolCallOnly(msg: AgentMessage): msg is AssistantMessage & { c
   );
 }
 
-/**
- * Tags toolCall blocks of toolCall-only messages with the message's timestamp
- * as _sourceTs so the view can collapse them back into the originating turn.
- */
 export function mergeToolCallMessages(msgs: AgentMessage[]): AgentMessage[] {
   return msgs.map((msg) =>
     isToolCallOnly(msg)
@@ -85,8 +75,7 @@ function updateStreamingBlockTimings(
     if (nextStart.has(i) && !nextDurations.has(i)) {
       const start = nextStart.get(i)!;
       const end = nextStart.get(i + 1) ?? eventAtMs;
-      // Skip if both blocks share the same start time — they arrived in the
-      // same event and we can't distinguish individual durations yet.
+
       if (start === end) continue;
       const secs = Math.round((end - start) / 1000);
       if (secs > 0) nextDurations.set(i, secs);
@@ -96,30 +85,22 @@ function updateStreamingBlockTimings(
   return { startTimes: nextStart, durations: nextDurations };
 }
 
-/**
- * Distribute the time window [runStart, followingStart) among a run of
- * same-start-time blocks by assigning a proportional share to each.
- *
- * Example: 3 blocks all starting at T0, with the next block at T6 total
- * 6s to split → 2s per block. Each gets _duration=2.
- */
 function distributeSameStartDurations(
   runFrom: number,
-  runTo: number, // exclusive end — blocks [runFrom, runTo) share start time
-  nextStart: number | undefined, // the following block's start, or undefined
+  runTo: number,
+  nextStart: number | undefined,
   startTimes: Map<number, number>,
   durations: Map<number, number>,
   eventAtMs: number,
 ): void {
   const n = runTo - runFrom;
-  if (n <= 1) return; // singleton — handled by caller
+  if (n <= 1) return;
   const runStart = startTimes.get(runFrom);
   if (runStart === undefined) return;
   const winEnd = nextStart ?? eventAtMs;
   const winMs = winEnd - runStart;
   if (winMs <= 0) return;
 
-  // Divide ms evenly among n blocks, rounding down so each gets at least 1s
   const perBlockMs = winMs / n;
   for (let k = runFrom; k < runTo; k++) {
     const secs = Math.round(perBlockMs / 1000);
@@ -135,11 +116,6 @@ function finalizeStreamingBlockDurations(
 ): Map<number, number> {
   const next = new Map(durations);
 
-  // --- Pass 1: isolate same-start-time runs ---------------------------------
-  // Walk blocks and find runs where consecutive indices share a start time.
-  // Those runs need proportional distribution; singletons (blocks whose start
-  // differs from both neighbours) can use the simple duration formula.
-
   let i = 0;
   while (i < contentLength) {
     if (!startTimes.has(i)) {
@@ -151,11 +127,9 @@ function finalizeStreamingBlockDurations(
     while (j < contentLength && startTimes.get(j) === t) j++;
 
     if (j - i > 1) {
-      // Run of 2+ blocks sharing the same start time → distribute proportionally
       const nextStart = j < contentLength ? startTimes.get(j) : undefined;
       distributeSameStartDurations(i, j, nextStart, startTimes, next, eventAtMs);
     } else {
-      // Singleton — simple formula: from its start to the next block's start (or eventAtMs)
       if (!next.has(i)) {
         const start = t;
         const end = j < contentLength ? startTimes.get(j)! : eventAtMs;
@@ -235,19 +209,6 @@ export function initialAgentEventState(): AgentEventState {
   };
 }
 
-/**
- * Side-effect description returned by the reducer.  The hook reads this and
- * performs exactly the network/ref work that must stay outside the pure reducer.
- *
- * - streamAction: dispatch onto the existing useReducer(streamReducer). null = no
- *   stream dispatch this event.
- * - bumpLoadGen: the reducer already incremented state.loadGen; this flag tells
- *   the hook a session reload is expected on the next loadGen change.
- * - agentEnded: the hook should run its agent_end side effects (fetch agent
- *   state + onAgentEnd callback).
- * - compactionEndedClean: the hook should run its compaction_end reload
- *   (loadSession only; no state fetch, no onAgentEnd).
- */
 export interface AgentEventEffects {
   streamAction: StreamAction | null;
   bumpLoadGen: boolean;
@@ -255,11 +216,6 @@ export interface AgentEventEffects {
   compactionEndedClean: boolean;
 }
 
-/**
- * Pure reducer over the agent-event-driven slice of useAgentSession state.
- * No refs, no fetch, no new Date.  Timestamps come in via `eventAt` (the hook
- * injects `new Date().toISOString()` once per event before calling).
- */
 export function agentEventReducer(
   state: AgentEventState,
   event: AnyAgentEvent,

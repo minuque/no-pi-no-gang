@@ -16,7 +16,7 @@ export interface SessionInfo {
   modified: string;
   messageCount: number;
   firstMessage: string;
-  parentSessionId?: string; // set if this session was forked from another
+  parentSessionId?: string;
   model?: { provider: string; modelId: string } | null;
   orphaned?: boolean;
   hasCompaction?: boolean;
@@ -34,12 +34,12 @@ export interface SessionNodeAgentState {
 
 export interface SessionContext {
   messages: AgentMessage[];
-  entryIds: string[]; // parallel to messages: the session entry id for each message
+  entryIds: string[];
   thinkingLevel: string;
   model: { provider: string; modelId: string } | null;
 }
 
-export interface RpcSessionState {
+export interface AgentSessionState {
   model?: { provider: string; id: string; contextWindow?: number };
   thinkingLevel: string;
   isStreaming: boolean;

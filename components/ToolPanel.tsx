@@ -22,7 +22,7 @@ export function getPresetFromTools(tools: ToolEntry[]): ToolPreset {
   if (active === "") return "none";
   if (active === [...PRESET_DEFAULT].sort().join(",")) return "default";
   if (active === [...PRESET_FULL].sort().join(",")) return "full";
-  return "default"; // closest match
+  return "default";
 }
 
 interface Props {
@@ -77,7 +77,7 @@ export function ToolPanel({ tools, onPreset, onClose }: Props) {
         gap: 10,
       }}
     >
-      {/* Segmented control */}
+      {}
       <div
         style={{
           display: "grid",
@@ -116,13 +116,13 @@ export function ToolPanel({ tools, onPreset, onClose }: Props) {
         })}
       </div>
 
-      {/* Description of current selection */}
+      {}
       <div style={{ fontSize: 11, color: "var(--text-dim)", lineHeight: 1.5 }}>
         {currentIndex >= 0 ? PRESETS[currentIndex].desc || "No tools enabled" : ""}
         {current === "none" && <span> — agent will not use any tools</span>}
       </div>
 
-      {/* Track bar */}
+      {}
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
         {PRESETS.map((_, i) => (
           <div

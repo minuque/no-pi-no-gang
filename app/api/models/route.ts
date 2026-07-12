@@ -36,9 +36,7 @@ export async function GET() {
     if (provider) {
       defaultModel = { provider, modelId: modelId ?? available[0]?.id ?? "" };
     }
-  } catch {
-    /* return empty */
-  }
+  } catch {}
 
   return Response.json({
     models: Object.fromEntries(nameMap),

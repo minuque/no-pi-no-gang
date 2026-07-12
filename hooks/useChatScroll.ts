@@ -2,19 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-/**
- * Chat auto-scroll controller.
- *
- * Standard chat-UI approach used by ChatGPT, Claude, etc.:
- * - A single shouldAutoScroll ref tracks whether the user wants to stay at bottom.
- * - It becomes false when the user scrolls up, true when they scroll to bottom.
- * - Streaming follow reacts to content height changes instead of writing scrollTop every frame.
- * - Hot-path scroll/stream state lives in refs; React state only updates on transitions.
- */
 export interface UseChatScrollOptions {
-  /** Keep following new content while the agent is running. */
   follow?: boolean;
-  /** Callback when at-bottom state changes (for showing/hiding scroll button) */
+
   onAtBottomChange?: (atBottom: boolean) => void;
 }
 
@@ -36,21 +26,15 @@ export function useChatScroll({ follow = false, onAtBottomChange }: UseChatScrol
   const onAtBottomChangeRef = useRef(onAtBottomChange);
   onAtBottomChangeRef.current = onAtBottomChange;
 
-  // -- The single source of truth --
-  // Using a ref so rAF and event handlers always read the latest value
-  // without going through React state.
   const shouldAutoScrollRef = useRef(true);
   const isAtBottomRef = useRef(true);
 
-  // React state for UI only (scroll-to-bottom button visibility)
   const [isAtBottom, setIsAtBottom] = useState(true);
 
-  // Track the last scroll position to detect user-initiated scroll-up
   const lastScrollTopRef = useRef(0);
   const followFrameRef = useRef<number | null>(null);
   const touchYRef = useRef<number | null>(null);
 
-  // -- Helpers --
   const measureAtBottom = useCallback((el: HTMLDivElement) => {
     return (
       el.scrollHeight <= el.clientHeight ||
@@ -100,7 +84,6 @@ export function useChatScroll({ follow = false, onAtBottomChange }: UseChatScrol
     [updateAtBottom],
   );
 
-  // -- Scroll event handler --
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -150,7 +133,6 @@ export function useChatScroll({ follow = false, onAtBottomChange }: UseChatScrol
     [updateAtBottom],
   );
 
-  // -- Attach scroll listener --
   useEffect(() => {
     const el = containerElement;
     if (!el) return;

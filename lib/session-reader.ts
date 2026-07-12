@@ -20,7 +20,6 @@ export async function listAllSessions(): Promise<SessionInfo[]> {
 
   const cache = getPathCache();
   return piSessions.map((s) => {
-    // Populate path cache so resolveSessionPath works without a full scan
     cache.set(s.id, s.path);
     const { model, hasCompaction } = readSessionMetadata(s.path);
     const parentSessionId = s.parentSessionPath ? pathToId.get(s.parentSessionPath) : undefined;
@@ -84,14 +83,13 @@ export function getSessionMetadata(
 }
 
 // ============================================================================
-// Session path cache: sessionId → absolute file path
-// Stored in globalThis for hot-reload safety
 // ============================================================================
 declare global {
   var __piSessionPathCache: Map<string, string> | undefined;
 }
 
 function getPathCache(): Map<string, string> {
+  // 缓存跨热更新保留，避免每次请求都扫描磁盘中的全部会话。
   if (!globalThis.__piSessionPathCache) globalThis.__piSessionPathCache = new Map();
   return globalThis.__piSessionPathCache;
 }
@@ -100,7 +98,6 @@ export async function resolveSessionPath(sessionId: string): Promise<string | nu
   const cached = getPathCache().get(sessionId);
   if (cached) return cached;
 
-  // Cache miss: scan all sessions to populate cache, then retry
   await listAllSessions();
   return getPathCache().get(sessionId) ?? null;
 }
@@ -120,8 +117,6 @@ export function buildSessionContext(entries: SessionEntry[], leafId?: string | n
   const piEntries = entries as unknown as PiSessionEntry[];
   const piCtx = piBuildSessionContext(piEntries, leafId, byId as unknown as Map<string, PiSessionEntry>);
 
-  // Build entryIds: parallel array to messages[], mapping each message back to its entry id.
-  // Needed for fork and navigate_tree calls from the UI.
   let targetLeaf: SessionEntry | undefined;
   if (leafId === null) {
     return { messages: [], entryIds: [], thinkingLevel: piCtx.thinkingLevel, model: piCtx.model };
@@ -132,7 +127,6 @@ export function buildSessionContext(entries: SessionEntry[], leafId?: string | n
     return { messages: [], entryIds: [], thinkingLevel: piCtx.thinkingLevel, model: piCtx.model };
   }
 
-  // Walk path from target leaf to root
   const path: SessionEntry[] = [];
   let cur: SessionEntry | undefined = targetLeaf;
   while (cur) {
@@ -140,7 +134,6 @@ export function buildSessionContext(entries: SessionEntry[], leafId?: string | n
     cur = cur.parentId ? byId.get(cur.parentId) : undefined;
   }
 
-  // Find the last compaction on path (mirrors pi's buildSessionContext logic)
   let compactionId: string | undefined;
   let firstKeptEntryId: string | undefined;
   for (const e of path) {
@@ -152,7 +145,6 @@ export function buildSessionContext(entries: SessionEntry[], leafId?: string | n
 
   const entryIds: string[] = [];
   if (compactionId) {
-    // The first message in piCtx.messages is the synthetic compaction summary — map to compaction entry id
     entryIds.push(compactionId);
     const compactionIdx = path.findIndex((e) => e.id === compactionId);
     const firstKeptIdx = firstKeptEntryId
@@ -171,8 +163,6 @@ export function buildSessionContext(entries: SessionEntry[], leafId?: string | n
     }
   }
 
-  // pi injects compaction summary as {role:"compactionSummary", summary, tokensBefore}.
-  // Convert to {role:"user"} so MessageView can render it the same as before.
   const messages = (piCtx.messages as AssistantMessage[]).map((msg) => {
     const raw = msg as unknown as Record<string, unknown>;
     if (raw.role === "compactionSummary") {

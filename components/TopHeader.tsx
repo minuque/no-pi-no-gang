@@ -121,7 +121,7 @@ export function TopHeader({
         zIndex: "var(--z-sidebar)",
       }}
     >
-      {/* Left: hamburger + logo + title */}
+      {}
       <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
         <button
           onClick={onToggleSidebar}
@@ -133,7 +133,7 @@ export function TopHeader({
           <IconMenu size={20} />
         </button>
         <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- fixed local SVG logo */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- 使用固定的本地 SVG 标志 */}
           <img
             src="/pi-logo-on-dark.svg"
             alt={t("appLogoAlt")}
@@ -155,7 +155,7 @@ export function TopHeader({
         </div>
       </div>
 
-      {/* Center: branch navigator / status (injected by parent) */}
+      {}
       <div
         ref={centerRef}
         style={{
@@ -170,7 +170,7 @@ export function TopHeader({
         {children}
       </div>
 
-      {/* Right: actions */}
+      {}
       <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
         <LocaleSwitcher />
         <button

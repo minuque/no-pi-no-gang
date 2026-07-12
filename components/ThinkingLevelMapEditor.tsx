@@ -76,7 +76,7 @@ export function ThinkingLevelMapEditor({
               border: "1px solid transparent",
             }}
           >
-            {/* Level badge */}
+            {}
             <div style={{ display: "flex", alignItems: "center", gap: 5, width: 68, flexShrink: 0 }}>
               <span
                 style={{
@@ -100,7 +100,7 @@ export function ThinkingLevelMapEditor({
               </span>
             </div>
 
-            {/* Default + Disabled buttons */}
+            {}
             <div
               style={{
                 display: "flex",
@@ -128,7 +128,7 @@ export function ThinkingLevelMapEditor({
               </button>
             </div>
 
-            {/* Custom button + input fused */}
+            {}
             <div
               style={{
                 display: "flex",

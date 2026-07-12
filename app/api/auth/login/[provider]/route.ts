@@ -2,7 +2,6 @@ import { AuthStorage } from "@earendil-works/pi-coding-agent";
 
 export const dynamic = "force-dynamic";
 
-// In-memory registry: loginToken -> resolve/reject for the manualCodeInput promise
 declare global {
   var __piLoginCallbacks:
     Map<string, { resolve: (v: string) => void; reject: (e: Error) => void }> | undefined;
@@ -13,7 +12,6 @@ function getCallbackRegistry() {
   return globalThis.__piLoginCallbacks;
 }
 
-// POST /api/auth/login/[provider] — frontend sends redirect URL or auth code
 export async function POST(req: Request, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
   const { token, code } = (await req.json()) as { token?: string; code?: string };
@@ -27,7 +25,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ provide
   if (!callbacks) {
     return Response.json({ error: "No pending login for token" }, { status: 404 });
   }
-  // Verify token belongs to this provider (token format: "<provider>-<ts>-<random>")
+
   if (!token.startsWith(`${provider}-`)) {
     return Response.json({ error: "Token does not match provider" }, { status: 400 });
   }
@@ -37,7 +35,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ provide
   return Response.json({ ok: true, provider });
 }
 
-// GET /api/auth/login/[provider] — SSE stream for OAuth flow
 export async function GET(req: Request, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
 
@@ -46,7 +43,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
     controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
   };
 
-  // AbortController propagates client disconnect into authStorage.login()
   const abort = new AbortController();
   req.signal.addEventListener("abort", () => abort.abort());
 
@@ -99,7 +95,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
         return pendingManualRequest;
       };
 
-      // Cleanup: remove pending token and abort any waiting promise
       const cleanup = () => {
         for (const token of activeTokens) {
           registry.get(token)?.reject(new Error("Login cancelled"));
@@ -108,7 +103,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
         activeTokens.clear();
       };
 
-      // Also cancel on client disconnect
       abort.signal.addEventListener("abort", cleanup);
 
       try {

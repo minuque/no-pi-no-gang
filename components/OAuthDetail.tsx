@@ -17,7 +17,6 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
     }
   }, [loginState.phase]);
 
-  // Reset state when provider changes
   useEffect(() => {
     setLoginState({ phase: "idle" });
     setInputValue("");
@@ -128,7 +127,6 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
           return;
         }
         setInputValue("");
-        // Success path: SSE stream will emit "success" and update state
       } catch (e) {
         setLoginState({
           phase: "error",
@@ -195,7 +193,6 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
         </div>
       </div>
 
-      {/* Status */}
       <div style={{ minHeight: 48 }}>
         {loginState.phase === "idle" && (
           <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
@@ -347,7 +344,6 @@ export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; 
         )}
       </div>
 
-      {/* Actions */}
       <div style={{ display: "flex", gap: 8 }}>
         {isWorking ? (
           <button

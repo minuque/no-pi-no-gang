@@ -3,7 +3,6 @@ import type { AgentMessage } from "../types";
 export type AgentEventStatus =
   "idle" | "connecting" | "connected" | "reconnecting" | "readonly" | "destroyed";
 
-// Pi SDK raw events emitted by AgentSession.
 export type SdkEvent =
   | { type: "agent_start"; timestamp?: string }
   | { type: "agent_end"; timestamp?: string }
@@ -19,7 +18,6 @@ export type SdkEvent =
   | { type: "compaction_start" }
   | { type: "compaction_end"; aborted?: boolean; errorMessage?: string };
 
-// View-layer events emitted by projection code.
 export type ViewEvent =
   | {
       type: "view:permission_prompt";
@@ -65,5 +63,4 @@ export type StreamAction =
   | { type: "end" }
   | { type: "reset" };
 
-// Runtime streams can still carry unknown events such as lightweight handshakes.
 export type AnyAgentEvent = AgentEvent | { type: string; [key: string]: unknown };

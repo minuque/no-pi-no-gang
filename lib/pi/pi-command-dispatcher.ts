@@ -3,11 +3,9 @@ import { DEFAULT_COMPACTION_SETTINGS, SessionManager, findCutPoint } from "@eare
 import { dedupeSlashCommands } from "../pi-resources";
 import type { AgentSessionLike, SlashCommandInfoLike, ToolInfo } from "../pi-types";
 import { cacheSessionPath } from "../session-reader";
-import type { RpcSessionState } from "../types";
+import type { AgentSessionState } from "../types";
 
 type CommandImage = { type: "image"; data: string; mimeType: string };
-
-/** Shared helpers */
 
 function getImages(command: PiCommand): CommandImage[] | undefined {
   const images = command.images as CommandImage[] | undefined;
@@ -16,7 +14,7 @@ function getImages(command: PiCommand): CommandImage[] | undefined {
 
 export type PiCommand = Record<string, unknown>;
 
-type SnapshotState = RpcSessionState & {
+type SnapshotState = AgentSessionState & {
   autoCompactionEnabled?: boolean;
   autoRetryEnabled?: boolean;
 };

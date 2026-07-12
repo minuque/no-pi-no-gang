@@ -1,11 +1,6 @@
-// Client-side helper for POST /api/agent/[id].
 //
-// Every /api/agent/[id] route returns one of:
-//   { success: true, data: <result> }
-//   { error: string }              (non-2xx)
+
 //
-// Call sites previously repeated the same 5-line fetch block 13× in
-// hooks/useAgentSession.ts. This helper collapses that down to one line.
 
 export async function sendAgentCommand<T = unknown>(
   sessionId: string,

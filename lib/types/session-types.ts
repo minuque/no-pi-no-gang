@@ -1,7 +1,5 @@
 import type { AgentMessage, ImageContent, TextContent } from "./message-types";
 
-// Types mirrored from pi-mono coding-agent session-manager
-
 export interface SessionHeader {
   type: "session";
   version?: number;

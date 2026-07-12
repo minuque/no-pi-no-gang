@@ -16,7 +16,6 @@ import markup from "react-syntax-highlighter/dist/cjs/languages/prism/markup";
 import python from "react-syntax-highlighter/dist/cjs/languages/prism/python";
 import rust from "react-syntax-highlighter/dist/cjs/languages/prism/rust";
 import sql from "react-syntax-highlighter/dist/cjs/languages/prism/sql";
-/* register the most common code-block languages to avoid loading all ~200 */
 import tsx from "react-syntax-highlighter/dist/cjs/languages/prism/tsx";
 import typescript from "react-syntax-highlighter/dist/cjs/languages/prism/typescript";
 import yaml from "react-syntax-highlighter/dist/cjs/languages/prism/yaml";
@@ -41,18 +40,13 @@ SyntaxHighlighter.registerLanguage("rust", rust);
 SyntaxHighlighter.registerLanguage("java", java);
 SyntaxHighlighter.registerLanguage("markdown", markdown);
 
-/* lazy-load react-markdown only when previewing a .md file */
 const MarkdownRenderer = dynamic(() => import("./markdown-renderer").then((m) => m.MarkdownRenderer), {
   ssr: false,
 });
 
-// ── Constants ────────────────────────────────────────────────────────────────
-
 const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif"]);
 const AUDIO_EXTS = new Set(["mp3", "wav", "ogg", "oga", "opus", "m4a", "aac", "flac", "weba", "webm"]);
 const DOCUMENT_PREVIEW_EXTS = new Set(["pdf", "docx"]);
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function isImagePath(filePath: string): boolean {
   const base = getFileName(filePath);
@@ -80,8 +74,6 @@ export function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
 interface FileData {
   content: string;
   language: string;
@@ -92,12 +84,9 @@ interface FilePreviewContentProps {
   filePath: string;
 }
 
-// ── FilePreviewContent ──────────────────────────────────────────────────────
-
 export function FilePreviewContent({ filePath }: FilePreviewContentProps) {
   const { isDark } = useTheme();
 
-  // ── Image ──
   if (isImagePath(filePath)) {
     const encoded = encodeFilePathForApi(filePath);
     const src = `/api/files/${encoded}?type=read`;
@@ -117,7 +106,7 @@ export function FilePreviewContent({ filePath }: FilePreviewContentProps) {
           backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- previews arbitrary local blob URLs */}
+        {/* eslint-disable-next-line @next/next/no-img-element -- 预览本地 Blob 地址 */}
         <img
           src={src}
           alt={filePath}
@@ -132,7 +121,6 @@ export function FilePreviewContent({ filePath }: FilePreviewContentProps) {
     );
   }
 
-  // ── Audio ──
   if (isAudioPath(filePath)) {
     const encoded = encodeFilePathForApi(filePath);
     const src = `/api/files/${encoded}?type=read`;
@@ -154,7 +142,6 @@ export function FilePreviewContent({ filePath }: FilePreviewContentProps) {
     );
   }
 
-  // ── Document (PDF / DOCX) ──
   if (isDocumentPreviewPath(filePath)) {
     const ext = getFileExt(filePath);
     const encoded = encodeFilePathForApi(filePath);
@@ -177,11 +164,8 @@ export function FilePreviewContent({ filePath }: FilePreviewContentProps) {
     );
   }
 
-  // ── Text file (default) ──
   return <TextContent filePath={filePath} isDark={isDark} />;
 }
-
-// ── TextContent (internal) ──────────────────────────────────────────────────
 
 function TextContent({ filePath, isDark }: { filePath: string; isDark: boolean }) {
   const [data, setData] = useState<FileData | null>(null);

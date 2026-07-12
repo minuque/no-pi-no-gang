@@ -7,7 +7,7 @@
 
 ### Changed
 
-- **lib/types** 按域拆分为三个独立模块：`message-types.ts`（消息内容块）、`session-types.ts`（持久化结构）、`rpc-types.ts`（传输状态 + UI 树）。原 `lib/types.ts` 保留为 barrel re-export，现有导入路径不破坏。
+- **lib/types** 按域拆分为三个独立模块：`message-types.ts`（消息内容块）、`session-types.ts`（持久化结构）、`agent-session-types.ts`（运行状态 + UI 树）。原 `lib/types.ts` 保留为 barrel re-export，现有导入路径不破坏。
 - **lib/pi/pi-command-dispatcher.ts** 从 `lib/rpc-manager.ts` 的 `send()` 抽取 17 个独立命令 handler + `piCommandHandlers` dispatch table。`send()` 由 250 行 switch 降为查表分发。
 - **app/api/skills/search/route.ts** 解析逻辑迁移到 `parser.ts`，路由只做协调。
 - **lib/npx.ts** 导出 `findNpxCli` 供测试使用。

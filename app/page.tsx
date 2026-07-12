@@ -6,17 +6,6 @@ import { useTranslations } from "next-intl";
 
 import { AppShell } from "@/components/AppShell";
 
-/**
- * Simple CSR shell — AppShell is a heavy client-only component
- * (chat input, SSE, resizable panels, dynamic imports).
- * SSR provides zero value here and only creates complexity:
- * Suspense boundaries, useSearchParams suspend, force-dynamic,
- * next/dynamic bailout templates.
- *
- * We render a minimal branded spinner during SSR + hydration gap,
- * then mount AppShell exclusively on the client.
- */
-
 function SsrFallback() {
   const t = useTranslations("Page");
   return (
@@ -32,8 +21,7 @@ function SsrFallback() {
         background: "var(--bg)",
       }}
     >
-      {/* Large logo acts as LCP element — loaded from HTML, no JS needed */}
-      {/* eslint-disable-next-line @next/next/no-img-element -- intentional SSR-only loading state */}
+      {/* eslint-disable-next-line @next/next/no-img-element -- 服务端回退状态使用静态图片 */}
       <img
         src="/pi-logo-on-dark.svg"
         alt={t("ssrLoadingAlt")}

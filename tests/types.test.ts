@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import type {
+  AgentSessionState,
   AssistantMessage,
   EntryTreeNode,
-  RpcSessionState,
   SessionContext,
   SessionEntry,
   SessionHeader,
@@ -41,7 +41,7 @@ describe("lib/types", () => {
     expect(getMessageRole(toolResult)).toBe("toolResult");
   });
 
-  it("accepts valid session, tree, context, and rpc state shapes", () => {
+  it("accepts valid session, tree, context, and agent session state shapes", () => {
     const header: SessionHeader = {
       type: "session",
       id: "session-1",
@@ -62,7 +62,7 @@ describe("lib/types", () => {
       thinkingLevel: "off",
       model: null,
     };
-    const state: RpcSessionState = {
+    const state: AgentSessionState = {
       sessionId: header.id,
       thinkingLevel: context.thinkingLevel,
       isStreaming: false,

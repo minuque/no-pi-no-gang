@@ -30,8 +30,6 @@ import ZhipuColorIcon from "@lobehub/icons/es/Zhipu/components/Color";
 
 type IconComponent = React.ComponentType<{ size?: number | string; style?: React.CSSProperties }>;
 
-// hasColor=true → Color icon (self-colored SVG, no wrapper)
-// hasColor=false → Mono icon (rendered with currentColor, inherits theme text color)
 const PROVIDER_ICONS: Record<string, { Icon: IconComponent; hasColor: boolean }> = {
   anthropic: { Icon: AnthropicIcon, hasColor: false },
   openai: { Icon: OpenAIIcon, hasColor: false },

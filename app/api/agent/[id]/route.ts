@@ -2,18 +2,16 @@ import { NextResponse } from "next/server";
 
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 
-import { getRpcSession, startRpcSession } from "@/lib/session-bridge";
+import { getAgentSession, startAgentSession } from "@/lib/session-bridge";
 import { resolveSessionPath } from "@/lib/session-reader";
 
-// POST /api/agent/[id] - Send a command to an existing session
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   try {
     const body = (await req.json()) as { type: string; [key: string]: unknown };
 
-    // Fast path: already-running session
-    const existing = getRpcSession(id);
+    const existing = getAgentSession(id);
     if (existing?.isAlive()) {
       const result = await existing.send(body);
       return NextResponse.json({ success: true, data: result });
@@ -26,7 +24,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const cwd = SessionManager.open(filePath).getHeader()?.cwd ?? process.cwd();
 
-    const { session } = await startRpcSession(id, filePath, cwd);
+    // 尚未运行的持久化会话在接收命令前恢复，保持端点的无状态调用方式。
+    const { session } = await startAgentSession(id, filePath, cwd);
     const result = await session.send(body);
 
     return NextResponse.json({ success: true, data: result });
@@ -35,12 +34,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 }
 
-// GET /api/agent/[id] - Get current agent state
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   try {
-    const session = getRpcSession(id);
+    const session = getAgentSession(id);
     if (!session || !session.isAlive()) {
       return NextResponse.json({ running: false });
     }

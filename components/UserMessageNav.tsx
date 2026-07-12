@@ -54,7 +54,7 @@ export function UserMessageNav({
         pointerEvents: "none",
       }}
     >
-      {/* Dot track */}
+      {}
       <div
         style={{
           display: "flex",
@@ -112,7 +112,6 @@ export function UserMessageNav({
         })}
       </div>
 
-      {/* Expanded panel */}
       {panelOpen && (
         <div
           style={{

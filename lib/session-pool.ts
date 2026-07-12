@@ -1,4 +1,4 @@
-import { getRegistry, startRpcSession } from "./session-bridge";
+import { getRegistry, startAgentSession } from "./session-bridge";
 import type { AgentSessionWrapper } from "./session-bridge";
 
 export class SessionPool {
@@ -10,7 +10,7 @@ export class SessionPool {
     cwd: string,
     toolNames?: string[],
   ): Promise<AgentSessionWrapper> {
-    const { session } = await startRpcSession(sessionId, sessionFile, cwd, toolNames);
+    const { session } = await startAgentSession(sessionId, sessionFile, cwd, toolNames);
     return session;
   }
 
