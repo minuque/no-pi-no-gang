@@ -21,9 +21,7 @@ export function selectDefaultModel(
   if (modelList.length === 0) return null;
   const match =
     defaultModel &&
-    modelList.find(
-      (model) => model.id === defaultModel.modelId && model.provider === defaultModel.provider,
-    );
+    modelList.find((model) => model.id === defaultModel.modelId && model.provider === defaultModel.provider);
   return match
     ? { provider: match.provider, modelId: match.id }
     : { provider: modelList[0].provider, modelId: modelList[0].id };

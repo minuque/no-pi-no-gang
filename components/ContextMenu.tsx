@@ -153,9 +153,7 @@ export function ContextMenu({ items, point, onClose, minWidth = 160 }: Props) {
                 {item.icon}
               </span>
             )}
-            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>
-              {item.label}
-            </span>
+            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>{item.label}</span>
           </button>
         );
       })}

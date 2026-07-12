@@ -77,11 +77,7 @@ describe("initialAgentEventState", () => {
 // ---------------------------------------------------------------------------
 describe("agent_start", () => {
   it("sets running flags and waiting_model phase from idle", () => {
-    const { state: s, effects } = agentEventReducer(
-      initialAgentEventState(),
-      { type: "agent_start" },
-      NOW,
-    );
+    const { state: s, effects } = agentEventReducer(initialAgentEventState(), { type: "agent_start" }, NOW);
     expect(s.agentRunning).toBe(true);
     expect(s.agentStateRunning).toBe(true);
     expect(s.agentStateStreaming).toBe(true);
@@ -92,11 +88,7 @@ describe("agent_start", () => {
 
   it("preserves running_skill phase", () => {
     const skillPhase = { kind: "running_skill" as const, skill: "review" };
-    const { state: s } = agentEventReducer(
-      state({ agentPhase: skillPhase }),
-      { type: "agent_start" },
-      NOW,
-    );
+    const { state: s } = agentEventReducer(state({ agentPhase: skillPhase }), { type: "agent_start" }, NOW);
     expect(s.agentPhase).toEqual(skillPhase);
   });
 
@@ -194,11 +186,7 @@ describe("message_start / message_update (assistant)", () => {
       type: "message_start",
       message: { role: "assistant", content: [], model: "m", provider: "p" },
     };
-    const { state: s } = agentEventReducer(
-      state({ agentPhase: { kind: "waiting_model" } }),
-      event,
-      NOW,
-    );
+    const { state: s } = agentEventReducer(state({ agentPhase: { kind: "waiting_model" } }), event, NOW);
     expect(s.agentPhase).toBeNull();
   });
 });
@@ -395,11 +383,7 @@ describe("tool_execution_end", () => {
 
   it("no-ops when phase is not running_tools", () => {
     const base = state({ agentPhase: { kind: "waiting_model" } });
-    const { state: s } = agentEventReducer(
-      base,
-      { type: "tool_execution_end", toolCallId: "t1" },
-      NOW,
-    );
+    const { state: s } = agentEventReducer(base, { type: "tool_execution_end", toolCallId: "t1" }, NOW);
     expect(s.agentPhase).toEqual(base.agentPhase);
   });
 });
@@ -518,10 +502,7 @@ describe("compaction_end (aborted)", () => {
 // ---------------------------------------------------------------------------
 describe("loadGen accumulation", () => {
   it("increments across agent_end then compaction_end clean", () => {
-    const s = applyEvents([
-      { event: { type: "agent_end" } },
-      { event: { type: "compaction_end" } },
-    ]);
+    const s = applyEvents([{ event: { type: "agent_end" } }, { event: { type: "compaction_end" } }]);
     expect(s.loadGen).toBe(2);
   });
 

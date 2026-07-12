@@ -124,8 +124,7 @@ export class AgentSessionWrapper {
 declare global {
   var __piSessions: Map<string, AgentSessionWrapper> | undefined;
   var __piStartLocks:
-    | Map<string, Promise<{ session: AgentSessionWrapper; realSessionId: string }>>
-    | undefined;
+    Map<string, Promise<{ session: AgentSessionWrapper; realSessionId: string }>> | undefined;
 }
 
 /**
@@ -150,10 +149,7 @@ export function getRegistry(): Map<string, AgentSessionWrapper> {
   return globalThis.__piSessions;
 }
 
-export function getLocks(): Map<
-  string,
-  Promise<{ session: AgentSessionWrapper; realSessionId: string }>
-> {
+export function getLocks(): Map<string, Promise<{ session: AgentSessionWrapper; realSessionId: string }>> {
   if (!globalThis.__piStartLocks) globalThis.__piStartLocks = new Map();
   return globalThis.__piStartLocks;
 }

@@ -13,9 +13,7 @@ describe("normalizeToolCalls", () => {
     } as unknown as AgentMessage;
 
     expect(normalizeToolCalls(msg)).toMatchObject({
-      content: [
-        { type: "toolCall", toolCallId: "call-1", toolName: "read", input: { path: "a.ts" } },
-      ],
+      content: [{ type: "toolCall", toolCallId: "call-1", toolName: "read", input: { path: "a.ts" } }],
     });
   });
 

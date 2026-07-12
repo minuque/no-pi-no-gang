@@ -41,9 +41,7 @@ export async function listAllSessions(): Promise<SessionInfo[]> {
   });
 }
 
-export function readSessionMetadata(
-  filePath: string,
-): Pick<SessionInfo, "model" | "hasCompaction"> {
+export function readSessionMetadata(filePath: string): Pick<SessionInfo, "model" | "hasCompaction"> {
   try {
     const sm = SessionManager.open(filePath);
     return getSessionMetadata(sm.getEntries() as SessionEntry[], sm.getLeafId());
@@ -115,19 +113,12 @@ export function invalidateSessionPathCache(sessionId: string): void {
   getPathCache().delete(sessionId);
 }
 
-export function buildSessionContext(
-  entries: SessionEntry[],
-  leafId?: string | null,
-): SessionContext {
+export function buildSessionContext(entries: SessionEntry[], leafId?: string | null): SessionContext {
   const byId = new Map<string, SessionEntry>();
   for (const e of entries) byId.set(e.id, e);
 
   const piEntries = entries as unknown as PiSessionEntry[];
-  const piCtx = piBuildSessionContext(
-    piEntries,
-    leafId,
-    byId as unknown as Map<string, PiSessionEntry>,
-  );
+  const piCtx = piBuildSessionContext(piEntries, leafId, byId as unknown as Map<string, PiSessionEntry>);
 
   // Build entryIds: parallel array to messages[], mapping each message back to its entry id.
   // Needed for fork and navigate_tree calls from the UI.

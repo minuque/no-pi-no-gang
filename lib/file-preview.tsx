@@ -42,26 +42,14 @@ SyntaxHighlighter.registerLanguage("java", java);
 SyntaxHighlighter.registerLanguage("markdown", markdown);
 
 /* lazy-load react-markdown only when previewing a .md file */
-const MarkdownRenderer = dynamic(
-  () => import("./markdown-renderer").then((m) => m.MarkdownRenderer),
-  { ssr: false },
-);
+const MarkdownRenderer = dynamic(() => import("./markdown-renderer").then((m) => m.MarkdownRenderer), {
+  ssr: false,
+});
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "avif"]);
-const AUDIO_EXTS = new Set([
-  "mp3",
-  "wav",
-  "ogg",
-  "oga",
-  "opus",
-  "m4a",
-  "aac",
-  "flac",
-  "weba",
-  "webm",
-]);
+const AUDIO_EXTS = new Set(["mp3", "wav", "ogg", "oga", "opus", "m4a", "aac", "flac", "weba", "webm"]);
 const DOCUMENT_PREVIEW_EXTS = new Set(["pdf", "docx"]);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -171,9 +159,7 @@ export function FilePreviewContent({ filePath }: FilePreviewContentProps) {
     const ext = getFileExt(filePath);
     const encoded = encodeFilePathForApi(filePath);
     const isPdf = ext === "pdf";
-    const previewUrl = isPdf
-      ? `/api/files/${encoded}?type=read`
-      : `/api/files/${encoded}?type=preview`;
+    const previewUrl = isPdf ? `/api/files/${encoded}?type=read` : `/api/files/${encoded}?type=preview`;
     return (
       <div style={{ flex: 1, minHeight: 0, background: "var(--bg-panel)" }}>
         <iframe

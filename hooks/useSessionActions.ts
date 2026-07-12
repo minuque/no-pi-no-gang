@@ -590,8 +590,7 @@ export function useSessionActions({
   const handleToolPresetChange = useCallback(
     async (preset: ToolPreset) => {
       const { PRESET_DEFAULT, PRESET_FULL, PRESET_NONE } = await import("../components/ToolPanel");
-      const toolNames =
-        preset === "none" ? PRESET_NONE : preset === "default" ? PRESET_DEFAULT : PRESET_FULL;
+      const toolNames = preset === "none" ? PRESET_NONE : preset === "default" ? PRESET_DEFAULT : PRESET_FULL;
       setToolPresetState(preset);
       const sid = sessionIdRef.current;
       if (!sid) return;

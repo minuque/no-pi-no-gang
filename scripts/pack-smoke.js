@@ -39,8 +39,7 @@ async function terminateProcessTree(child) {
     if (process.platform !== "win32") process.kill(-child.pid, "SIGKILL");
     await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 2000))]);
   }
-  if (child.exitCode === null)
-    throw new Error(`Failed to terminate smoke process tree ${child.pid}`);
+  if (child.exitCode === null) throw new Error(`Failed to terminate smoke process tree ${child.pid}`);
 }
 
 async function waitForOk(url, timeoutMs = 30_000) {
@@ -83,17 +82,7 @@ async function main() {
     }
     cli = spawn(
       process.execPath,
-      [
-        npmCli,
-        "exec",
-        "--offline",
-        "--",
-        "no-pi-no-gang",
-        "--port",
-        port,
-        "--hostname",
-        "127.0.0.1",
-      ],
+      [npmCli, "exec", "--offline", "--", "no-pi-no-gang", "--port", port, "--hostname", "127.0.0.1"],
       {
         cwd: tempDir,
         detached: process.platform !== "win32",

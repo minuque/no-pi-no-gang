@@ -85,9 +85,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     provider: string;
     modelId: string;
   } | null>(null);
-  const [pendingModel, setPendingModel] = useState<{ provider: string; modelId: string } | null>(
-    null,
-  );
+  const [pendingModel, setPendingModel] = useState<{ provider: string; modelId: string } | null>(null);
   const [sessionExists, setSessionExists] = useState(session !== null);
   const [sessionDestroyed, setSessionDestroyed] = useState(false);
   const [agentLastUpdated, setAgentLastUpdated] = useState<string | null>(null);
@@ -238,9 +236,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (d.agentState?.state?.contextUsage !== undefined) {
           setContextUsage(d.agentState.state.contextUsage ?? null);
         } else {
-          setContextUsage(
-            deriveContextUsage(mergedMessages, d.context.model, modelListRef.current),
-          );
+          setContextUsage(deriveContextUsage(mergedMessages, d.context.model, modelListRef.current));
         }
         if (d.agentState) {
           setAgentStateRunning(d.agentState.state?.running ?? d.agentState.running);
@@ -290,9 +286,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         setActiveLeafId(leafId);
         setMessages(mergedMessages);
         setEntryIds(d.context.entryIds ?? []);
-        setContextUsage(
-          deriveContextUsage(mergedMessages, currentModelRef.current, modelListRef.current),
-        );
+        setContextUsage(deriveContextUsage(mergedMessages, currentModelRef.current, modelListRef.current));
       } catch (e) {
         console.error("Failed to load context:", e);
       } finally {
@@ -366,10 +360,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
                   systemPrompt?: string;
                 };
               }) => {
-                if (d.state?.contextUsage !== undefined)
-                  setContextUsage(d.state.contextUsage ?? null);
-                if (d.state?.systemPrompt !== undefined)
-                  setSystemPrompt(d.state.systemPrompt ?? null);
+                if (d.state?.contextUsage !== undefined) setContextUsage(d.state.contextUsage ?? null);
+                if (d.state?.systemPrompt !== undefined) setSystemPrompt(d.state.systemPrompt ?? null);
               },
             )
             .catch(() => {});
@@ -451,8 +443,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           }
         }
         if (agentState?.state) {
-          if (agentState.state.isCompacting !== undefined)
-            setIsCompacting(agentState.state.isCompacting);
+          if (agentState.state.isCompacting !== undefined) setIsCompacting(agentState.state.isCompacting);
           if (agentState.state.contextUsage !== undefined)
             setContextUsage(agentState.state.contextUsage ?? null);
           if (agentState.state.systemPrompt !== undefined)

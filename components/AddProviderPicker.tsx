@@ -56,15 +56,10 @@ export function AddProviderPicker({
     (p) => !p.loggedIn && (!q || p.name.toLowerCase().includes(q)),
   );
   const availableApiKey = apiKeyProviders.filter(
-    (p) =>
-      !p.configured &&
-      (!q || p.displayName.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)),
+    (p) => !p.configured && (!q || p.displayName.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)),
   );
   const showCustom =
-    !q ||
-    "custom".includes(q) ||
-    "openai-compatible".includes(q) ||
-    "anthropic-compatible".includes(q);
+    !q || "custom".includes(q) || "openai-compatible".includes(q) || "anthropic-compatible".includes(q);
 
   const totalCount = availableOAuth.length + availableApiKey.length + (showCustom ? 1 : 0);
 
@@ -288,9 +283,7 @@ export function AddProviderPicker({
                     >
                       {p.name}
                     </div>
-                    <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 2 }}>
-                      {t("oauth")}
-                    </div>
+                    <div style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 2 }}>{t("oauth")}</div>
                   </div>
                   <ProviderIcon id={p.id} size={28} />
                 </button>

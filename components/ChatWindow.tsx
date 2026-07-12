@@ -72,10 +72,7 @@ function phaseLabel(phase: AgentPhase): string {
   return "Thinking...";
 }
 
-function buildActivePathIds(
-  tree: EntryTreeNode[] | undefined,
-  targetId: string | null,
-): Set<string> {
+function buildActivePathIds(tree: EntryTreeNode[] | undefined, targetId: string | null): Set<string> {
   if (!tree || !targetId) return new Set();
   function find(nodes: EntryTreeNode[], path: string[]): string[] | null {
     for (const node of nodes) {
@@ -299,8 +296,7 @@ export const ChatWindow = memo(function ChatWindow({
     [chatInputRef],
   );
 
-  const { isDragOver, handleDragEnter, handleDragOver, handleDragLeave, handleDrop } =
-    useDragDrop(onDrop);
+  const { isDragOver, handleDragEnter, handleDragOver, handleDragLeave, handleDrop } = useDragDrop(onDrop);
 
   // Retry: re-send last user message
   const handleRetry = useCallback(() => {
@@ -326,8 +322,7 @@ export const ChatWindow = memo(function ChatWindow({
     [handleSend],
   );
 
-  const showWelcome =
-    !session && messages.length === 0 && !streamState.isStreaming && !agentRunning;
+  const showWelcome = !session && messages.length === 0 && !streamState.isStreaming && !agentRunning;
 
   const availableThinkingLevels = displayModelValue
     ? (modelThinkingLevels[`${displayModelValue.provider}:${displayModelValue.modelId}`] ?? null)
@@ -417,9 +412,7 @@ export const ChatWindow = memo(function ChatWindow({
       const msg = messages[i];
       if (msg.role === "toolResult") {
         const entryId = entryIds[i];
-        const isCurrentPath = entryId
-          ? activePathIds.size === 0 || activePathIds.has(entryId)
-          : false;
+        const isCurrentPath = entryId ? activePathIds.size === 0 || activePathIds.has(entryId) : false;
         map.set((msg as ToolResultMessage).toolCallId, {
           ...(msg as ToolResultMessage),
           _entryId: entryId,
@@ -649,7 +642,7 @@ export const ChatWindow = memo(function ChatWindow({
             {[0, 0.8, 1.6].map((delay) => (
               <div
                 key={delay}
-                className="absolute h-[720px] w-[720px] rounded-full animate-[drop-ripple_2.4s_ease-out_infinite_backwards]"
+                className="absolute h-[720px] w-[720px] animate-[drop-ripple_2.4s_ease-out_infinite_backwards] rounded-full"
                 style={{
                   transformOrigin: "center",
                   animationDelay: `${delay}s`,
@@ -787,13 +780,13 @@ export const ChatWindow = memo(function ChatWindow({
       ) : (
         <>
           <div
-            className="flex-1 overflow-hidden relative"
+            className="relative flex-1 overflow-hidden"
             style={{ viewTransitionName: "chat-content", animation: "fade-in-up 0.35s ease both" }}
           >
             {/* ── Native scroll viewport ── */}
             <div
               ref={setScrollContainerRef}
-              className="h-full overflow-y-auto [scrollbar-width:none]"
+              className="h-full [scrollbar-width:none] overflow-y-auto"
               onMouseUp={captureChatSelection}
               onKeyUp={captureChatSelection}
               onScroll={() => setSelectionToolbar(null)}
@@ -801,15 +794,10 @@ export const ChatWindow = memo(function ChatWindow({
               <div ref={scrollContentRef} style={{ paddingTop: 16 }}>
                 {/* Completed messages */}
                 {renderedMessages.items.map(
-                  (
-                    { msg, entryId, originalIndex, isStreaming: itemStreaming, streamBlockStart },
-                    idx,
-                  ) => {
+                  ({ msg, entryId, originalIndex, isStreaming: itemStreaming, streamBlockStart }, idx) => {
                     const prevItem = idx > 0 ? renderedMessages.items[idx - 1] : undefined;
                     const nextItem =
-                      idx < renderedMessages.items.length - 1
-                        ? renderedMessages.items[idx + 1]
-                        : undefined;
+                      idx < renderedMessages.items.length - 1 ? renderedMessages.items[idx + 1] : undefined;
 
                     const prevAssistantEntryId =
                       msg.role === "user" && prevItem?.msg.role === "assistant"
@@ -868,9 +856,7 @@ export const ChatWindow = memo(function ChatWindow({
                           showTimestamp={showTimestamp}
                           prevTimestamp={prevItem?.msg.timestamp as number | undefined}
                           onRetry={isLastAssistant && !agentRunning ? handleRetry : undefined}
-                          onEditResend={
-                            msg.role === "user" && !agentRunning ? handleEditResend : undefined
-                          }
+                          onEditResend={msg.role === "user" && !agentRunning ? handleEditResend : undefined}
                         />
                       </div>
                     );
@@ -1049,9 +1035,7 @@ export const ChatWindow = memo(function ChatWindow({
                     animation: "spin 0.7s linear infinite",
                   }}
                 />
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                  Loading branch path…
-                </span>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Loading branch path…</span>
               </div>
             </div>
           )}

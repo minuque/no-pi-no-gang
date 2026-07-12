@@ -182,15 +182,7 @@ function MermaidBlock({ code, isStreaming }: { code: string; isStreaming?: boole
   );
 }
 
-function CodeBlock({
-  code,
-  lang,
-  headerAction,
-}: {
-  code: string;
-  lang: string;
-  headerAction?: ReactNode;
-}) {
+function CodeBlock({ code, lang, headerAction }: { code: string; lang: string; headerAction?: ReactNode }) {
   const { isDark } = useTheme();
   const [copied, setCopied] = useState(false);
 

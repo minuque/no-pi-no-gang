@@ -327,8 +327,7 @@ export function AppShell() {
   );
 
   // Show chat area if a session is selected, or if we have a cwd to start a new session in
-  const effectiveNewSessionCwd =
-    newSessionCwd ?? (selectedSession === null && activeCwd ? activeCwd : null);
+  const effectiveNewSessionCwd = newSessionCwd ?? (selectedSession === null && activeCwd ? activeCwd : null);
   const showChat = selectedSession !== null || effectiveNewSessionCwd !== null;
 
   const sidebarContent = (
@@ -475,9 +474,7 @@ export function AppShell() {
 
   return (
     <>
-      <div
-        style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}
-      >
+      <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
         {/* Floating hamburger when sidebar is closed */}
         {!sidebarOpen && (
           <button
@@ -545,7 +542,7 @@ export function AppShell() {
           {/* Left sidebar */}
           <div
             ref={sidebarRef}
-            className={`sidebar-container${sidebarOpen ? " sidebar-open" : " sidebar-closed"}`}
+            className={`sidebar-container${sidebarOpen ? "sidebar-open" : "sidebar-closed"}`}
             style={{
               background: "var(--bg-panel)",
               borderRight: "1px solid var(--border)",
@@ -716,7 +713,7 @@ export function AppShell() {
           {/* Right panel */}
           <div
             ref={rightPanelRef}
-            className={`right-panel-container${workspacePanelOpen ? " right-panel-open" : " right-panel-closed"}`}
+            className={`right-panel-container${workspacePanelOpen ? "right-panel-open" : "right-panel-closed"}`}
             style={{
               display: "flex",
               flexDirection: "column",

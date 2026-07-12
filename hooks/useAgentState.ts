@@ -10,11 +10,7 @@ import {
   useState,
 } from "react";
 
-import {
-  type AgentEventState,
-  type AgentPhase,
-  initialAgentEventState,
-} from "../lib/agent-event-reducer";
+import { type AgentEventState, type AgentPhase, initialAgentEventState } from "../lib/agent-event-reducer";
 import type { AgentEventStatus, StreamAction } from "../lib/events/event-types";
 import type { AgentMessage, AssistantMessage } from "../lib/types";
 
@@ -73,8 +69,7 @@ export function deriveContextUsage(
     const msg = messages[i];
     if (msg.role !== "assistant") continue;
     const usage = (msg as AssistantMessage).usage as
-      | (AssistantMessage["usage"] & { totalTokens?: number })
-      | undefined;
+      (AssistantMessage["usage"] & { totalTokens?: number }) | undefined;
     if (!usage) continue;
     const tokens =
       usage.totalTokens ??
@@ -125,9 +120,7 @@ export function useAgentState({
   const [contextUsage, setContextUsage] = useState<ContextUsageState | null>(null);
 
   const agentEventStateRef = useRef<AgentEventState>(initialAgentEventState());
-  const [agentEventState, setAgentEventStateRaw] = useState<AgentEventState>(
-    agentEventStateRef.current,
-  );
+  const [agentEventState, setAgentEventStateRaw] = useState<AgentEventState>(agentEventStateRef.current);
   const applyAgentEventState = useCallback(
     (next: AgentEventState | ((prev: AgentEventState) => AgentEventState)) => {
       const prev = agentEventStateRef.current;
@@ -178,10 +171,7 @@ export function useAgentState({
       (action) =>
         applyAgentEventState((prev) => ({
           ...prev,
-          [field]:
-            typeof action === "function"
-              ? (action as (p: boolean) => boolean)(prev[field])
-              : action,
+          [field]: typeof action === "function" ? (action as (p: boolean) => boolean)(prev[field]) : action,
         }));
     settersRef.current = {
       setMessages: (action) =>

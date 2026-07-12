@@ -1,12 +1,7 @@
 import type { AgentMessage } from "../types";
 
 export type AgentEventStatus =
-  | "idle"
-  | "connecting"
-  | "connected"
-  | "reconnecting"
-  | "readonly"
-  | "destroyed";
+  "idle" | "connecting" | "connected" | "reconnecting" | "readonly" | "destroyed";
 
 // Pi SDK raw events emitted by AgentSession.
 export type SdkEvent =

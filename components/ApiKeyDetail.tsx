@@ -5,13 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Field, SecretTextInput, SectionTitle } from "./FormFields";
 import type { ApiKeyProvider } from "./ModelsConfigTypes";
 
-export function ApiKeyDetail({
-  provider,
-  onRefresh,
-}: {
-  provider: ApiKeyProvider;
-  onRefresh: () => void;
-}) {
+export function ApiKeyDetail({ provider, onRefresh }: { provider: ApiKeyProvider; onRefresh: () => void }) {
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);

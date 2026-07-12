@@ -35,9 +35,7 @@ interface Props {
   modelList?: { id: string; name: string; provider: string }[];
   onModelChange?: (provider: string, modelId: string) => void;
   thinkingLevel?: "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
-  onThinkingLevelChange?: (
-    level: "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh",
-  ) => void;
+  onThinkingLevelChange?: (level: "auto" | "off" | "minimal" | "low" | "medium" | "high" | "xhigh") => void;
   availableThinkingLevels?: string[] | null;
   thinkingLevelMap?: Record<string, string | null> | null;
   retryInfo?: { attempt: number; maxAttempts: number; errorMessage?: string } | null;
@@ -85,8 +83,7 @@ function getCommandShortDescription(command: SlashCommandItem): string {
   if (!description) return "";
 
   const sentenceEnd = description.search(/[.!?](\s|$)/);
-  const firstSentence =
-    sentenceEnd === -1 ? description : description.slice(0, sentenceEnd + 1).trim();
+  const firstSentence = sentenceEnd === -1 ? description : description.slice(0, sentenceEnd + 1).trim();
 
   return firstSentence.length > 120 ? `${firstSentence.slice(0, 117).trimEnd()}...` : firstSentence;
 }
@@ -415,9 +412,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
           if (!h.length) return;
           if (historyIndexRef.current === -1) historyDraftRef.current = "";
           const idx =
-            historyIndexRef.current === -1
-              ? h.length - 1
-              : Math.max(0, historyIndexRef.current - 1);
+            historyIndexRef.current === -1 ? h.length - 1 : Math.max(0, historyIndexRef.current - 1);
           historyIndexRef.current = idx;
           setValue(h[idx]);
           requestAnimationFrame(() => {
@@ -455,8 +450,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
       }
 
       const nativeEvent = e.nativeEvent;
-      const isComposing =
-        isComposingRef.current || nativeEvent.isComposing || nativeEvent.keyCode === 229;
+      const isComposing = isComposingRef.current || nativeEvent.isComposing || nativeEvent.keyCode === 229;
 
       if (e.key === "Enter" && !e.shiftKey && isComposing) {
         return;
@@ -601,14 +595,13 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
   }));
 
   const currentName = model
-    ? (modelOptions.find((o) => o.modelId === model.modelId && o.provider === model.provider)
-        ?.name ?? model.modelId)
+    ? (modelOptions.find((o) => o.modelId === model.modelId && o.provider === model.provider)?.name ??
+      model.modelId)
     : modelOptions.length > 0
       ? modelOptions[0].name
       : null;
   const currentCwdLabel = currentCwd ? shortenCwd(currentCwd) : "Select directory";
-  const contextPercentLabel =
-    contextUsage?.percent != null ? `${Math.round(contextUsage.percent)}%` : null;
+  const contextPercentLabel = contextUsage?.percent != null ? `${Math.round(contextUsage.percent)}%` : null;
   const contextWindowLabel =
     contextUsage?.contextWindow != null
       ? contextUsage.contextWindow >= 1_000_000
@@ -625,14 +618,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
     if (!availableThinkingLevels || level === "auto") return true;
     return availableThinkingLevels.includes(level);
   });
-  const currentThinkingIndex = Math.max(
-    0,
-    availableThinkingOptions.indexOf(thinkingLevel ?? "auto"),
-  );
+  const currentThinkingIndex = Math.max(0, availableThinkingOptions.indexOf(thinkingLevel ?? "auto"));
   const currentThinkingProgress =
-    availableThinkingOptions.length === 1
-      ? 1
-      : currentThinkingIndex / (availableThinkingOptions.length - 1);
+    availableThinkingOptions.length === 1 ? 1 : currentThinkingIndex / (availableThinkingOptions.length - 1);
   const currentThinkingColor = THINKING_LEVEL_COLORS[thinkingLevel ?? "auto"];
   const currentThinkingIsMax = thinkingLevel === "xhigh";
   const selectThinkingFromPointer = (clientX: number, element: HTMLDivElement) => {
@@ -1107,9 +1095,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                   e.currentTarget.style.background = attachedImages.length
                     ? "color-mix(in oklab, var(--accent), transparent 90%)"
                     : "none";
-                  e.currentTarget.style.color = attachedImages.length
-                    ? "var(--accent)"
-                    : "var(--text-muted)";
+                  e.currentTarget.style.color = attachedImages.length ? "var(--accent)" : "var(--text-muted)";
                 }}
               >
                 <svg
@@ -1303,8 +1289,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                           padding: "8px 10px",
                           background: "none",
                           border: "none",
-                          borderTop:
-                            (recentCwds ?? []).length > 0 ? "1px solid var(--border)" : "none",
+                          borderTop: (recentCwds ?? []).length > 0 ? "1px solid var(--border)" : "none",
                           color: "var(--text-muted)",
                           cursor: "pointer",
                           textAlign: "left",
@@ -1446,9 +1431,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                               fontSize: 12,
                               fontWeight: 600,
                               cursor:
-                                cwdCustomValidating || !cwdCustomValue.trim()
-                                  ? "not-allowed"
-                                  : "pointer",
+                                cwdCustomValidating || !cwdCustomValue.trim() ? "not-allowed" : "pointer",
                               opacity: cwdCustomValidating || !cwdCustomValue.trim() ? 0.65 : 1,
                               transition: "opacity 0.12s",
                             }}
@@ -1746,9 +1729,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                               </div>
                             </div>
                             <svg
-                              className={
-                                currentThinkingIsMax ? "thinking-level-max-icon" : undefined
-                              }
+                              className={currentThinkingIsMax ? "thinking-level-max-icon" : undefined}
                               width="14"
                               height="14"
                               viewBox="0 0 24 24"
@@ -1792,9 +1773,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                             }}
                           >
                             <div
-                              className={
-                                currentThinkingIsMax ? "thinking-level-max-fill" : undefined
-                              }
+                              className={currentThinkingIsMax ? "thinking-level-max-fill" : undefined}
                               aria-hidden="true"
                               style={{
                                 position: "absolute",
@@ -1840,9 +1819,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                                 >
                                   <span
                                     className={
-                                      isActive && level === "xhigh"
-                                        ? "thinking-level-max-thumb"
-                                        : undefined
+                                      isActive && level === "xhigh" ? "thinking-level-max-thumb" : undefined
                                     }
                                     style={{
                                       width: isActive ? 18 : 4,
@@ -1907,8 +1884,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                                   whiteSpace: "nowrap",
                                 }}
                                 onMouseEnter={(e) => {
-                                  if (!isActive)
-                                    e.currentTarget.style.background = "var(--bg-hover)";
+                                  if (!isActive) e.currentTarget.style.background = "var(--bg-hover)";
                                 }}
                                 onMouseLeave={(e) => {
                                   if (!isActive) e.currentTarget.style.background = "none";
@@ -1961,12 +1937,10 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput(
                     transition: "background 0.12s",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background =
-                      "color-mix(in oklab, var(--danger), transparent 82%)";
+                    e.currentTarget.style.background = "color-mix(in oklab, var(--danger), transparent 82%)";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background =
-                      "color-mix(in oklab, var(--danger), transparent 90%)";
+                    e.currentTarget.style.background = "color-mix(in oklab, var(--danger), transparent 90%)";
                   }}
                 >
                   <svg width="14" height="14" viewBox="0 0 10 10" fill="none" aria-hidden>

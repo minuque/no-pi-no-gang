@@ -37,11 +37,7 @@ export function ThinkingLevelMapEditor({
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {THINKING_LEVELS.map((level) => {
         const raw = map[level];
-        const state: "omit" | "null" | "string" = !(level in map)
-          ? "omit"
-          : raw === null
-            ? "null"
-            : "string";
+        const state: "omit" | "null" | "string" = !(level in map) ? "omit" : raw === null ? "null" : "string";
         const strVal = typeof raw === "string" ? raw : "";
         const color = LEVEL_COLORS[level];
 
@@ -81,9 +77,7 @@ export function ThinkingLevelMapEditor({
             }}
           >
             {/* Level badge */}
-            <div
-              style={{ display: "flex", alignItems: "center", gap: 5, width: 68, flexShrink: 0 }}
-            >
+            <div style={{ display: "flex", alignItems: "center", gap: 5, width: 68, flexShrink: 0 }}>
               <span
                 style={{
                   width: 6,

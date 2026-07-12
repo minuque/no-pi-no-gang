@@ -1,8 +1,4 @@
-import type {
-  AgentSessionEvent,
-  SessionManager,
-  SettingsManager,
-} from "@earendil-works/pi-coding-agent";
+import type { AgentSessionEvent, SessionManager, SettingsManager } from "@earendil-works/pi-coding-agent";
 
 export interface ContextUsage {
   percent: number | null;
@@ -64,14 +60,8 @@ export interface AgentSessionLike {
   compact(customInstructions?: string): Promise<unknown>;
   setAutoCompactionEnabled(enabled: boolean): void;
   setAutoRetryEnabled(enabled: boolean): void;
-  steer(
-    text: string,
-    images?: Array<{ type: "image"; data: string; mimeType: string }>,
-  ): Promise<void>;
-  followUp(
-    text: string,
-    images?: Array<{ type: "image"; data: string; mimeType: string }>,
-  ): Promise<void>;
+  steer(text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>): Promise<void>;
+  followUp(text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>): Promise<void>;
   getAllTools(): ToolInfo[];
   getActiveToolNames(): string[];
   setActiveToolsByName(names: string[]): void;
@@ -80,11 +70,6 @@ export interface AgentSessionLike {
   bindExtensions?(bindings: {
     abortHandler?: () => void;
     shutdownHandler?: () => void;
-    onError?: (error: {
-      extensionPath: string;
-      event: string;
-      error: string;
-      stack?: string;
-    }) => void;
+    onError?: (error: { extensionPath: string; event: string; error: string; stack?: string }) => void;
   }): Promise<void>;
 }

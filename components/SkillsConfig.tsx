@@ -138,9 +138,7 @@ function SkillDetail({
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-        <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>
-          {tDetail("name")}
-        </span>
+        <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>{tDetail("name")}</span>
         <span
           style={{
             fontFamily: "var(--font-mono)",
@@ -156,9 +154,7 @@ function SkillDetail({
         <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>
           {tDetail("description")}
         </span>
-        <span style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6 }}>
-          {skill.description}
-        </span>
+        <span style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6 }}>{skill.description}</span>
       </div>
     </div>
   );
@@ -237,8 +233,7 @@ function AddSkillPanel({ cwd, onInstalled }: { cwd: string; onInstalled: () => v
     [onInstalled, scope, cwd],
   );
 
-  const installPath =
-    scope === "global" ? "~/.pi/agent/skills/" : `${shortenPath(cwd)}/.pi/agent/skills/`;
+  const installPath = scope === "global" ? "~/.pi/agent/skills/" : `${shortenPath(cwd)}/.pi/agent/skills/`;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -251,9 +246,7 @@ function AddSkillPanel({ cwd, onInstalled }: { cwd: string; onInstalled: () => v
           marginBottom: 20,
         }}
       >
-        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
-          {tAdd("addSkillTitle")}
-        </div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{tAdd("addSkillTitle")}</div>
 
         {/* Search row */}
         <div style={{ display: "flex", gap: 8 }}>
@@ -342,9 +335,7 @@ function AddSkillPanel({ cwd, onInstalled }: { cwd: string; onInstalled: () => v
         {/* Errors */}
         {searchError && <div style={{ fontSize: 12, color: "var(--danger)" }}>{searchError}</div>}
         {installError && (
-          <div style={{ fontSize: 12, color: "var(--danger)", wordBreak: "break-word" }}>
-            {installError}
-          </div>
+          <div style={{ fontSize: 12, color: "var(--danger)", wordBreak: "break-word" }}>{installError}</div>
         )}
       </div>
 
@@ -434,10 +425,7 @@ function AddSkillPanel({ cwd, onInstalled }: { cwd: string; onInstalled: () => v
                     fontWeight: 500,
                     borderRadius: 5,
                     border: "1px solid var(--border)",
-                    cursor:
-                      isInstalled || isInstalling || installing !== null
-                        ? "not-allowed"
-                        : "pointer",
+                    cursor: isInstalled || isInstalling || installing !== null ? "not-allowed" : "pointer",
                     background: isInstalled ? "rgba(34,197,94,0.1)" : "none",
                     color: isInstalled
                       ? "var(--success)"
@@ -447,11 +435,7 @@ function AddSkillPanel({ cwd, onInstalled }: { cwd: string; onInstalled: () => v
                     transition: "color 0.12s",
                   }}
                 >
-                  {isInstalled
-                    ? tAdd("installedBadge")
-                    : isInstalling
-                      ? tAdd("installing")
-                      : tAdd("install")}
+                  {isInstalled ? tAdd("installedBadge") : isInstalling ? tAdd("installing") : tAdd("install")}
                 </button>
               </div>
             );
@@ -529,9 +513,7 @@ export function SkillsConfig({ cwd, onClose }: { cwd: string; onClose: () => voi
         return;
       }
       setSkills((prev) =>
-        prev.map((s) =>
-          s.filePath === skill.filePath ? { ...s, disableModelInvocation: next } : s,
-        ),
+        prev.map((s) => (s.filePath === skill.filePath ? { ...s, disableModelInvocation: next } : s)),
       );
     } catch (e) {
       setSaveError(String(e));
@@ -586,9 +568,7 @@ export function SkillsConfig({ cwd, onClose }: { cwd: string; onClose: () => voi
           }}
         >
           <div style={{ display: "flex", alignItems: "baseline", gap: 10, flex: 1, minWidth: 0 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>
-              {t("skillsTitle")}
-            </span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{t("skillsTitle")}</span>
             <code
               style={{
                 fontSize: 11,

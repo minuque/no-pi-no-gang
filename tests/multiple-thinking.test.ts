@@ -54,11 +54,7 @@ describe("multiple thinking blocks", () => {
       {
         event: {
           type: "message_update",
-          message: assistantMsg([
-            thinkingBlock("step 1"),
-            thinkingBlock("step 2"),
-            textBlock("answer"),
-          ]),
+          message: assistantMsg([thinkingBlock("step 1"), thinkingBlock("step 2"), textBlock("answer")]),
         },
         eventAt: T2,
       },
@@ -66,11 +62,7 @@ describe("multiple thinking blocks", () => {
       {
         event: {
           type: "message_end",
-          message: assistantMsg([
-            thinkingBlock("step 1"),
-            thinkingBlock("step 2"),
-            textBlock("answer"),
-          ]),
+          message: assistantMsg([thinkingBlock("step 1"), thinkingBlock("step 2"), textBlock("answer")]),
         },
         eventAt: T3,
       },
@@ -105,22 +97,14 @@ describe("multiple thinking blocks", () => {
       {
         event: {
           type: "message_update",
-          message: assistantMsg([
-            thinkingBlock("step 1"),
-            thinkingBlock("step 2"),
-            textBlock("answer"),
-          ]),
+          message: assistantMsg([thinkingBlock("step 1"), thinkingBlock("step 2"), textBlock("answer")]),
         },
         eventAt: T2,
       },
       {
         event: {
           type: "message_end",
-          message: assistantMsg([
-            thinkingBlock("step 1"),
-            thinkingBlock("step 2"),
-            textBlock("answer"),
-          ]),
+          message: assistantMsg([thinkingBlock("step 1"), thinkingBlock("step 2"), textBlock("answer")]),
         },
         eventAt: T3,
       },

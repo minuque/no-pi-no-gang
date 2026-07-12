@@ -12,8 +12,7 @@ import { I18nProvider } from "@/components/I18nProvider";
 import "./globals.css";
 
 const APP_NAME = "No Pi No Gang";
-const APP_DESCRIPTION =
-  "No Pi No Gang — interactive chat, code analysis, and automated development tasks.";
+const APP_DESCRIPTION = "No Pi No Gang — interactive chat, code analysis, and automated development tasks.";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -80,10 +79,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body style={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
         <I18nProvider>
-          <main
-            id="main"
-            style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}
-          >
+          <main id="main" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             {children}
           </main>
           <Agentator />

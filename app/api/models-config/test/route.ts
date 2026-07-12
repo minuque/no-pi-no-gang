@@ -44,8 +44,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "model is required" }, { status: 400 });
 
     const modelId = typeof body.model.id === "string" ? body.model.id.trim() : "";
-    if (!modelId)
-      return NextResponse.json({ ok: false, error: "Model ID is required" }, { status: 400 });
+    if (!modelId) return NextResponse.json({ ok: false, error: "Model ID is required" }, { status: 400 });
 
     tempDir = mkdtempSync(join(tmpdir(), "no-pi-no-gang-model-test-"));
     const modelsPath = join(tempDir, "models.json");
@@ -71,8 +70,7 @@ export async function POST(req: Request) {
     if (loadError) return NextResponse.json({ ok: false, error: loadError });
 
     const model = registry.find(providerName, modelId);
-    if (!model)
-      return NextResponse.json({ ok: false, error: `Model not found: ${providerName}/${modelId}` });
+    if (!model) return NextResponse.json({ ok: false, error: `Model not found: ${providerName}/${modelId}` });
 
     const auth = await registry.getApiKeyAndHeaders(model);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error });

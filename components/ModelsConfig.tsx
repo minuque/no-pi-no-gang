@@ -87,10 +87,8 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
     });
     setSelection((prev) => {
       if (!prev) return prev;
-      if (prev.type === "provider" && prev.name === oldName)
-        return { type: "provider", name: newName };
-      if (prev.type === "model" && prev.providerName === oldName)
-        return { ...prev, providerName: newName };
+      if (prev.type === "provider" && prev.name === oldName) return { type: "provider", name: newName };
+      if (prev.type === "model" && prev.providerName === oldName) return { ...prev, providerName: newName };
       return prev;
     });
   }, []);
@@ -262,12 +260,8 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
             }}
           >
             <div style={{ display: "flex", alignItems: "baseline", gap: 10, flex: 1, minWidth: 0 }}>
-              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>
-                {t("modelsTitle")}
-              </span>
-              <code
-                style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}
-              >
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text)" }}>{t("modelsTitle")}</span>
+              <code style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
                 ~/.pi/agent/models.json
               </code>
             </div>
@@ -419,8 +413,7 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
                   </div>
                 ) : (
                   providers.map(([pName, pData]) => {
-                    const isProviderSelected =
-                      selection?.type === "provider" && selection.name === pName;
+                    const isProviderSelected = selection?.type === "provider" && selection.name === pName;
                     const models = pData.models ?? [];
                     return (
                       <div key={pName} style={{ marginBottom: 2 }}>
@@ -437,8 +430,7 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
                             background: isProviderSelected ? "var(--bg-selected)" : "none",
                           }}
                           onMouseEnter={(e) => {
-                            if (!isProviderSelected)
-                              e.currentTarget.style.background = "var(--bg-hover)";
+                            if (!isProviderSelected) e.currentTarget.style.background = "var(--bg-hover)";
                           }}
                           onMouseLeave={(e) => {
                             if (!isProviderSelected) e.currentTarget.style.background = "none";
@@ -491,9 +483,7 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
                           return (
                             <div
                               key={i}
-                              onClick={() =>
-                                setSelection({ type: "model", providerName: pName, index: i })
-                              }
+                              onClick={() => setSelection({ type: "model", providerName: pName, index: i })}
                               style={{
                                 display: "flex",
                                 alignItems: "center",
@@ -504,8 +494,7 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
                                 background: isModelSelected ? "var(--bg-selected)" : "none",
                               }}
                               onMouseEnter={(e) => {
-                                if (!isModelSelected)
-                                  e.currentTarget.style.background = "var(--bg-hover)";
+                                if (!isModelSelected) e.currentTarget.style.background = "var(--bg-hover)";
                               }}
                               onMouseLeave={(e) => {
                                 if (!isModelSelected) e.currentTarget.style.background = "none";
@@ -639,9 +628,7 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
               flexShrink: 0,
             }}
           >
-            {saveError && (
-              <span style={{ fontSize: 12, color: "var(--danger)", flex: 1 }}>{saveError}</span>
-            )}
+            {saveError && <span style={{ fontSize: 12, color: "var(--danger)", flex: 1 }}>{saveError}</span>}
             <button
               onClick={handleSave}
               disabled={saving || savedOk}
@@ -649,18 +636,10 @@ export function ModelsConfig({ onClose }: { onClose: () => void }) {
                 position: "relative",
                 padding: "6px 16px",
                 minWidth: 92,
-                background: savedOk
-                  ? "var(--success)"
-                  : saving
-                    ? "var(--bg-panel)"
-                    : "var(--accent-hover)",
+                background: savedOk ? "var(--success)" : saving ? "var(--bg-panel)" : "var(--accent-hover)",
                 border: "none",
                 borderRadius: 6,
-                color: savedOk
-                  ? "var(--accent-on)"
-                  : saving
-                    ? "var(--text-muted)"
-                    : "var(--accent-on)",
+                color: savedOk ? "var(--accent-on)" : saving ? "var(--text-muted)" : "var(--accent-on)",
                 cursor: saving || savedOk ? "default" : "pointer",
                 fontSize: 13,
                 fontWeight: 600,

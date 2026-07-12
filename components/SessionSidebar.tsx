@@ -430,9 +430,7 @@ export function SessionSidebar({
         const sessions = [
           ...(!isSearching || cwdMatches
             ? group.sessions
-            : group.sessions.filter((session) =>
-                matchesSessionSearch(session, normalizedSearchQuery),
-              )),
+            : group.sessions.filter((session) => matchesSessionSearch(session, normalizedSearchQuery))),
         ].sort((a, b) => b.modified.localeCompare(a.modified));
         return {
           ...group,
@@ -516,11 +514,7 @@ export function SessionSidebar({
           {title ?? t("sessions")}
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <HeaderBtn
-            onClick={() => setSearchOpen(true)}
-            title={t("openSearch")}
-            active={searchOpen}
-          >
+          <HeaderBtn onClick={() => setSearchOpen(true)} title={t("openSearch")} active={searchOpen}>
             <IconSearch />
           </HeaderBtn>
           <HeaderBtn
@@ -581,11 +575,7 @@ export function SessionSidebar({
               {t("loadingSessions")}
             </div>
           )}
-          {error && (
-            <div style={{ padding: "12px 16px", color: "var(--danger)", fontSize: 12 }}>
-              {error}
-            </div>
-          )}
+          {error && <div style={{ padding: "12px 16px", color: "var(--danger)", fontSize: 12 }}>{error}</div>}
           {!loading && !error && allSessions.length === 0 && (
             <div style={{ padding: "20px 16px", color: "var(--text-dim)", fontSize: 12 }}>
               {t("noSessions")}
@@ -659,9 +649,7 @@ export function SessionSidebar({
               >
                 {t("projects")}
               </div>
-              <div
-                style={{ padding: "0 8px 8px", display: "flex", flexDirection: "column", gap: 4 }}
-              >
+              <div style={{ padding: "0 8px 8px", display: "flex", flexDirection: "column", gap: 4 }}>
                 {cwdGroups.map((group) => (
                   <CwdGroupSection
                     key={group.cwd}
@@ -802,16 +790,12 @@ export function SessionSidebar({
                         {getCwdLabel(group.cwd, t)}
                       </span>
                       {group.cwd === selCwd && (
-                        <span style={{ color: "var(--accent)", fontSize: 11 }}>
-                          {t("currentProject")}
-                        </span>
+                        <span style={{ color: "var(--accent)", fontSize: 11 }}>{t("currentProject")}</span>
                       )}
                     </div>
                     {group.sessions.map((session) => {
                       const title =
-                        session.name ||
-                        session.firstMessage.slice(0, 60) ||
-                        session.id.slice(0, 12);
+                        session.name || session.firstMessage.slice(0, 60) || session.id.slice(0, 12);
                       return (
                         <button
                           key={session.id}
@@ -829,9 +813,7 @@ export function SessionSidebar({
                                 : "2px solid transparent",
                             borderRadius: "var(--radius-sm)",
                             background:
-                              session.id === selectedSessionId
-                                ? "var(--bg-selected)"
-                                : "transparent",
+                              session.id === selectedSessionId ? "var(--bg-selected)" : "transparent",
                             color: "var(--text)",
                             textAlign: "left",
                             cursor: "pointer",
@@ -984,9 +966,7 @@ function CwdGroupSection({
           }}
         >
           <span>{t("sessionCount", { count: group.sessions.length })}</span>
-          {group.modified && (
-            <span title={group.modified}>{formatRelativeTime(group.modified, t)}</span>
-          )}
+          {group.modified && <span title={group.modified}>{formatRelativeTime(group.modified, t)}</span>}
         </div>
       </div>
     </div>
@@ -1029,11 +1009,7 @@ function SessionCard({
     hasAnyFlag(session, ["isStreaming", "streaming", "liveStreaming", "live", "isLive"]);
   const isFork = Boolean(session.parentSessionId);
 
-  const statusColor = isLiveStreaming
-    ? "var(--success)"
-    : isSelected
-      ? "var(--accent)"
-      : "var(--text-dim)";
+  const statusColor = isLiveStreaming ? "var(--success)" : isSelected ? "var(--accent)" : "var(--text-dim)";
 
   const startRename = useCallback(
     (e: React.MouseEvent) => {
@@ -1345,12 +1321,8 @@ function SessionMetaBadge({
         maxWidth: 72,
         padding: "0 5px",
         borderRadius: "var(--radius-sm)",
-        background: toneVar
-          ? `color-mix(in oklab, ${toneVar}, transparent 88%)`
-          : "var(--bg-hover)",
-        border: `1px solid ${
-          toneVar ? `color-mix(in oklab, ${toneVar}, transparent 68%)` : "var(--border)"
-        }`,
+        background: toneVar ? `color-mix(in oklab, ${toneVar}, transparent 88%)` : "var(--bg-hover)",
+        border: `1px solid ${toneVar ? `color-mix(in oklab, ${toneVar}, transparent 68%)` : "var(--border)"}`,
         color: toneVar ?? "var(--text-dim)",
         fontSize: 11,
         fontFamily: "var(--font-mono)",
@@ -1380,8 +1352,7 @@ const btnIcon: React.CSSProperties = {
   color: "var(--text-muted)",
   cursor: "pointer",
   flexShrink: 0,
-  transition:
-    "background var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast)",
+  transition: "background var(--motion-fast), color var(--motion-fast), border-color var(--motion-fast)",
 };
 
 const menuItemStyle: React.CSSProperties = {

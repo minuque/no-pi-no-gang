@@ -200,16 +200,10 @@ function TreeNodeView({
             height: 7,
             borderRadius: "50%",
             flexShrink: 0,
-            background: isActive
-              ? "var(--accent)"
-              : isOnPath
-                ? "var(--text-muted)"
-                : "var(--border)",
+            background: isActive ? "var(--accent)" : isOnPath ? "var(--text-muted)" : "var(--border)",
             border: isActive ? "none" : "1px solid var(--text-dim)",
             marginRight: 6,
-            boxShadow: isActive
-              ? "0 0 0 4px color-mix(in oklab, var(--accent), transparent 88%)"
-              : "none",
+            boxShadow: isActive ? "0 0 0 4px color-mix(in oklab, var(--accent), transparent 88%)" : "none",
             transition: "background 180ms ease, border-color 180ms ease, box-shadow 180ms ease",
           }}
         />
@@ -371,11 +365,7 @@ export function BranchNavigator({
     setPreviewLeafId(activeLeafId);
   }, [activeLeafId]);
 
-  const noBranchReason = !hasSession
-    ? t("noActiveSession")
-    : !hasBranch(tree)
-      ? t("noBranchPaths")
-      : null;
+  const noBranchReason = !hasSession ? t("noActiveSession") : !hasBranch(tree) ? t("noBranchPaths") : null;
 
   // Find first meaningful node (skip pure linear prefix)
   const compressed = tree.length > 0 ? compress(tree[0]) : null;
@@ -396,10 +386,8 @@ export function BranchNavigator({
     return findNodePath(tree, compress(firstNode.children[0]).node.entry.id);
   }, [tree, previewLeafId, activeLeafId, firstNode]);
   const previewEntries = previewPath.filter((node) => node.entry.type === "message").slice(-6);
-  const activeLabel =
-    currentPath.length > 0 ? getLabel(currentPath[currentPath.length - 1].entry, t) : null;
-  const previewLabel =
-    previewPath.length > 0 ? getLabel(previewPath[previewPath.length - 1].entry, t) : null;
+  const activeLabel = currentPath.length > 0 ? getLabel(currentPath[currentPath.length - 1].entry, t) : null;
+  const previewLabel = previewPath.length > 0 ? getLabel(previewPath[previewPath.length - 1].entry, t) : null;
 
   if (hideWhenEmpty && !hasContent) return null;
 
@@ -660,12 +648,8 @@ export function BranchNavigator({
                 flexDirection: "column",
               }}
             >
-              <div
-                style={{ padding: "14px 16px 10px 16px", borderBottom: "1px solid var(--border)" }}
-              >
-                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
-                  {t("branchPaths")}
-                </div>
+              <div style={{ padding: "14px 16px 10px 16px", borderBottom: "1px solid var(--border)" }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{t("branchPaths")}</div>
                 <div style={{ marginTop: 4, fontSize: 11.5, color: "var(--text-dim)" }}>
                   {t("selectBranchPath")}
                 </div>
@@ -742,8 +726,7 @@ export function BranchNavigator({
                         gridTemplateColumns: "52px 1fr",
                         gap: 10,
                         padding: "9px 0",
-                        borderBottom:
-                          "1px solid color-mix(in oklab, var(--border), transparent 45%)",
+                        borderBottom: "1px solid color-mix(in oklab, var(--border), transparent 45%)",
                       }}
                     >
                       <div
@@ -790,9 +773,7 @@ export function BranchNavigator({
                     </div>
                   ))
                 ) : (
-                  <div style={{ color: "var(--text-dim)", fontSize: 12 }}>
-                    {t("hoverToPreview")}
-                  </div>
+                  <div style={{ color: "var(--text-dim)", fontSize: 12 }}>{t("hoverToPreview")}</div>
                 )}
               </div>
             </div>

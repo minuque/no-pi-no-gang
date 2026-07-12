@@ -5,13 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { SectionTitle } from "./FormFields";
 import type { OAuthLoginState, OAuthProvider } from "./ModelsConfigTypes";
 
-export function OAuthDetail({
-  provider,
-  onRefresh,
-}: {
-  provider: OAuthProvider;
-  onRefresh: () => void;
-}) {
+export function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; onRefresh: () => void }) {
   const [loginState, setLoginState] = useState<OAuthLoginState>({ phase: "idle" });
   const [inputValue, setInputValue] = useState("");
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -343,14 +337,10 @@ export function OAuthDetail({
           </div>
         )}
         {loginState.phase === "progress" && (
-          <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
-            {loginState.message}
-          </p>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>{loginState.message}</p>
         )}
         {loginState.phase === "success" && (
-          <p style={{ margin: 0, fontSize: 12, color: "var(--success)" }}>
-            Connected successfully.
-          </p>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--success)" }}>Connected successfully.</p>
         )}
         {loginState.phase === "error" && (
           <p style={{ margin: 0, fontSize: 12, color: "var(--danger)" }}>{loginState.message}</p>

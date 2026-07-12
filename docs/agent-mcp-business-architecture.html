@@ -170,8 +170,8 @@
         <div>
           <h1>Agent 运行时 + MCP 业务能力架构</h1>
           <p class="subtitle">
-            no-pi-no-gang 从 Web 外壳演进为基于 pi SDK 的 智能体编排：pi SDK 负责 智能体循环
-            与扩展钩子，MCP 负责业务能力协议化，能力网关 负责治理、审计、授权和业务事实源边界。
+            no-pi-no-gang 从 Web 外壳演进为基于 pi SDK 的 智能体编排：pi SDK 负责 智能体循环 与扩展钩子，MCP
+            负责业务能力协议化，能力网关 负责治理、审计、授权和业务事实源边界。
           </p>
         </div>
         <div class="tag">目标形态：本地优先 + 业务能力可插拔</div>
@@ -220,13 +220,7 @@
               <path d="M 0 0 L 10 5 L 0 10 z" fill="#dc2626" />
             </marker>
             <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
-              <feDropShadow
-                dx="0"
-                dy="8"
-                stdDeviation="9"
-                flood-color="#0f172a"
-                flood-opacity="0.11"
-              />
+              <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#0f172a" flood-opacity="0.11" />
             </filter>
           </defs>
 
@@ -420,12 +414,7 @@
           <text x="76" y="602" class="box-line">.jsonl：会话历史</text>
           <text x="76" y="622" class="box-line">任务状态 / 审计 / 配置</text>
 
-          <path
-            d="M 166 222 L 166 276"
-            stroke="#64748b"
-            stroke-width="2"
-            marker-end="url(#arrow)"
-          />
+          <path d="M 166 222 L 166 276" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
           <text x="178" y="254" class="flow-label">HTTP / SSE</text>
 
           <path
@@ -446,20 +435,10 @@
           />
           <text x="286" y="474" class="flow-label">事件 / 任务状态</text>
 
-          <path
-            d="M 486 234 L 486 276"
-            stroke="#64748b"
-            stroke-width="2"
-            marker-end="url(#arrow)"
-          />
+          <path d="M 486 234 L 486 276" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
           <text x="498" y="260" class="flow-label">驱动循环</text>
 
-          <path
-            d="M 486 426 L 486 490"
-            stroke="#64748b"
-            stroke-width="2"
-            marker-end="url(#arrow)"
-          />
+          <path d="M 486 426 L 486 490" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
           <text x="498" y="464" class="flow-label">扩展钩子</text>
 
           <path
@@ -480,45 +459,19 @@
           />
           <text x="642" y="468" class="flow-label">策略检查</text>
 
-          <path
-            d="M 850 246 L 850 300"
-            stroke="#64748b"
-            stroke-width="2"
-            marker-end="url(#arrow)"
-          />
+          <path d="M 850 246 L 850 300" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
           <text x="862" y="278" class="flow-label">选定模块</text>
 
-          <path
-            d="M 850 458 L 850 524"
-            stroke="#64748b"
-            stroke-width="2"
-            marker-end="url(#arrow)"
-          />
+          <path d="M 850 458 L 850 524" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
           <text x="862" y="496" class="flow-label">审批通过</text>
 
-          <path
-            d="M 996 586 H 1064"
-            fill="none"
-            stroke="#64748b"
-            stroke-width="2"
-            marker-end="url(#arrow)"
-          />
+          <path d="M 996 586 H 1064" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
           <text x="1018" y="574" class="flow-label">MCP 协议</text>
 
-          <path
-            d="M 1164 524 L 1164 402"
-            stroke="#64748b"
-            stroke-width="2"
-            marker-end="url(#arrow)"
-          />
+          <path d="M 1164 524 L 1164 402" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
           <text x="1176" y="462" class="flow-label">适配器</text>
 
-          <path
-            d="M 1164 276 L 1164 222"
-            stroke="#64748b"
-            stroke-width="2"
-            marker-end="url(#arrow)"
-          />
+          <path d="M 1164 276 L 1164 222" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
           <text x="1176" y="252" class="flow-label">持有数据</text>
 
           <path
@@ -541,8 +494,8 @@
 
           <rect x="380" y="666" width="560" height="42" rx="21" fill="#ffffff" stroke="#cbd5e1" />
           <text x="404" y="692" class="box-line">
-            关键原则：会话历史 归 .jsonl，运行状态 归 TaskSession，业务状态
-            归业务系统；智能体只能通过受治理的 MCP 能力入口触达业务。
+            关键原则：会话历史 归 .jsonl，运行状态 归 TaskSession，业务状态 归业务系统；智能体只能通过受治理的
+            MCP 能力入口触达业务。
           </text>
         </svg>
       </section>
@@ -551,8 +504,8 @@
         <article class="note">
           <h2>为什么需要 能力网关</h2>
           <p>
-            MCP 解决连接协议，不自动解决企业治理。网关 负责把 pi 智能体循环
-            中的工具请求翻译成受控业务能力， 并统一处理授权、审批、脱敏、限流、审计和幂等。
+            MCP 解决连接协议，不自动解决企业治理。网关 负责把 pi 智能体循环 中的工具请求翻译成受控业务能力，
+            并统一处理授权、审批、脱敏、限流、审计和幂等。
           </p>
         </article>
         <article class="note">
@@ -573,8 +526,8 @@
       </section>
 
       <footer>
-        建议把这张图作为下一版 路线图 的目标架构图：它承认 no-pi-no-gang 会实现 智能体编排 逻辑，
-        同时保留 pi SDK、MCP 与业务事实源之间的边界。
+        建议把这张图作为下一版 路线图 的目标架构图：它承认 no-pi-no-gang 会实现 智能体编排 逻辑， 同时保留 pi
+        SDK、MCP 与业务事实源之间的边界。
       </footer>
     </main>
   </body>

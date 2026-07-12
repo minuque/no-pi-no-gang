@@ -41,8 +41,7 @@ export function ModelDetail({
   onDelete: () => void;
 }) {
   const [testState, setTestState] = useState<ModelTestState>({ phase: "idle" });
-  const set = <K extends keyof ModelEntry>(k: K, v: ModelEntry[K]) =>
-    onChange({ ...model, [k]: v });
+  const set = <K extends keyof ModelEntry>(k: K, v: ModelEntry[K]) => onChange({ ...model, [k]: v });
   const costVal = (k: keyof NonNullable<ModelEntry["cost"]>) =>
     model.cost?.[k] !== undefined ? String(model.cost[k]) : "";
   const setCost = (k: keyof NonNullable<ModelEntry["cost"]>, v: string) => {
@@ -174,11 +173,7 @@ export function ModelDetail({
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             )}
-            {testState.phase === "testing"
-              ? "Testing…"
-              : testState.phase === "success"
-                ? "OK"
-                : "Test"}
+            {testState.phase === "testing" ? "Testing…" : testState.phase === "success" ? "OK" : "Test"}
           </button>
           <button
             onClick={onDelete}
@@ -213,11 +208,7 @@ export function ModelDetail({
       </div>
 
       <Field label="API override">
-        <Select
-          value={model.api ?? ""}
-          onChange={(v) => set("api", v || undefined)}
-          options={API_OPTIONS}
-        />
+        <Select value={model.api ?? ""} onChange={(v) => set("api", v || undefined)} options={API_OPTIONS} />
       </Field>
 
       <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
@@ -294,9 +285,7 @@ export function ModelDetail({
 
       <div>
         <SectionTitle>Cost (per million tokens)</SectionTitle>
-        <div
-          style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}
-        >
+        <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
           {(["input", "output", "cacheRead", "cacheWrite"] as const).map((k) => (
             <Field key={k} label={k}>
               <NumInput value={costVal(k)} onChange={(v) => setCost(k, v)} placeholder="0" />

@@ -151,9 +151,7 @@ function normalizeSlashes(filePath: string): string {
 }
 
 function isWindowsAbsolutePath(filePath: string): boolean {
-  return (
-    WINDOWS_ABSOLUTE_RE.test(filePath) || filePath.startsWith("\\\\") || filePath.startsWith("//")
-  );
+  return WINDOWS_ABSOLUTE_RE.test(filePath) || filePath.startsWith("\\\\") || filePath.startsWith("//");
 }
 
 function filePathFromSegments(segments: string[]): string {
@@ -305,13 +303,7 @@ function streamFile(
     end = stat.size - 1;
   }
 
-  if (
-    !Number.isFinite(start) ||
-    !Number.isFinite(end) ||
-    start < 0 ||
-    end < start ||
-    start >= stat.size
-  ) {
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end < start || start >= stat.size) {
     return new Response(null, {
       status: 416,
       headers: {
@@ -398,10 +390,7 @@ ${bodyHtml}
 </html>`;
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   try {
     const { path: segments } = await params;
     const filePath = filePathFromSegments(segments);
@@ -466,10 +455,7 @@ export async function GET(
         return NextResponse.json({ error: "Not a file" }, { status: 400 });
       }
       if (getExt(filePath) !== "docx") {
-        return NextResponse.json(
-          { error: "Preview not available for this file type" },
-          { status: 400 },
-        );
+        return NextResponse.json({ error: "Preview not available for this file type" }, { status: 400 });
       }
       if (stat.size > DOCX_PREVIEW_MAX_BYTES) {
         return NextResponse.json({ error: "DOCX too large for preview (>10MB)" }, { status: 413 });

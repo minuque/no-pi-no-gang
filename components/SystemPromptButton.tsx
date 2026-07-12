@@ -25,9 +25,7 @@ export function SystemPromptButton({ systemPrompt }: Props) {
             width: 30,
             height: 30,
             margin: "auto 0",
-            background: systemPrompt
-              ? "color-mix(in oklab, var(--accent), transparent 90%)"
-              : "none",
+            background: systemPrompt ? "color-mix(in oklab, var(--accent), transparent 90%)" : "none",
             color: systemPrompt ? "var(--accent)" : "var(--text-muted)",
           }}
         >

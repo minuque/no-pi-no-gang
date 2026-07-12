@@ -148,11 +148,7 @@ export function useTransport(sessionId: string | null, options: UseTransportOpti
   );
 
   const loadSession = useCallback(
-    async (
-      showLoading = false,
-      includeState = false,
-      nextSessionId?: string,
-    ): Promise<SessionLoadResult> => {
+    async (showLoading = false, includeState = false, nextSessionId?: string): Promise<SessionLoadResult> => {
       const sid = nextSessionId ?? sessionIdRef.current;
       if (!sid) return null;
       try {

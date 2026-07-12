@@ -5,8 +5,7 @@ export const dynamic = "force-dynamic";
 // In-memory registry: loginToken -> resolve/reject for the manualCodeInput promise
 declare global {
   var __piLoginCallbacks:
-    | Map<string, { resolve: (v: string) => void; reject: (e: Error) => void }>
-    | undefined;
+    Map<string, { resolve: (v: string) => void; reject: (e: Error) => void }> | undefined;
 }
 
 function getCallbackRegistry() {
@@ -151,10 +150,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
           onProgress: (message: string) => {
             send(controller, { type: "progress", message });
           },
-          onSelect: async (prompt: {
-            message: string;
-            options: { id: string; label: string }[];
-          }) => {
+          onSelect: async (prompt: { message: string; options: { id: string; label: string }[] }) => {
             const request = createClientInputRequest();
             send(controller, {
               type: "select_request",

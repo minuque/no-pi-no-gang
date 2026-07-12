@@ -55,11 +55,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                 return typeof c === "string"
                   ? c
                   : (Array.isArray(c)
-                      ? ((
-                          c.find((b: { type: string }) => b.type === "text") as
-                            | { text: string }
-                            | undefined
-                        )?.text ?? "")
+                      ? ((c.find((b: { type: string }) => b.type === "text") as { text: string } | undefined)
+                          ?.text ?? "")
                       : "") || "(no messages)";
               })()
             : "(no messages)",
@@ -147,9 +144,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     // Scan sibling files in the same directory
     const dir = filePath.replace(/\\/g, "/").split("/").slice(0, -1).join("/");
     try {
-      const files = readdirSync(dir).filter(
-        (f) => f.endsWith(".jsonl") && join(dir, f) !== filePath,
-      );
+      const files = readdirSync(dir).filter((f) => f.endsWith(".jsonl") && join(dir, f) !== filePath);
       for (const file of files) {
         const childPath = join(dir, file);
         try {

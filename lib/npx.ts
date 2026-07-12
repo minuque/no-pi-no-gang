@@ -22,15 +22,7 @@ export function findNpxCli(): string | null {
     // Windows MSI installer layout: node.exe and node_modules share a dir
     join(/* turbopackIgnore: true */ nodeDir, "node_modules", "npm", "bin", "npx-cli.js"),
     // Unix layout: .../bin/node + .../lib/node_modules/npm/bin/npx-cli.js
-    join(
-      /* turbopackIgnore: true */ nodeDir,
-      "..",
-      "lib",
-      "node_modules",
-      "npm",
-      "bin",
-      "npx-cli.js",
-    ),
+    join(/* turbopackIgnore: true */ nodeDir, "..", "lib", "node_modules", "npm", "bin", "npx-cli.js"),
   ];
   for (const p of candidates) {
     try {

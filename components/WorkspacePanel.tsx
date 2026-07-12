@@ -8,9 +8,7 @@ import WorkspacePreview from "./WorkspacePreview";
 import { WorkspaceTree } from "./WorkspaceTree";
 
 function isAbsolutePath(filePath: string): boolean {
-  return (
-    /^[a-zA-Z]:[\\/]/.test(filePath) || filePath.startsWith("/") || filePath.startsWith("\\\\")
-  );
+  return /^[a-zA-Z]:[\\/]/.test(filePath) || filePath.startsWith("/") || filePath.startsWith("\\\\");
 }
 
 function resolveWorkspacePath(filePath: string, cwd: string): string {

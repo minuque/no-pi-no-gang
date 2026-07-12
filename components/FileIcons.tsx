@@ -15,13 +15,7 @@ export function FolderIcon({ size = 14, open = false }: IconProps & { open?: boo
     return (
       <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
         <path d="M1 4.5A1 1 0 0 1 2 3.5H5.5L7 5h7.5v1H1V4.5Z" fill={FOLDER} />
-        <path
-          d="M1 6h14.5L14 13H2L1 6Z"
-          stroke={FOLDER}
-          strokeWidth="1"
-          fill={FOLDER}
-          fillOpacity="0.36"
-        />
+        <path d="M1 6h14.5L14 13H2L1 6Z" stroke={FOLDER} strokeWidth="1" fill={FOLDER} fillOpacity="0.36" />
       </svg>
     );
   }
@@ -244,13 +238,7 @@ export function GitIcon({ size = 14 }: IconProps) {
       <circle cx="9" cy="6.5" r="1" stroke={DIM} strokeWidth="0.85" />
       <circle cx="5" cy="10" r="1" stroke={DIM} strokeWidth="0.85" />
       <path d="M5 7.5V9" stroke={DIM} strokeWidth="0.85" strokeLinecap="round" />
-      <path
-        d="M9 7.5v.5a2 2 0 0 1-2 2H6"
-        stroke={DIM}
-        strokeWidth="0.85"
-        strokeLinecap="round"
-        fill="none"
-      />
+      <path d="M9 7.5v.5a2 2 0 0 1-2 2H6" stroke={DIM} strokeWidth="0.85" strokeLinecap="round" fill="none" />
     </svg>
   );
 }
@@ -312,8 +300,7 @@ export function getFileIcon(name: string, size = 14): React.ReactNode {
   const lower = name.toLowerCase();
   const ext = lower.split(".").pop() ?? "";
 
-  if (lower === "dockerfile" || lower.startsWith("dockerfile."))
-    return <DockerfileIcon size={size} />;
+  if (lower === "dockerfile" || lower.startsWith("dockerfile.")) return <DockerfileIcon size={size} />;
   if (lower === ".env" || lower.startsWith(".env.")) return <EnvIcon size={size} />;
   if (lower === ".gitignore" || lower === ".gitattributes" || lower === ".gitmodules")
     return <GitIcon size={size} />;

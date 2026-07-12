@@ -2,12 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import {
-  encodeFilePathForApi,
-  getFileName,
-  getRelativeFilePath,
-  joinFilePath,
-} from "@/lib/file-paths";
+import { encodeFilePathForApi, getFileName, getRelativeFilePath, joinFilePath } from "@/lib/file-paths";
 import { normalizeFilePathSlashes } from "@/lib/file-paths";
 import { FilePreviewContent, formatSize } from "@/lib/file-preview";
 
@@ -57,10 +52,7 @@ function isInsideCwd(filePath: string, cwd: string): boolean {
   return normalizedFile === normalizedCwd || normalizedFile.startsWith(normalizedCwd + "/");
 }
 
-function getPathSegments(
-  filePath: string,
-  cwd: string,
-): { label: string; dirPath: string | null }[] {
+function getPathSegments(filePath: string, cwd: string): { label: string; dirPath: string | null }[] {
   const normalizedCwd = normalizeFilePathSlashes(cwd).replace(/\/+$/, "");
   const projectName = getFileName(normalizedCwd) || "root";
   const relative = getRelativeFilePath(filePath, cwd);
@@ -389,14 +381,9 @@ export default function WorkspacePreview({ filePath, cwd, onNavigateToDir, onOpe
         {/* Breadcrumb segments */}
         <div style={{ display: "flex", alignItems: "center", gap: 2, flex: 1, overflow: "hidden" }}>
           {segments.map((seg, i) => (
-            <span
-              key={i}
-              style={{ display: "flex", alignItems: "center", gap: 2, whiteSpace: "nowrap" }}
-            >
+            <span key={i} style={{ display: "flex", alignItems: "center", gap: 2, whiteSpace: "nowrap" }}>
               {i > 0 && (
-                <span style={{ color: "var(--text-muted)", userSelect: "none", margin: "0 2px" }}>
-                  ›
-                </span>
+                <span style={{ color: "var(--text-muted)", userSelect: "none", margin: "0 2px" }}>›</span>
               )}
               {seg.dirPath !== null ? (
                 <button
@@ -417,9 +404,7 @@ export default function WorkspacePreview({ filePath, cwd, onNavigateToDir, onOpe
                   {seg.label}
                 </button>
               ) : (
-                <span style={{ color: "var(--text)", fontWeight: 500, lineHeight: 1.4 }}>
-                  {seg.label}
-                </span>
+                <span style={{ color: "var(--text)", fontWeight: 500, lineHeight: 1.4 }}>{seg.label}</span>
               )}
             </span>
           ))}
@@ -480,15 +465,7 @@ function PreviewStatus({ message }: { message: string }) {
   );
 }
 
-function PreviewError({
-  kind,
-  filePath,
-  cwd,
-}: {
-  kind: PreviewErrorKind;
-  filePath: string;
-  cwd: string;
-}) {
+function PreviewError({ kind, filePath, cwd }: { kind: PreviewErrorKind; filePath: string; cwd: string }) {
   const title =
     kind === "outside-cwd"
       ? "File is outside cwd"
@@ -548,9 +525,7 @@ function FileSizeFetcher({ filePath }: { filePath: string }) {
   if (size === null) return null;
 
   return (
-    <span
-      style={{ color: "var(--text-muted)", flexShrink: 0, marginLeft: "auto", lineHeight: 1.4 }}
-    >
+    <span style={{ color: "var(--text-muted)", flexShrink: 0, marginLeft: "auto", lineHeight: 1.4 }}>
       {formatSize(size)}
     </span>
   );

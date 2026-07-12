@@ -21,8 +21,7 @@ export function ProviderDetail({
 }) {
   const [editingName, setEditingName] = useState(name);
   useEffect(() => setEditingName(name), [name]);
-  const set = <K extends keyof ProviderEntry>(k: K, v: ProviderEntry[K]) =>
-    onChange({ ...provider, [k]: v });
+  const set = <K extends keyof ProviderEntry>(k: K, v: ProviderEntry[K]) => onChange({ ...provider, [k]: v });
 
   useEffect(() => {
     if (!provider.api) onChange({ ...provider, api: "openai-completions" });
@@ -88,8 +87,8 @@ export function ProviderDetail({
           mono
         />
         <span style={{ fontSize: 10, color: "var(--text-dim)", marginTop: 2 }}>
-          Prefix with <code style={{ fontFamily: "var(--font-mono)" }}>!</code> to run a shell
-          command, or use an env var name
+          Prefix with <code style={{ fontFamily: "var(--font-mono)" }}>!</code> to run a shell command, or use
+          an env var name
         </span>
       </Field>
 

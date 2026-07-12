@@ -74,8 +74,7 @@ export function useChatScroll({ follow = false, onAtBottomChange }: UseChatScrol
   }, [updateAtBottom]);
 
   const scheduleFollowBottom = useCallback(() => {
-    if (!followRef.current || !shouldAutoScrollRef.current || followFrameRef.current !== null)
-      return;
+    if (!followRef.current || !shouldAutoScrollRef.current || followFrameRef.current !== null) return;
 
     followFrameRef.current = requestAnimationFrame(() => {
       followFrameRef.current = null;

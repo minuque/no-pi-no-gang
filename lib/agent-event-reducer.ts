@@ -2,11 +2,7 @@ import type { AgentEventStatus, AnyAgentEvent, StreamAction } from "./events/eve
 import { normalizeToolCalls } from "./normalize";
 import type { AgentMessage, AssistantMessage, ToolCallContent } from "./types";
 
-export type {
-  AnyAgentEvent as AgentEvent,
-  AgentEventStatus,
-  StreamAction,
-} from "./events/event-types";
+export type { AnyAgentEvent as AgentEvent, AgentEventStatus, StreamAction } from "./events/event-types";
 
 export interface AgentEventState {
   messages: AgentMessage[];
@@ -44,9 +40,7 @@ export type AgentPhase =
  * blocks (and at least one).  Such messages are merged into the previous
  * assistant turn and need their toolCall blocks tagged with _sourceTs.
  */
-export function isToolCallOnly(
-  msg: AgentMessage,
-): msg is AssistantMessage & { content: ToolCallContent[] } {
+export function isToolCallOnly(msg: AgentMessage): msg is AssistantMessage & { content: ToolCallContent[] } {
   if (msg.role !== "assistant") return false;
   const content = msg.content;
   return (
@@ -288,9 +282,7 @@ export function agentEventReducer(
           agentStateStreaming: true,
           lastEventAt: eventAt,
           agentPhase:
-            state.agentPhase?.kind === "running_skill"
-              ? state.agentPhase
-              : { kind: "waiting_model" },
+            state.agentPhase?.kind === "running_skill" ? state.agentPhase : { kind: "waiting_model" },
           eventStatus: state.eventStatus,
           retryInfo: state.retryInfo,
           isCompacting: state.isCompacting,
@@ -384,8 +376,7 @@ export function agentEventReducer(
     case "tool_execution_start": {
       const id = eventString(event, "toolCallId");
       const name = eventString(event, "toolName");
-      const prevTools =
-        state.agentPhase?.kind === "running_tools" ? [...state.agentPhase.tools] : [];
+      const prevTools = state.agentPhase?.kind === "running_tools" ? [...state.agentPhase.tools] : [];
       if (!prevTools.some((t) => t.id === id)) prevTools.push({ id, name });
       return {
         state: { ...state, agentPhase: { kind: "running_tools", tools: prevTools } },
@@ -399,8 +390,7 @@ export function agentEventReducer(
       return {
         state: {
           ...state,
-          agentPhase:
-            tools.length === 0 ? { kind: "waiting_model" } : { kind: "running_tools", tools },
+          agentPhase: tools.length === 0 ? { kind: "waiting_model" } : { kind: "running_tools", tools },
         },
         effects,
       };

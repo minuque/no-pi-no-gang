@@ -443,10 +443,7 @@ export function WorkspaceTree({
   const flatEntries = useMemo(() => {
     if (!searchQuery.trim()) return null;
 
-    function flatten(
-      nodes: FileNode[],
-      parentPath: string,
-    ): Array<{ path: string; node: FileNode }> {
+    function flatten(nodes: FileNode[], parentPath: string): Array<{ path: string; node: FileNode }> {
       const result: Array<{ path: string; node: FileNode }> = [];
       for (const n of nodes) {
         const fullPath = parentPath ? joinFilePath(parentPath, n.name) : n.name;
@@ -467,9 +464,7 @@ export function WorkspaceTree({
 
   if (loading) {
     return (
-      <div style={{ padding: "8px 12px", fontSize: 11, color: "var(--text-dim)" }}>
-        Loading files...
-      </div>
+      <div style={{ padding: "8px 12px", fontSize: 11, color: "var(--text-dim)" }}>Loading files...</div>
     );
   }
 

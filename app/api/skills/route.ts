@@ -83,8 +83,7 @@ export async function PATCH(req: Request) {
     const body = (await req.json()) as { filePath: string; disableModelInvocation: boolean };
     const { filePath, disableModelInvocation } = body;
     if (!filePath) return NextResponse.json({ error: "filePath required" }, { status: 400 });
-    if (!existsSync(filePath))
-      return NextResponse.json({ error: "file not found" }, { status: 404 });
+    if (!existsSync(filePath)) return NextResponse.json({ error: "file not found" }, { status: 404 });
 
     const content = readFileSync(filePath, "utf8");
     const key = "disable-model-invocation";

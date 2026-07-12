@@ -104,9 +104,7 @@ describe("event-types", () => {
   });
 
   it("narrows the AgentEvent discriminated union in a switch", () => {
-    expect(describeKnownEvent({ type: "message_end", message: assistantMessage })).toBe(
-      "assistant",
-    );
+    expect(describeKnownEvent({ type: "message_end", message: assistantMessage })).toBe("assistant");
     expect(
       describeKnownEvent({
         type: "tool_execution_start",

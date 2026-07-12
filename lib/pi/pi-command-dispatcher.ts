@@ -1,8 +1,4 @@
-import {
-  DEFAULT_COMPACTION_SETTINGS,
-  SessionManager,
-  findCutPoint,
-} from "@earendil-works/pi-coding-agent";
+import { DEFAULT_COMPACTION_SETTINGS, SessionManager, findCutPoint } from "@earendil-works/pi-coding-agent";
 
 import { dedupeSlashCommands } from "../pi-resources";
 import type { AgentSessionLike, SlashCommandInfoLike, ToolInfo } from "../pi-types";
@@ -143,10 +139,7 @@ export function handleSetThinkingLevel(session: AgentSessionLike, command: PiCom
   return null;
 }
 
-export async function handleCompact(
-  session: AgentSessionLike,
-  command: PiCommand,
-): Promise<unknown> {
+export async function handleCompact(session: AgentSessionLike, command: PiCommand): Promise<unknown> {
   const pathEntries = session.sessionManager.getBranch() as Array<{ type: string }>;
   const settings = {
     ...DEFAULT_COMPACTION_SETTINGS,

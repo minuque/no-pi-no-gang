@@ -18,10 +18,9 @@ import type {
   UserMessage,
 } from "@/lib/types";
 
-const RichMarkdownBlock = dynamic(
-  () => import("./RichMarkdownBlock").then((m) => m.RichMarkdownBlock),
-  { ssr: false },
-);
+const RichMarkdownBlock = dynamic(() => import("./RichMarkdownBlock").then((m) => m.RichMarkdownBlock), {
+  ssr: false,
+});
 
 interface Props {
   message: AgentMessage;
@@ -46,9 +45,7 @@ function formatTime(ts?: number): string | null {
   const d = new Date(ts);
   const now = new Date();
   const isToday =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
+    d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
   const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   if (isToday) return time;
   const date = d.toLocaleDateString([], {
@@ -126,10 +123,7 @@ function getStructuredToolError(result?: ToolResultMessage): StructuredToolError
     title: objectString(errorObj.name) ?? objectString(errorObj.type) ?? "Tool call failed",
     message,
     code: objectString(errorObj.code) ?? objectString(errorObj.status),
-    detail:
-      objectString(errorObj.stack) ??
-      objectString(errorObj.detail) ??
-      objectString(errorObj.details),
+    detail: objectString(errorObj.stack) ?? objectString(errorObj.detail) ?? objectString(errorObj.details),
   };
 }
 
@@ -457,9 +451,7 @@ function UserMessageView({
           <div
             style={{
               minWidth: 0,
-              background: hovered
-                ? "var(--ui-msg-user-hover-bg, var(--user-bg))"
-                : "var(--user-bg)",
+              background: hovered ? "var(--ui-msg-user-hover-bg, var(--user-bg))" : "var(--user-bg)",
               border: "var(--ui-msg-user-border)",
               borderRadius: "var(--ui-msg-radius)",
               padding: "var(--ui-msg-padding)",
@@ -473,9 +465,7 @@ function UserMessageView({
             }}
           >
             {imageBlocks.length > 0 && (
-              <div
-                style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: content ? 8 : 0 }}
-              >
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: content ? 8 : 0 }}>
                 {imageBlocks.map((img, i) => {
                   // lib/types.ts ImageContent uses {source:{type,data,media_type,url}}
                   // pi-ai on-disk format uses flat {data, mimeType} — handle both
@@ -1097,8 +1087,7 @@ function BlockView({
     // Only the final block in a streaming message is actively growing; earlier
     // blocks (e.g. prior thinking turns) should render as completed.
     const blockIsStreaming = isStreaming && isLast;
-    const toolBlockIsStreaming =
-      isStreaming && (streamBlockStart === undefined || i >= streamBlockStart);
+    const toolBlockIsStreaming = isStreaming && (streamBlockStart === undefined || i >= streamBlockStart);
 
     if (block.type === "toolCall") {
       const toolBlock = block as ToolCallContent;
@@ -1115,12 +1104,7 @@ function BlockView({
       );
     } else if (block.type === "text") {
       elements.push(
-        <TextBlock
-          key={i}
-          block={block as TextContent}
-          isStreaming={blockIsStreaming}
-          isLast={isLast}
-        />,
+        <TextBlock key={i} block={block as TextContent} isStreaming={blockIsStreaming} isLast={isLast} />,
       );
     } else if (block.type === "thinking") {
       const thinkingBlock = block as ThinkingContent;
