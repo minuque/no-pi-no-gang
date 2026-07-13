@@ -8,6 +8,7 @@ import NProgress from "nprogress";
 
 import { type ChatInputHandle } from "@/components/chat/input";
 import { SessionSidebar } from "@/components/session/SessionSidebar";
+import { useSessionSearch } from "@/components/session/useSessionSearch";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
 import { useTheme } from "@/hooks/useTheme";
 import { useViewTransition } from "@/hooks/useViewTransition";
@@ -269,12 +270,34 @@ export function useAppShellState() {
   );
   const effectiveNewSessionCwd = newSessionCwd ?? (selectedSession === null && activeCwd ? activeCwd : null);
   const showChat = selectedSession !== null || effectiveNewSessionCwd !== null;
+  const selectedCwdForSearch = selectedSession?.cwd ?? newSessionCwd ?? activeCwd ?? null;
+  const {
+    searchOpen,
+    setSearchOpen,
+    searchQuery,
+    setSearchQuery,
+    searchInputRef,
+    searchCwdGroups,
+    handleSearchSelectSession,
+  } = useSessionSearch({
+    allSessions,
+    selectedCwd: selectedCwdForSearch,
+    onSelectSession: handleSelectSession,
+    onCwdChange: handleCwdChange,
+  });
+  const handleNewSessionClick = useCallback(() => {
+    if (!effectiveNewSessionCwd) return;
+    const tempId =
+      typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+    handleNewSession(tempId, effectiveNewSessionCwd);
+  }, [effectiveNewSessionCwd, handleNewSession]);
   const sidebarContent = (
     <>
       <SessionSidebar
         selectedSessionId={selectedSession?.id ?? null}
         onSelectSession={handleSelectSession}
-        onNewSession={handleNewSession}
         initialSessionId={initialSessionId}
         onInitialRestoreDone={handleInitialRestoreDone}
         refreshKey={refreshKey}
@@ -285,6 +308,9 @@ export function useAppShellState() {
         onClose={() => vtTransition(() => setSidebarOpen(false))}
         closeLabel={t("hideSidebar")}
         title={t("appTitle")}
+        searchOpen={searchOpen}
+        onSearchOpen={() => setSearchOpen(true)}
+        onNewSessionClick={handleNewSessionClick}
       />
       <div
         style={{
@@ -411,6 +437,7 @@ export function useAppShellState() {
     </>
   );
   return {
+    t,
     vtTransition,
     isDark,
     toggleTheme,
@@ -462,5 +489,14 @@ export function useAppShellState() {
     effectiveNewSessionCwd,
     showChat,
     sidebarContent,
+    searchOpen,
+    setSearchOpen,
+    searchQuery,
+    setSearchQuery,
+    searchInputRef,
+    searchCwdGroups,
+    handleSearchSelectSession,
+    handleNewSessionClick,
+    selectedCwdForSearch,
   };
 }

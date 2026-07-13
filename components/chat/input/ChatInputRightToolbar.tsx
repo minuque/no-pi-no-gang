@@ -260,9 +260,9 @@ export function ChatInputRightToolbar({ state }: { state: ChatInputToolbarState 
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      height: 26,
-                      marginTop: 7,
-                      padding: "0 9px",
+                      height: 24,
+                      marginTop: 6,
+                      padding: "0 6px",
                       border: "1px solid var(--border)",
                       borderRadius: 9999,
                       background: "var(--bg-hover)",
@@ -278,10 +278,11 @@ export function ChatInputRightToolbar({ state }: { state: ChatInputToolbarState 
                         position: "absolute",
                         inset: 0,
                         width: `calc(${currentThinkingProgress * 100}% + ${
-                          18 - currentThinkingProgress * 18
+                          22 - currentThinkingProgress * 22
                         }px)`,
                         background: currentThinkingColor,
                         borderRadius: 9999,
+                        overflow: "hidden",
                         transition:
                           "width var(--motion-base) var(--ease-standard), background var(--motion-base)",
                       }}
@@ -307,7 +308,7 @@ export function ChatInputRightToolbar({ state }: { state: ChatInputToolbarState 
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            width: 18,
+                            width: 22,
                             height: "100%",
                             flexShrink: 0,
                             padding: 0,
@@ -319,8 +320,8 @@ export function ChatInputRightToolbar({ state }: { state: ChatInputToolbarState 
                           <span
                             className={isActive && level === "xhigh" ? "thinking-level-max-thumb" : undefined}
                             style={{
-                              width: isActive ? 18 : 4,
-                              height: isActive ? 18 : 4,
+                              width: isActive ? 22 : 5,
+                              height: isActive ? 22 : 5,
                               borderRadius: "50%",
                               background: isActive
                                 ? "var(--text)"

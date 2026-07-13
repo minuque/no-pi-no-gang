@@ -4,6 +4,8 @@ import "nprogress/nprogress.css";
 import { Toaster } from "sonner";
 
 import { SessionOverviewPanel } from "@/components/session/SessionOverviewPanel";
+import { SessionSearchDialog } from "@/components/session/SessionSearchDialog";
+import { IconPlus, IconSearch } from "@/components/session/SessionSidebarSupport";
 
 import { LocaleSwitcher } from "./LocaleSwitcher";
 import { ChatWindow, ModelsConfig, SkillsConfig } from "./app-shell-lazy";
@@ -11,6 +13,7 @@ import { useAppShellState } from "./useAppShellState";
 
 export function AppShell() {
   const {
+    t,
     vtTransition,
     isDark,
     toggleTheme,
@@ -62,56 +65,80 @@ export function AppShell() {
     effectiveNewSessionCwd,
     showChat,
     sidebarContent,
+    searchOpen,
+    setSearchOpen,
+    searchQuery,
+    setSearchQuery,
+    searchInputRef,
+    searchCwdGroups,
+    handleSearchSelectSession,
+    handleNewSessionClick,
+    selectedCwdForSearch,
   } = useAppShellState();
 
   return (
     <>
       <div style={{ display: "flex", flexDirection: "column", height: "100dvh", overflow: "hidden" }}>
         {!sidebarOpen && (
-          <button
-            onClick={() => vtTransition(() => setSidebarOpen(true))}
+          <div
             style={{
               position: "fixed",
-              top: 8,
-              left: 8,
+              top: 12,
+              left: 12,
               zIndex: "var(--z-sidebar)",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              width: 40,
-              height: 40,
-              padding: 0,
-              borderRadius: "50%",
+              gap: 2,
+              padding: 4,
               background: "var(--bg-panel)",
               border: "1px solid var(--border)",
-              cursor: "pointer",
-              color: "var(--text-muted)",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-              transition: "background 0.12s, color 0.12s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--bg-hover)";
-              e.currentTarget.style.color = "var(--text)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "var(--bg-panel)";
-              e.currentTarget.style.color = "var(--text-muted)";
+              borderRadius: 9999,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
             }}
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
+            <button
+              onClick={handleNewSessionClick}
+              disabled={!effectiveNewSessionCwd}
+              title={effectiveNewSessionCwd ? t("newSessionFile") : t("selectProjectFirst")}
+              className="tb-btn"
+              style={{
+                width: 28,
+                height: 28,
+                color: effectiveNewSessionCwd ? "var(--text-muted)" : "var(--text-dim)",
+                opacity: effectiveNewSessionCwd ? 1 : 0.4,
+              }}
             >
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
+              <IconPlus />
+            </button>
+            <button
+              onClick={() => setSearchOpen(true)}
+              title={t("searchSessions")}
+              className="tb-btn"
+              style={{ width: 28, height: 28, color: "var(--text-muted)" }}
+            >
+              <IconSearch />
+            </button>
+            <button
+              onClick={() => vtTransition(() => setSidebarOpen(true))}
+              title={t("showSidebar")}
+              className="tb-btn"
+              style={{ width: 28, height: 28, color: "var(--text-muted)" }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <line x1="9" y1="3" x2="9" y2="21" />
+              </svg>
+            </button>
+          </div>
         )}
 
         <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
@@ -321,6 +348,17 @@ export function AppShell() {
           </div>
         </div>
       </div>
+      <SessionSearchDialog
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        searchInputRef={searchInputRef}
+        searchCwdGroups={searchCwdGroups}
+        selectedCwd={selectedCwdForSearch}
+        selectedSessionId={selectedSession?.id ?? null}
+        onSelectSession={handleSearchSelectSession}
+      />
       {modelsConfigOpen && (
         <div style={{ viewTransitionName: "settings-overlay" }}>
           <ModelsConfig

@@ -88,7 +88,7 @@ export function getThinkingLevelAtPointer<T>(
   levels: readonly T[],
 ): T | undefined {
   const rect = element.getBoundingClientRect();
-  const inset = 9;
+  const inset = 6;
   const ratio = Math.max(0, Math.min(1, (clientX - rect.left - inset) / (rect.width - inset * 2)));
   return levels[Math.round(ratio * (levels.length - 1))];
 }

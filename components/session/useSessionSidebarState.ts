@@ -6,16 +6,10 @@ import { useTranslations } from "next-intl";
 
 import type { SessionInfo } from "@/lib/types";
 
-import {
-  buildCwdSessionGroups,
-  getCwdLabel,
-  getRecentCwds,
-  matchesSessionSearch,
-} from "./SessionSidebarSupport";
+import { buildCwdSessionGroups, getRecentCwds } from "./SessionSidebarSupport";
 
 interface SessionSidebarStateOptions {
   onSelectSession: (session: SessionInfo, restore?: boolean) => void;
-  onNewSession?: (tempId: string, cwd: string) => void;
   initialSessionId?: string | null;
   onInitialRestoreDone?: () => void;
   refreshKey?: number;
@@ -26,7 +20,6 @@ interface SessionSidebarStateOptions {
 
 export function useSessionSidebarState({
   onSelectSession,
-  onNewSession,
   initialSessionId,
   onInitialRestoreDone,
   refreshKey,
@@ -41,12 +34,6 @@ export function useSessionSidebarState({
   const [loading, setLoading] = useState(true);
 
   const [error, setError] = useState<string | null>(null);
-
-  const [searchOpen, setSearchOpen] = useState(false);
-
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const acRef = useRef<AbortController | null>(null);
 
@@ -140,15 +127,6 @@ export function useSessionSidebarState({
     validateCwd,
   ]);
 
-  const handleNewSession = useCallback(() => {
-    if (!selCwd) return;
-    const tempId =
-      typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
-    onNewSession?.(tempId, selCwd);
-  }, [selCwd, onNewSession]);
-
   const cwdGroups = useMemo(() => {
     const groups = buildCwdSessionGroups(allSessions);
     if (selCwd && !groups.some((group) => group.cwd === selCwd)) {
@@ -169,54 +147,6 @@ export function useSessionSidebarState({
     [allSessions],
   );
 
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-
-  const isSearching = normalizedSearchQuery.length > 0;
-
-  const searchCwdGroups = useMemo(() => {
-    const groups = [...cwdGroups].sort((a, b) => {
-      if (a.cwd === selCwd && b.cwd !== selCwd) return -1;
-      if (b.cwd === selCwd && a.cwd !== selCwd) return 1;
-      return b.modified.localeCompare(a.modified);
-    });
-
-    return groups
-      .map((group) => {
-        const cwdMatches = [getCwdLabel(group.cwd, t), group.cwd].some((value) =>
-          value.toLowerCase().includes(normalizedSearchQuery),
-        );
-        const sessions = [
-          ...(!isSearching || cwdMatches
-            ? group.sessions
-            : group.sessions.filter((session) => matchesSessionSearch(session, normalizedSearchQuery))),
-        ].sort((a, b) => b.modified.localeCompare(a.modified));
-        return {
-          ...group,
-          sessions,
-        };
-      })
-      .filter((group) => group.sessions.length > 0);
-  }, [cwdGroups, isSearching, normalizedSearchQuery, selCwd, t]);
-
-  useEffect(() => {
-    if (!searchOpen) return;
-    const frame = requestAnimationFrame(() => searchInputRef.current?.focus());
-    return () => cancelAnimationFrame(frame);
-  }, [searchOpen]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        setSearchOpen(true);
-        return;
-      }
-      if (event.key === "Escape") setSearchOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
-
   const handleSelectCwd = useCallback(
     (cwd: string) => {
       onCwdChange?.(cwd);
@@ -224,32 +154,14 @@ export function useSessionSidebarState({
     [onCwdChange],
   );
 
-  const handleSearchSelectSession = useCallback(
-    (session: SessionInfo) => {
-      setSearchOpen(false);
-      setSearchQuery("");
-      onCwdChange?.(session.cwd);
-      onSelectSession(session);
-    },
-    [onCwdChange, onSelectSession],
-  );
-
   return {
     t,
     allSessions,
     loading,
     error,
-    searchOpen,
-    setSearchOpen,
-    searchQuery,
-    setSearchQuery,
-    searchInputRef,
     loadSessions,
-    handleNewSession,
     cwdGroups,
     allSessionsSorted,
-    searchCwdGroups,
     handleSelectCwd,
-    handleSearchSelectSession,
   };
 }

@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { useTranslations } from "next-intl";
 
+import { PreviewDialog } from "@/components/shared/PreviewDialog";
 import type { ToolCallContent, ToolResultMessage } from "@/lib/types";
 
 import {
@@ -28,7 +29,7 @@ export function ToolCallBlock({
   duration?: number;
   isLast?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const inputStr = getToolInputText(block);
   const resultText = getToolResultText(result);
   const resultIsEmpty = isEmptyToolResult(resultText);
@@ -53,11 +54,23 @@ export function ToolCallBlock({
 
   const shownDuration = duration ?? (isRunning && elapsed ? elapsed : undefined);
 
+  const outText = resultIsEmpty ? "" : (resultText ?? "");
+  const outOverflow = result ? outText.split("\n").length > 3 : false;
+
+  const detailLines: string[] = [];
+  if (errorInfo) {
+    detailLines.push(`${errorInfo.title}${errorInfo.code ? ` (${errorInfo.code})` : ""}`);
+    detailLines.push(errorInfo.message);
+    if (errorInfo.detail) detailLines.push(errorInfo.detail);
+  } else if (result) {
+    detailLines.push(resultIsEmpty ? t("noOutput") : (resultText ?? ""));
+  }
+  const fullText = detailLines.length > 0 ? [inputStr, detailLines.join("\n")].join("\n\n") : inputStr;
+
   return (
     <BlockLine isLast={isLast} isStreaming={isRunning} dot={<ToolStateDot state={state} />}>
       <button
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
+        onClick={() => setPreviewOpen(true)}
         style={{
           display: "flex",
           alignItems: "center",
@@ -147,71 +160,131 @@ export function ToolCallBlock({
           >
             {shownDuration !== undefined ? `${shownDuration}s` : ""}
           </span>
-          <svg
-            width="10"
-            height="10"
-            viewBox="0 0 10 10"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{
-              flexShrink: 0,
-              transform: expanded ? "rotate(180deg)" : "none",
-              transition: "transform 0.15s",
-            }}
-          >
-            <polyline points="2 3.5 5 6.5 8 3.5" />
-          </svg>
         </span>
       </button>
 
-      {expanded && (
-        <div
+      <div
+        onClick={outOverflow ? () => setPreviewOpen(true) : undefined}
+        style={{
+          position: "relative",
+          margin: "0 0 2px",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-md)",
+          overflow: "hidden",
+          background: "var(--ui-code-bg)",
+          cursor: outOverflow ? "pointer" : "default",
+        }}
+      >
+        <InOutSection label="IN" first>
+          <CodePre>{inputStr}</CodePre>
+        </InOutSection>
+
+        {errorInfo && (
+          <InOutSection label="ERROR" isError>
+            <div style={{ color: "var(--danger)", fontSize: 13, lineHeight: 1.55 }}>
+              <strong>
+                {errorInfo.title}
+                {errorInfo.code ? ` (${errorInfo.code})` : ""}
+              </strong>
+              <div style={{ marginTop: 4 }}>{errorInfo.message}</div>
+              {errorInfo.detail && (
+                <CodePre>
+                  <span style={{ color: "var(--text-dim)" }}>{errorInfo.detail}</span>
+                </CodePre>
+              )}
+            </div>
+          </InOutSection>
+        )}
+
+        {result && (
+          <InOutSection label={isError ? "ERROR" : "OUT"} isError={isError}>
+            <CodePre clampLines={outOverflow ? 3 : undefined}>
+              {resultIsEmpty ? (
+                <span style={{ fontStyle: "italic", opacity: 0.6 }}>{t("noOutput")}</span>
+              ) : (
+                (resultText ?? "")
+              )}
+            </CodePre>
+          </InOutSection>
+        )}
+
+        {outOverflow && (
+          <>
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 40,
+                pointerEvents: "none",
+                background: "linear-gradient(to bottom, transparent, var(--ui-code-bg))",
+                borderRadius: "0 0 var(--radius-md) var(--radius-md)",
+              }}
+            />
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                setPreviewOpen(true);
+              }}
+              aria-label={t("expandDetails")}
+              title={t("expandDetails")}
+              style={{
+                position: "absolute",
+                right: 8,
+                bottom: 8,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 24,
+                height: 24,
+                padding: 0,
+                background: "var(--bg-panel)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-sm)",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+              </svg>
+            </button>
+          </>
+        )}
+      </div>
+
+      <PreviewDialog
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        title={t("toolDetails")}
+        closeLabel={t("closeDialog")}
+      >
+        <pre
           style={{
-            margin: "0 0 2px",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-md)",
-            overflow: "hidden",
-            background: "var(--ui-code-bg)",
-            animation: "fade-in-up 160ms ease",
+            margin: 0,
+            padding: 0,
+            color: "var(--text-muted)",
+            fontSize: 14,
+            lineHeight: 1.55,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-all",
+            fontFamily: "var(--font-mono)",
           }}
         >
-          <InOutSection label="IN" first>
-            <CodePre>{inputStr}</CodePre>
-          </InOutSection>
-
-          {errorInfo && (
-            <InOutSection label="ERROR" isError>
-              <div style={{ color: "var(--danger)", fontSize: 13, lineHeight: 1.55 }}>
-                <strong>
-                  {errorInfo.title}
-                  {errorInfo.code ? ` (${errorInfo.code})` : ""}
-                </strong>
-                <div style={{ marginTop: 4 }}>{errorInfo.message}</div>
-                {errorInfo.detail && (
-                  <CodePre>
-                    <span style={{ color: "var(--text-dim)" }}>{errorInfo.detail}</span>
-                  </CodePre>
-                )}
-              </div>
-            </InOutSection>
-          )}
-
-          {result && (
-            <InOutSection label={isError ? "ERROR" : "OUT"} isError={isError}>
-              <CodePre>
-                {resultIsEmpty ? (
-                  <span style={{ fontStyle: "italic", opacity: 0.6 }}>{t("noOutput")}</span>
-                ) : (
-                  (resultText ?? "")
-                )}
-              </CodePre>
-            </InOutSection>
-          )}
-        </div>
-      )}
+          {fullText}
+        </pre>
+      </PreviewDialog>
     </BlockLine>
   );
 }
@@ -284,7 +357,7 @@ function InOutSection({
   );
 }
 
-function CodePre({ children }: { children: ReactNode }) {
+function CodePre({ children, clampLines }: { children: ReactNode; clampLines?: number }) {
   return (
     <pre
       style={{
@@ -296,6 +369,14 @@ function CodePre({ children }: { children: ReactNode }) {
         whiteSpace: "pre-wrap",
         wordBreak: "break-all",
         fontFamily: "var(--font-mono)",
+        ...(clampLines
+          ? {
+              display: "-webkit-box",
+              WebkitBoxOrient: "vertical",
+              WebkitLineClamp: clampLines,
+              overflow: "hidden",
+            }
+          : {}),
       }}
     >
       {children}
