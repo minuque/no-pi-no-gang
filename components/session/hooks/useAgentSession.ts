@@ -6,11 +6,15 @@ import { deriveContextUsage, useAgentState } from "@/hooks/useAgentState";
 import { useModelList } from "@/hooks/useModelList";
 import { type SessionData, useSessionConnection } from "@/hooks/useSessionConnection";
 import { useSessionCreator } from "@/hooks/useSessionCreator";
-import { agentEventReducer, mergeToolCallMessages } from "@/lib/agent/agent-event-reducer";
+import { mergeToolCallMessages } from "@/lib/agent/agent-event-reducer";
 import type { AnyAgentEvent as AgentEvent } from "@/lib/events/event-types";
 import type { AgentMessage } from "@/lib/types";
 
-import type { AgentSessionStatus, UseAgentSessionOptions } from "./agent-session-hook-types";
+import {
+  type AgentSessionStatus,
+  type UseAgentSessionOptions,
+  deriveAgentSessionStatus,
+} from "./agent-session-hook-types";
 import { type ThinkingLevelOption, useSessionActions } from "./useSessionActions";
 
 export type {
@@ -49,9 +53,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     modelId: string;
   } | null>(null);
   const [pendingModel, setPendingModel] = useState<{ provider: string; modelId: string } | null>(null);
-  const [sessionExists, setSessionExists] = useState(session !== null);
-  const [sessionDestroyed, setSessionDestroyed] = useState(false);
-  const [agentLastUpdated, setAgentLastUpdated] = useState<string | null>(null);
   const setToolPresetState = opts.setToolPreset ?? setToolPreset;
   const { createSession } = useSessionCreator();
   const {
@@ -84,20 +85,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     streamState,
     contextUsage,
     sessionStats,
-    agentEventStateRef,
-    applyAgentEventState,
+    transitionAgentState,
+    sessionExists,
+    sessionDestroyed,
+    agentLastUpdated,
     dispatch,
     setContextUsage,
     setMessages,
     setAgentRunning,
-    setAgentStateRunning,
-    setAgentStateStreaming,
-    setAgentStateCompacting,
-    setIsCompacting,
-    setCompactError,
-    setAgentPhase,
-    setEventStatus,
-  } = useAgentState({ currentModel, modelList });
+  } = useAgentState({ currentModel, modelList, initialSessionExists: session !== null });
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
   const agentRunningRef = useRef(false);
   const {
@@ -107,18 +103,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     sendAgentCommand,
   } = useSessionConnection(session?.id ?? null, {
     isAgentRunning: () => agentRunningRef.current,
-    onStatusChange: setEventStatus,
-    onDestroyed: () => {
-      setSessionExists(false);
-      setSessionDestroyed(true);
-      setAgentRunning(false);
-      setAgentPhase(null);
-      setAgentStateRunning(false);
-      setAgentStateStreaming(false);
-      setAgentStateCompacting(false);
-      setAgentLastUpdated(new Date().toISOString());
-      dispatch({ type: "end" });
-    },
+    onStatusChange: (status) => transitionAgentState({ type: "connection_status", status }),
+    onDestroyed: () =>
+      transitionAgentState({ type: "session_destroyed", lastUpdated: new Date().toISOString() }),
   });
   const loadGenRef = useRef(0);
   const modelListRef = useRef(modelList);
@@ -134,13 +121,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         const res = await fetch(url);
         if (loadGenRef.current !== gen) return null;
         if (res.status === 404) {
-          setSessionExists(false);
-          setSessionDestroyed(true);
-          setAgentStateRunning(false);
-          setAgentStateStreaming(false);
-          setAgentStateCompacting(false);
-          setAgentLastUpdated(new Date().toISOString());
-          setEventStatus("destroyed");
+          transitionAgentState({ type: "session_destroyed", lastUpdated: new Date().toISOString() });
           if (showLoading) {
             setData(null);
             setActiveLeafId(null);
@@ -170,8 +151,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           };
         };
         if (loadGenRef.current !== gen) return null;
-        setSessionExists(true);
-        setSessionDestroyed(false);
+        transitionAgentState({ type: "session_available" });
         setData(d);
         setActiveLeafId(d.leafId);
         const mergedMessages = mergeToolCallMessages(d.context.messages);
@@ -192,10 +172,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           setContextUsage(deriveContextUsage(mergedMessages, d.context.model, modelListRef.current));
         }
         if (d.agentState) {
-          setAgentStateRunning(d.agentState.state?.running ?? d.agentState.running);
-          setAgentStateStreaming(d.agentState.state?.isStreaming ?? false);
-          setAgentStateCompacting(d.agentState.state?.isCompacting ?? false);
-          setAgentLastUpdated(d.agentState.state?.lastUpdated ?? null);
+          transitionAgentState({
+            type: "runtime_snapshot",
+            snapshot: {
+              running: d.agentState.state?.running ?? d.agentState.running,
+              isStreaming: d.agentState.state?.isStreaming ?? false,
+              isCompacting: d.agentState.state?.isCompacting ?? false,
+              lastUpdated: d.agentState.state?.lastUpdated ?? null,
+            },
+          });
         }
         return d.agentState ?? null;
       } catch (e) {
@@ -205,14 +190,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (showLoading) setLoading(false);
       }
     },
-    [
-      setAgentStateCompacting,
-      setAgentStateRunning,
-      setAgentStateStreaming,
-      setContextUsage,
-      setEventStatus,
-      setMessages,
-    ],
+    [setContextUsage, setMessages, transitionAgentState],
   );
   const loadContext = useCallback(
     async (sid: string, leafId: string | null) => {
@@ -277,14 +255,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const handleAgentEvent = useCallback(
     (event: AgentEvent) => {
       const eventAt = new Date().toISOString();
-      const prev = agentEventStateRef.current;
-      const { state, effects } = agentEventReducer(prev, event, eventAt);
-      applyAgentEventState(state);
-      if (state.loadGen !== prev.loadGen) loadGenRef.current = state.loadGen;
-      if (state.lastEventAt === eventAt && prev.lastEventAt !== eventAt) {
-        setAgentLastUpdated(eventAt);
-      }
-      if (effects.streamAction) dispatch(effects.streamAction);
+      const { owner, effects } = transitionAgentState({ type: "event", event, eventAt });
+      if (owner.state.loadGen !== loadGenRef.current) loadGenRef.current = owner.state.loadGen;
       if (effects.agentEnded) {
         if (sessionIdRef.current) {
           fetch(`/api/agent/${encodeURIComponent(sessionIdRef.current)}`)
@@ -312,7 +284,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (sessionIdRef.current) loadSession(sessionIdRef.current).catch(() => {});
       }
     },
-    [agentEventStateRef, applyAgentEventState, dispatch, loadSession, onAgentEnd, setContextUsage],
+    [loadSession, onAgentEnd, setContextUsage, transitionAgentState],
   );
   handleAgentEventRef.current = handleAgentEvent;
   const {
@@ -355,16 +327,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setNewSessionModel,
     setToolPresetState,
     setThinkingLevel,
-    setSessionExists,
-    setSessionDestroyed,
     setMessages,
-    setAgentRunning,
-    setAgentStateRunning,
-    setAgentStateStreaming,
-    setAgentPhase,
-    setIsCompacting,
-    setCompactError,
-    dispatch,
+    transitionAgentState,
   });
   useEffect(() => {
     if (session) {
@@ -373,13 +337,16 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (agentState?.running) {
           loadTools(session.id);
           if (agentState.state?.isStreaming) {
-            setAgentRunning(true);
-            setAgentPhase({ kind: "waiting_model" });
+            transitionAgentState({ type: "run_state", running: true, phase: { kind: "waiting_model" } });
             connectEvents(session.id);
           }
         }
         if (agentState?.state) {
-          if (agentState.state.isCompacting !== undefined) setIsCompacting(agentState.state.isCompacting);
+          if (agentState.state.isCompacting !== undefined)
+            transitionAgentState({
+              type: "compaction_state",
+              compacting: agentState.state.isCompacting,
+            });
           if (agentState.state.contextUsage !== undefined)
             setContextUsage(agentState.state.contextUsage ?? null);
           if (agentState.state.systemPrompt !== undefined)
@@ -391,7 +358,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
     return () => {
       disconnectEvents();
-      setEventStatus("idle");
+      transitionAgentState({ type: "connection_status", status: "idle" });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -404,31 +371,31 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, [data?.tree, activeLeafId, handleLeafChange, onBranchDataChange, agentRunning]);
   useEffect(() => {
     if (!compactError) return;
-    const t = setTimeout(() => setCompactError(null), 3000);
+    const t = setTimeout(
+      () => transitionAgentState({ type: "compaction_state", compacting: isCompacting, error: null }),
+      3000,
+    );
     return () => clearTimeout(t);
-  }, [compactError, setCompactError]);
+  }, [compactError, isCompacting, transitionAgentState]);
   useEffect(() => {
     const cwd = isNew ? newSessionCwd : session?.cwd;
     if (cwd) fetchCommands(cwd);
   }, [isNew, newSessionCwd, session?.cwd, fetchCommands]);
-  const sessionStatus: AgentSessionStatus = {
-    exists: sessionExists,
-    running: agentRunning || agentStateRunning,
-    isStreaming: streamState.isStreaming || agentStateStreaming,
-    isCompacting: isCompacting || agentStateCompacting,
+  const sessionStatus: AgentSessionStatus = deriveAgentSessionStatus({
+    session,
+    sessionExists,
+    sessionDestroyed,
+    agentRunning,
+    agentStateRunning,
+    isStreaming: streamState.isStreaming,
+    agentStateStreaming,
+    isCompacting,
+    agentStateCompacting,
     thinkingLevel,
     eventStatus,
-    readonly:
-      !!session &&
-      sessionExists &&
-      !sessionDestroyed &&
-      !agentRunning &&
-      eventStatus !== "connecting" &&
-      eventStatus !== "connected" &&
-      eventStatus !== "reconnecting",
-    destroyed: sessionDestroyed,
-    lastUpdated: agentLastUpdated ?? data?.info?.modified ?? session?.modified ?? null,
-  };
+    agentLastUpdated,
+    fallbackLastUpdated: data?.info?.modified ?? session?.modified ?? null,
+  });
   return {
     data,
     loading,

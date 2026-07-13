@@ -2,7 +2,12 @@
 
 import { type Dispatch, type SetStateAction, startTransition, useCallback, useState } from "react";
 
-import type { AgentPhase, StreamAction } from "@/hooks/useAgentState";
+import type {
+  AgentPhase,
+  AgentStateTransition,
+  AgentStateTransitionResult,
+  StreamAction,
+} from "@/hooks/useAgentState";
 import type { NewSessionModel } from "@/hooks/useModelList";
 import type { SlashCommandItem } from "@/lib/pi/pi-resources";
 import type { AgentMessage, SessionInfo } from "@/lib/types";
@@ -23,6 +28,7 @@ export interface AttachedImage {
 type ToolPreset = "none" | "default" | "full";
 
 type SendAgentCommand = <T>(command: Record<string, unknown>, nextSessionId?: string) => Promise<T>;
+type TransitionAgentState = (transition: AgentStateTransition) => AgentStateTransitionResult;
 
 type CreateSession = (params: {
   cwd: string;
@@ -58,16 +64,17 @@ export type SessionActionsParams = {
   setNewSessionModel: (model: NewSessionModel) => void;
   setToolPresetState: (preset: ToolPreset) => void;
   setThinkingLevel: Dispatch<SetStateAction<ThinkingLevelOption>>;
-  setSessionExists: Dispatch<SetStateAction<boolean>>;
-  setSessionDestroyed: Dispatch<SetStateAction<boolean>>;
+  transitionAgentState: TransitionAgentState;
+  setSessionExists?: Dispatch<SetStateAction<boolean>>;
+  setSessionDestroyed?: Dispatch<SetStateAction<boolean>>;
   setMessages: Dispatch<SetStateAction<AgentMessage[]>>;
-  setAgentRunning: Dispatch<SetStateAction<boolean>>;
-  setAgentStateRunning: Dispatch<SetStateAction<boolean>>;
-  setAgentStateStreaming: Dispatch<SetStateAction<boolean>>;
-  setAgentPhase: Dispatch<SetStateAction<AgentPhase>>;
-  setIsCompacting: Dispatch<SetStateAction<boolean>>;
-  setCompactError: Dispatch<SetStateAction<string | null>>;
-  dispatch: Dispatch<StreamAction>;
+  setAgentRunning?: Dispatch<SetStateAction<boolean>>;
+  setAgentStateRunning?: Dispatch<SetStateAction<boolean>>;
+  setAgentStateStreaming?: Dispatch<SetStateAction<boolean>>;
+  setAgentPhase?: Dispatch<SetStateAction<AgentPhase>>;
+  setIsCompacting?: Dispatch<SetStateAction<boolean>>;
+  setCompactError?: Dispatch<SetStateAction<string | null>>;
+  dispatch?: Dispatch<StreamAction>;
 };
 
 export function useSessionActions({
@@ -94,16 +101,8 @@ export function useSessionActions({
   setNewSessionModel,
   setToolPresetState,
   setThinkingLevel,
-  setSessionExists,
-  setSessionDestroyed,
+  transitionAgentState,
   setMessages,
-  setAgentRunning,
-  setAgentStateRunning,
-  setAgentStateStreaming,
-  setAgentPhase,
-  setIsCompacting,
-  setCompactError,
-  dispatch,
 }: SessionActionsParams) {
   const [commands, setCommands] = useState<SlashCommandItem[]>([]);
   const [forkingEntryId, setForkingEntryId] = useState<string | null>(null);
@@ -146,14 +145,8 @@ export function useSessionActions({
     connectEvents,
     onSessionCreated,
     setPendingModel,
-    setSessionExists,
-    setSessionDestroyed,
     setMessages,
-    setAgentRunning,
-    setAgentStateRunning,
-    setAgentStateStreaming,
-    setAgentPhase,
-    dispatch,
+    transitionAgentState,
     commands,
   });
 
@@ -235,17 +228,20 @@ export function useSessionActions({
   const handleCompact = useCallback(async () => {
     const sid = sessionIdRef.current;
     if (!sid || isCompacting) return;
-    setIsCompacting(true);
-    setCompactError(null);
+    transitionAgentState({ type: "compaction_state", compacting: true, error: null });
     try {
       await sendAgentCommand({ type: "compact" }, sid);
       await loadSession(sid, true);
     } catch (e) {
-      setCompactError(e instanceof Error ? e.message : String(e));
+      transitionAgentState({
+        type: "compaction_state",
+        compacting: false,
+        error: e instanceof Error ? e.message : String(e),
+      });
     } finally {
-      setIsCompacting(false);
+      transitionAgentState({ type: "compaction_state", compacting: false });
     }
-  }, [isCompacting, loadSession, sendAgentCommand, sessionIdRef, setCompactError, setIsCompacting]);
+  }, [isCompacting, loadSession, sendAgentCommand, sessionIdRef, transitionAgentState]);
 
   const handleSteer = useCallback(
     async (message: string, images?: AttachedImage[]) => {

@@ -27,14 +27,8 @@ type SessionMessageActionsParams = Pick<
   | "connectEvents"
   | "onSessionCreated"
   | "setPendingModel"
-  | "setSessionExists"
-  | "setSessionDestroyed"
   | "setMessages"
-  | "setAgentRunning"
-  | "setAgentStateRunning"
-  | "setAgentStateStreaming"
-  | "setAgentPhase"
-  | "dispatch"
+  | "transitionAgentState"
 > & { commands: SlashCommandItem[] };
 
 export function useSessionMessageActions({
@@ -53,14 +47,8 @@ export function useSessionMessageActions({
   connectEvents,
   onSessionCreated,
   setPendingModel,
-  setSessionExists,
-  setSessionDestroyed,
   setMessages,
-  setAgentRunning,
-  setAgentStateRunning,
-  setAgentStateStreaming,
-  setAgentPhase,
-  dispatch,
+  transitionAgentState,
   commands,
 }: SessionMessageActionsParams) {
   const handleCommand = useCallback(
@@ -92,15 +80,14 @@ export function useSessionMessageActions({
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, userMsg]);
-      setAgentRunning(true);
-      setAgentStateRunning(true);
-      setAgentStateStreaming(true);
-      setAgentPhase(
-        commandInfo?.source === "extension"
-          ? { kind: "running_command", command: commandName }
-          : { kind: "running_skill", skill: commandName },
-      );
-      dispatch({ type: "start" });
+      transitionAgentState({
+        type: "run_state",
+        running: true,
+        phase:
+          commandInfo?.source === "extension"
+            ? { kind: "running_command", command: commandName }
+            : { kind: "running_skill", skill: commandName },
+      });
       const normalizedCommand = commandName.toLowerCase();
       const normalizedArgs = message.trim().toLowerCase();
       if (
@@ -121,11 +108,7 @@ export function useSessionMessageActions({
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, assistantMsg]);
-        setAgentRunning(false);
-        setAgentStateRunning(false);
-        setAgentStateStreaming(false);
-        setAgentPhase(null);
-        dispatch({ type: "end" });
+        transitionAgentState({ type: "run_state", running: false, phase: null });
         return;
       }
       const piImages = images?.map((img) => ({
@@ -147,8 +130,7 @@ export function useSessionMessageActions({
             images,
           });
           sessionIdRef.current = result.sessionId;
-          setSessionExists(true);
-          setSessionDestroyed(false);
+          transitionAgentState({ type: "session_available" });
           connectEvents(result.sessionId);
           onSessionCreated?.({
             id: result.sessionId,
@@ -161,8 +143,7 @@ export function useSessionMessageActions({
             firstMessage: message,
           });
         } else if (session) {
-          setSessionExists(true);
-          setSessionDestroyed(false);
+          transitionAgentState({ type: "session_available" });
           connectEvents(session.id);
           await sendAgentCommand(
             {
@@ -175,20 +156,12 @@ export function useSessionMessageActions({
           );
         }
         if (commandInfo?.source === "extension") {
-          setAgentRunning(false);
-          setAgentStateRunning(false);
-          setAgentStateStreaming(false);
-          setAgentPhase(null);
-          dispatch({ type: "end" });
+          transitionAgentState({ type: "run_state", running: false, phase: null });
         }
       } catch (e) {
         console.error("Failed to send command:", e);
         toast.error(e instanceof Error ? e.message : String(e));
-        setAgentRunning(false);
-        setAgentStateRunning(false);
-        setAgentStateStreaming(false);
-        setAgentPhase(null);
-        dispatch({ type: "end" });
+        transitionAgentState({ type: "run_state", running: false, phase: null });
       }
     },
     [
@@ -196,7 +169,6 @@ export function useSessionMessageActions({
       commands,
       connectEvents,
       createSession,
-      dispatch,
       isNew,
       loadGenRef,
       modelListRef,
@@ -206,15 +178,10 @@ export function useSessionMessageActions({
       sendAgentCommand,
       session,
       sessionIdRef,
-      setAgentPhase,
-      setAgentRunning,
-      setAgentStateRunning,
-      setAgentStateStreaming,
       setMessages,
       setPendingModel,
-      setSessionDestroyed,
-      setSessionExists,
       thinkingLevel,
+      transitionAgentState,
       toolPreset,
     ],
   );
@@ -249,11 +216,7 @@ export function useSessionMessageActions({
         timestamp: Date.now(),
       };
       setMessages((prev) => [...prev, userMsg]);
-      setAgentRunning(true);
-      setAgentStateRunning(true);
-      setAgentStateStreaming(true);
-      setAgentPhase({ kind: "waiting_model" });
-      dispatch({ type: "start" });
+      transitionAgentState({ type: "run_state", running: true, phase: { kind: "waiting_model" } });
 
       const piImages = images?.map((img) => ({
         type: "image" as const,
@@ -275,8 +238,7 @@ export function useSessionMessageActions({
           });
           const realId = result.sessionId;
           sessionIdRef.current = realId;
-          setSessionExists(true);
-          setSessionDestroyed(false);
+          transitionAgentState({ type: "session_available" });
           connectEvents(realId);
           onSessionCreated?.({
             id: realId,
@@ -289,8 +251,7 @@ export function useSessionMessageActions({
             firstMessage: message,
           });
         } else if (session) {
-          setSessionExists(true);
-          setSessionDestroyed(false);
+          transitionAgentState({ type: "session_available" });
           connectEvents(session.id);
           await sendAgentCommand(
             {
@@ -304,11 +265,7 @@ export function useSessionMessageActions({
       } catch (e) {
         console.error("Failed to send message:", e);
         toast.error(e instanceof Error ? e.message : String(e));
-        setAgentRunning(false);
-        setAgentStateRunning(false);
-        setAgentStateStreaming(false);
-        setAgentPhase(null);
-        dispatch({ type: "end" });
+        transitionAgentState({ type: "run_state", running: false, phase: null });
       }
     },
     [
@@ -316,7 +273,6 @@ export function useSessionMessageActions({
       commands,
       connectEvents,
       createSession,
-      dispatch,
       handleCommand,
       isNew,
       loadGenRef,
@@ -327,15 +283,10 @@ export function useSessionMessageActions({
       sendAgentCommand,
       session,
       sessionIdRef,
-      setAgentPhase,
-      setAgentRunning,
-      setAgentStateRunning,
-      setAgentStateStreaming,
       setMessages,
       setPendingModel,
-      setSessionDestroyed,
-      setSessionExists,
       thinkingLevel,
+      transitionAgentState,
       toolPreset,
     ],
   );

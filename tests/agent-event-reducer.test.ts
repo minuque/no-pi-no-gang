@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  agentEventInputReducer,
   agentEventReducer,
   initialAgentEventState,
   isToolCallOnly,
@@ -525,6 +526,165 @@ describe("unknown event type", () => {
     expect(effects.bumpLoadGen).toBe(false);
     expect(effects.agentEnded).toBe(false);
     expect(effects.compactionEndedClean).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("agentEventInputReducer", () => {
+  it("updates connection status without changing execution axes", () => {
+    const base = state({
+      agentRunning: true,
+      agentStateRunning: true,
+      agentPhase: { kind: "running_tools", tools: [{ id: "t1", name: "read" }] },
+      isCompacting: true,
+      agentStateCompacting: true,
+    });
+
+    const { state: next } = agentEventInputReducer(base, {
+      kind: "connection_status",
+      status: "connected",
+      eventAt: NOW,
+    });
+
+    expect(next.eventStatus).toBe("connected");
+    expect(next.agentRunning).toBe(true);
+    expect(next.agentStateRunning).toBe(true);
+    expect(next.agentPhase).toEqual({ kind: "running_tools", tools: [{ id: "t1", name: "read" }] });
+    expect(next.isCompacting).toBe(true);
+    expect(next.agentStateCompacting).toBe(true);
+    expect(next.lastEventAt).toBeNull();
+  });
+
+  it("applies runtime snapshots to runtime fields without changing connection status", () => {
+    const { state: next } = agentEventInputReducer(state({ eventStatus: "connected" }), {
+      kind: "runtime_snapshot",
+      snapshot: { running: true, isStreaming: true, isCompacting: true, lastUpdated: NOW },
+    });
+
+    expect(next.eventStatus).toBe("connected");
+    expect(next.agentStateRunning).toBe(true);
+    expect(next.agentStateStreaming).toBe(true);
+    expect(next.agentStateCompacting).toBe(true);
+    expect(next.isCompacting).toBe(true);
+    expect(next.lastEventAt).toBe(NOW);
+  });
+
+  it("marks a destroyed session while clearing execution fields", () => {
+    const { state: next } = agentEventInputReducer(
+      state({
+        agentRunning: true,
+        agentStateRunning: true,
+        agentStateStreaming: true,
+        agentStateCompacting: true,
+        isCompacting: true,
+        agentPhase: { kind: "running_tools", tools: [] },
+        retryInfo: { attempt: 1, maxAttempts: 2 },
+        eventStatus: "connected",
+      }),
+      { kind: "session_destroyed", eventAt: NOW },
+    );
+
+    expect(next.eventStatus).toBe("destroyed");
+    expect(next.agentRunning).toBe(false);
+    expect(next.agentStateRunning).toBe(false);
+    expect(next.agentStateStreaming).toBe(false);
+    expect(next.agentStateCompacting).toBe(false);
+    expect(next.isCompacting).toBe(false);
+    expect(next.agentPhase).toBeNull();
+    expect(next.retryInfo).toBeNull();
+    expect(next.lastEventAt).toBe(NOW);
+    expect(
+      agentEventInputReducer(next, { kind: "session_destroyed", eventAt: NOW }).effects.streamAction,
+    ).toEqual({
+      type: "end",
+    });
+  });
+
+  it("handles run start and end without making connection status mutually exclusive", () => {
+    const started = agentEventInputReducer(state({ eventStatus: "connected" }), {
+      kind: "run_start",
+      phase: { kind: "running_command", command: "review" },
+      eventAt: NOW,
+    });
+    expect(started.state.agentRunning).toBe(true);
+    expect(started.state.agentStateRunning).toBe(true);
+    expect(started.state.agentStateStreaming).toBe(true);
+    expect(started.state.agentPhase).toEqual({ kind: "running_command", command: "review" });
+    expect(started.state.eventStatus).toBe("connected");
+    expect(started.effects.streamAction).toEqual({ type: "start" });
+
+    const ended = agentEventInputReducer(started.state, { kind: "run_end", eventAt: NOW });
+    expect(ended.state.agentRunning).toBe(false);
+    expect(ended.state.agentStateRunning).toBe(false);
+    expect(ended.state.agentStateStreaming).toBe(false);
+    expect(ended.state.eventStatus).toBe("connected");
+    expect(ended.effects).toMatchObject({
+      streamAction: { type: "end" },
+      bumpLoadGen: true,
+      agentEnded: true,
+    });
+  });
+
+  it("handles compaction start and clean finish", () => {
+    const started = agentEventInputReducer(state({ eventStatus: "connected" }), {
+      kind: "compaction_start",
+      eventAt: NOW,
+    });
+    expect(started.state.isCompacting).toBe(true);
+    expect(started.state.agentStateCompacting).toBe(true);
+    expect(started.state.eventStatus).toBe("connected");
+
+    const finished = agentEventInputReducer(started.state, { kind: "compaction_finish", eventAt: NOW });
+    expect(finished.state.isCompacting).toBe(false);
+    expect(finished.state.agentStateCompacting).toBe(false);
+    expect(finished.state.loadGen).toBe(1);
+    expect(finished.effects).toMatchObject({ bumpLoadGen: true, compactionEndedClean: true });
+  });
+
+  it("handles compaction errors without bumping loadGen", () => {
+    const { state: next, effects } = agentEventInputReducer(
+      state({ isCompacting: true, agentStateCompacting: true, loadGen: 3 }),
+      { kind: "compaction_error", errorMessage: "too large", eventAt: NOW },
+    );
+
+    expect(next.isCompacting).toBe(false);
+    expect(next.agentStateCompacting).toBe(false);
+    expect(next.compactError).toBe("too large");
+    expect(next.loadGen).toBe(3);
+    expect(effects.bumpLoadGen).toBe(false);
+    expect(effects.compactionEndedClean).toBe(false);
+  });
+
+  it("routes raw connection events and safely no-ops unknown raw events", () => {
+    const connected = agentEventInputReducer(state({ agentRunning: true }), {
+      kind: "agent_event",
+      event: { type: "view:connection_status", status: "connected", sessionId: "s1" },
+      eventAt: NOW,
+    });
+    expect(connected.state.eventStatus).toBe("connected");
+    expect(connected.state.agentRunning).toBe(true);
+
+    const ended = agentEventInputReducer(state({ eventStatus: "connected", agentRunning: true }), {
+      kind: "agent_event",
+      event: { type: "agent_end" },
+      eventAt: NOW,
+    });
+    expect(ended.state.eventStatus).toBe("connected");
+
+    const base = state({ loadGen: 42 });
+    const unknown = agentEventInputReducer(base, {
+      kind: "agent_event",
+      event: { type: "unknown_event" },
+      eventAt: NOW,
+    });
+    expect(unknown.state).toBe(base);
+    expect(unknown.effects).toEqual({
+      streamAction: null,
+      bumpLoadGen: false,
+      agentEnded: false,
+      compactionEndedClean: false,
+    });
   });
 });
 

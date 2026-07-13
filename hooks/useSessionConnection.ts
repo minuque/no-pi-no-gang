@@ -55,6 +55,14 @@ export function resolveSessionId(sessionId: string | null): string {
   return sessionId;
 }
 
+export function resolveConnectionFailureState(
+  statusCode: number | null,
+  isAgentRunning: boolean,
+): { status: AgentEventStatus; destroyed: boolean } {
+  if (statusCode === 404) return { status: "destroyed", destroyed: true };
+  return { status: isAgentRunning ? "reconnecting" : "readonly", destroyed: false };
+}
+
 export function useSessionConnection(sessionId: string | null, options: UseSessionConnectionOptions = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -111,33 +119,37 @@ export function useSessionConnection(sessionId: string | null, options: UseSessi
         eventSourceRef.current = null;
         fetch(`/api/sessions/${encodeURIComponent(sid)}`, { cache: "no-store" })
           .then((res) => {
-            if (res.status === 404) {
+            const failure = resolveConnectionFailureState(
+              res.status,
+              optionsRef.current.isAgentRunning?.() ?? false,
+            );
+            if (failure.destroyed) {
               setSessionExists(false);
               setSessionDestroyed(true);
               setAgentLastUpdated(new Date().toISOString());
               optionsRef.current.onDestroyed?.();
-              setEventStatus("destroyed");
+              setEventStatus(failure.status);
               return;
             }
             setSessionExists(true);
             setSessionDestroyed(false);
-            if (optionsRef.current.isAgentRunning?.()) {
-              setEventStatus("reconnecting");
+            setEventStatus(failure.status);
+            if (failure.status === "reconnecting") {
               setTimeout(() => {
                 if (optionsRef.current.isAgentRunning?.()) connectEvents(sid);
               }, 1000);
-            } else {
-              setEventStatus("readonly");
             }
           })
           .catch(() => {
-            if (optionsRef.current.isAgentRunning?.()) {
-              setEventStatus("reconnecting");
+            const failure = resolveConnectionFailureState(
+              null,
+              optionsRef.current.isAgentRunning?.() ?? false,
+            );
+            setEventStatus(failure.status);
+            if (failure.status === "reconnecting") {
               setTimeout(() => {
                 if (optionsRef.current.isAgentRunning?.()) connectEvents(sid);
               }, 1000);
-            } else {
-              setEventStatus("readonly");
             }
           });
       };

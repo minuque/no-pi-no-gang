@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveContextUsage, deriveSessionStats } from "../../hooks/useAgentState";
+import {
+  deriveContextUsage,
+  deriveSessionStats,
+  initialAgentEventOwnerState,
+  reduceAgentStateTransition,
+} from "../../hooks/useAgentState";
 import type { AgentMessage } from "../../lib/types";
 
 const assistantWithUsage = (overrides: {
@@ -56,5 +61,58 @@ describe("useAgentState pure helpers", () => {
     );
 
     expect(usage).toEqual({ percent: 40, contextWindow: 100, tokens: 40 });
+  });
+
+  it("routes connection status and session destruction through the owner transition", () => {
+    const connected = reduceAgentStateTransition(initialAgentEventOwnerState(), {
+      type: "connection_status",
+      status: "connected",
+    });
+
+    expect(connected.owner.state.eventStatus).toBe("connected");
+
+    const destroyed = reduceAgentStateTransition(connected.owner, {
+      type: "session_destroyed",
+      lastUpdated: "2026-07-13T00:00:00.000Z",
+    });
+
+    expect(destroyed.owner.connection).toEqual({
+      sessionExists: false,
+      sessionDestroyed: true,
+      agentLastUpdated: "2026-07-13T00:00:00.000Z",
+    });
+    expect(destroyed.owner.state.eventStatus).toBe("destroyed");
+    expect(destroyed.owner.state.agentStateRunning).toBe(false);
+  });
+
+  it("transitions run and compaction state while exposing stream effects", () => {
+    const started = reduceAgentStateTransition(initialAgentEventOwnerState(), {
+      type: "run_state",
+      running: true,
+      phase: { kind: "waiting_model" },
+    });
+
+    expect(started.owner.state.agentRunning).toBe(true);
+    expect(started.owner.state.agentStateStreaming).toBe(true);
+    expect(started.effects.streamAction).toEqual({ type: "start" });
+
+    const compacting = reduceAgentStateTransition(started.owner, {
+      type: "compaction_state",
+      compacting: true,
+      error: null,
+    });
+
+    expect(compacting.owner.state.isCompacting).toBe(true);
+    expect(compacting.owner.state.agentStateCompacting).toBe(true);
+
+    const ended = reduceAgentStateTransition(compacting.owner, {
+      type: "run_state",
+      running: false,
+      phase: null,
+    });
+
+    expect(ended.owner.state.agentRunning).toBe(false);
+    expect(ended.owner.state.agentStateStreaming).toBe(false);
+    expect(ended.effects.streamAction).toEqual({ type: "end" });
   });
 });

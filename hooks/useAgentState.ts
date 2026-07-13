@@ -11,11 +11,15 @@ import {
 } from "react";
 
 import {
+  type AgentEventEffects,
+  type AgentEventInput,
   type AgentEventState,
   type AgentPhase,
+  type AgentRuntimeSnapshot,
+  agentEventInputReducer,
   initialAgentEventState,
 } from "../lib/agent/agent-event-reducer";
-import type { AgentEventStatus, StreamAction } from "../lib/events/event-types";
+import type { AgentEventStatus, AnyAgentEvent, StreamAction } from "../lib/events/event-types";
 import type { AgentMessage, AssistantMessage } from "../lib/types";
 
 export type { AgentPhase } from "../lib/agent/agent-event-reducer";
@@ -45,15 +49,148 @@ export type SessionStats = {
   cost: number;
 };
 
-function streamReducer(state: StreamingState, action: StreamAction): StreamingState {
+export interface AgentConnectionState {
+  sessionExists: boolean;
+  sessionDestroyed: boolean;
+  agentLastUpdated: string | null;
+}
+
+export interface AgentEventStateOwner {
+  state: AgentEventState;
+  connection: AgentConnectionState;
+}
+
+export type AgentStateTransition =
+  | { type: "event"; event: AnyAgentEvent; eventAt: string }
+  | { type: "connection_status"; status: AgentEventStatus }
+  | { type: "runtime_snapshot"; snapshot: AgentRuntimeSnapshot }
+  | { type: "session_available" }
+  | { type: "session_destroyed"; lastUpdated: string }
+  | { type: "run_state"; running: boolean; phase: AgentPhase }
+  | { type: "compaction_state"; compacting: boolean; error?: string | null }
+  | { type: "messages"; update: SetStateAction<AgentMessage[]> }
+  | { type: "patch"; update: (state: AgentEventState) => AgentEventState };
+
+export interface AgentStateTransitionResult {
+  owner: AgentEventStateOwner;
+  effects: AgentEventEffects;
+}
+
+export function initialAgentEventOwnerState(initialSessionExists = true): AgentEventStateOwner {
+  return {
+    state: initialAgentEventState(),
+    connection: {
+      sessionExists: initialSessionExists,
+      sessionDestroyed: false,
+      agentLastUpdated: null,
+    },
+  };
+}
+
+function emptyAgentEventEffects(): AgentEventEffects {
+  return {
+    streamAction: null,
+    bumpLoadGen: false,
+    agentEnded: false,
+    compactionEndedClean: false,
+  };
+}
+
+export function reduceAgentStateTransition(
+  owner: AgentEventStateOwner,
+  transition: AgentStateTransition,
+): AgentStateTransitionResult {
+  const reduceInput = (input: AgentEventInput): AgentStateTransitionResult => {
+    const result = agentEventInputReducer(owner.state, input);
+    const lastEventAt = result.state.lastEventAt;
+    return {
+      owner: {
+        state: result.state,
+        connection:
+          input.kind === "runtime_snapshot" && input.snapshot.lastUpdated !== undefined
+            ? { ...owner.connection, agentLastUpdated: input.snapshot.lastUpdated }
+            : result.state.lastEventAt !== owner.state.lastEventAt
+              ? { ...owner.connection, agentLastUpdated: lastEventAt }
+              : owner.connection,
+      },
+      effects: result.effects,
+    };
+  };
+
+  switch (transition.type) {
+    case "event":
+      return reduceInput({ kind: "agent_event", event: transition.event, eventAt: transition.eventAt });
+    case "connection_status":
+      return reduceInput({ kind: "connection_status", status: transition.status });
+    case "runtime_snapshot":
+      return reduceInput({ kind: "runtime_snapshot", snapshot: transition.snapshot });
+    case "session_available":
+      return {
+        owner: {
+          ...owner,
+          connection: { ...owner.connection, sessionExists: true, sessionDestroyed: false },
+        },
+        effects: emptyAgentEventEffects(),
+      };
+    case "session_destroyed": {
+      const result = reduceInput({ kind: "session_destroyed", eventAt: transition.lastUpdated });
+      return {
+        ...result,
+        owner: {
+          ...result.owner,
+          connection: {
+            sessionExists: false,
+            sessionDestroyed: true,
+            agentLastUpdated: transition.lastUpdated,
+          },
+        },
+      };
+    }
+    case "run_state":
+      return transition.running
+        ? reduceInput({ kind: "run_start", phase: transition.phase })
+        : reduceInput({ kind: "run_end" });
+    case "compaction_state":
+      return reduceInput({
+        kind: "compaction_state",
+        compacting: transition.compacting,
+        error: transition.error,
+      });
+    case "messages":
+      return {
+        owner: {
+          ...owner,
+          state: {
+            ...owner.state,
+            messages:
+              typeof transition.update === "function"
+                ? transition.update(owner.state.messages)
+                : transition.update,
+          },
+        },
+        effects: emptyAgentEventEffects(),
+      };
+    case "patch":
+      return {
+        owner: { ...owner, state: transition.update(owner.state) },
+        effects: emptyAgentEventEffects(),
+      };
+  }
+}
+
+interface StreamingMessageState {
+  streamingMessage: Partial<AgentMessage> | null;
+}
+
+function streamReducer(state: StreamingMessageState, action: StreamAction): StreamingMessageState {
   switch (action.type) {
     case "start":
-      return { isStreaming: true, streamingMessage: null };
+      return { streamingMessage: null };
     case "update":
-      return { isStreaming: true, streamingMessage: action.message };
+      return { streamingMessage: action.message };
     case "end":
     case "reset":
-      return { isStreaming: false, streamingMessage: null };
+      return { streamingMessage: null };
     default:
       return state;
   }
@@ -113,26 +250,43 @@ export function deriveSessionStats(messages: AgentMessage[]): SessionStats | nul
 export function useAgentState({
   currentModel,
   modelList,
+  initialSessionExists = true,
 }: {
   currentModel: CurrentModel;
   modelList: ModelListItem[];
+  initialSessionExists?: boolean;
 }) {
-  const [streamState, dispatch] = useReducer(streamReducer, {
-    isStreaming: false,
-    streamingMessage: null,
-  });
+  const [streamMessageState, dispatch] = useReducer(streamReducer, { streamingMessage: null });
   const [contextUsage, setContextUsage] = useState<ContextUsageState | null>(null);
 
-  const agentEventStateRef = useRef<AgentEventState>(initialAgentEventState());
+  const initialOwner = initialAgentEventOwnerState(initialSessionExists);
+  const agentEventStateRef = useRef<AgentEventState>(initialOwner.state);
+  const connectionStateRef = useRef<AgentConnectionState>(initialOwner.connection);
   const [agentEventState, setAgentEventStateRaw] = useState<AgentEventState>(agentEventStateRef.current);
+  const [connectionState, setConnectionStateRaw] = useState<AgentConnectionState>(connectionStateRef.current);
+  const transitionAgentState = useCallback(
+    (transition: AgentStateTransition): AgentStateTransitionResult => {
+      const result = reduceAgentStateTransition(
+        { state: agentEventStateRef.current, connection: connectionStateRef.current },
+        transition,
+      );
+      agentEventStateRef.current = result.owner.state;
+      connectionStateRef.current = result.owner.connection;
+      setAgentEventStateRaw(result.owner.state);
+      setConnectionStateRaw(result.owner.connection);
+      if (result.effects.streamAction) dispatch(result.effects.streamAction);
+      return result;
+    },
+    [dispatch],
+  );
   const applyAgentEventState = useCallback(
     (next: AgentEventState | ((prev: AgentEventState) => AgentEventState)) => {
-      const prev = agentEventStateRef.current;
-      const newState = typeof next === "function" ? next(prev) : next;
-      agentEventStateRef.current = newState;
-      setAgentEventStateRaw(newState);
+      transitionAgentState({
+        type: "patch",
+        update: (prev) => (typeof next === "function" ? next(prev) : next),
+      });
     },
-    [],
+    [transitionAgentState],
   );
 
   const messages: AgentMessage[] = agentEventState.messages;
@@ -149,6 +303,10 @@ export function useAgentState({
   } | null = agentEventState.retryInfo;
   const isCompacting: boolean = agentEventState.isCompacting;
   const compactError: string | null = agentEventState.compactError;
+  const streamState: StreamingState = {
+    isStreaming: agentStateStreaming,
+    streamingMessage: streamMessageState.streamingMessage,
+  };
 
   const settersRef = useRef<{
     setMessages: Dispatch<SetStateAction<AgentMessage[]>>;
@@ -173,48 +331,54 @@ export function useAgentState({
           | "isCompacting",
       ): Dispatch<SetStateAction<boolean>> =>
       (action) =>
-        applyAgentEventState((prev) => ({
-          ...prev,
-          [field]: typeof action === "function" ? (action as (p: boolean) => boolean)(prev[field]) : action,
-        }));
+        transitionAgentState({
+          type: "patch",
+          update: (prev) => ({
+            ...prev,
+            [field]: typeof action === "function" ? (action as (p: boolean) => boolean)(prev[field]) : action,
+          }),
+        });
     settersRef.current = {
-      setMessages: (action) =>
-        applyAgentEventState((prev) => ({
-          ...prev,
-          messages:
-            typeof action === "function"
-              ? (action as (p: AgentMessage[]) => AgentMessage[])(prev.messages)
-              : action,
-        })),
+      setMessages: (action) => transitionAgentState({ type: "messages", update: action }),
       setAgentRunning: mkBool("agentRunning"),
       setAgentStateRunning: mkBool("agentStateRunning"),
       setAgentStateStreaming: mkBool("agentStateStreaming"),
       setAgentStateCompacting: mkBool("agentStateCompacting"),
       setIsCompacting: mkBool("isCompacting"),
       setCompactError: (action) =>
-        applyAgentEventState((prev) => ({
-          ...prev,
-          compactError:
-            typeof action === "function"
-              ? (action as (p: string | null) => string | null)(prev.compactError)
-              : action,
-        })),
+        transitionAgentState({
+          type: "patch",
+          update: (prev) => ({
+            ...prev,
+            compactError:
+              typeof action === "function"
+                ? (action as (p: string | null) => string | null)(prev.compactError)
+                : action,
+          }),
+        }),
       setAgentPhase: (action) =>
-        applyAgentEventState((prev) => ({
-          ...prev,
-          agentPhase:
-            typeof action === "function"
-              ? (action as (p: AgentPhase) => AgentPhase)(prev.agentPhase)
-              : action,
-        })),
+        transitionAgentState({
+          type: "patch",
+          update: (prev) => ({
+            ...prev,
+            agentPhase:
+              typeof action === "function"
+                ? (action as (p: AgentPhase) => AgentPhase)(prev.agentPhase)
+                : action,
+          }),
+        }),
       setEventStatus: (action) =>
-        applyAgentEventState((prev) => ({
-          ...prev,
-          eventStatus:
-            typeof action === "function"
-              ? (action as (p: AgentEventStatus) => AgentEventStatus)(prev.eventStatus)
-              : action,
-        })),
+        transitionAgentState(
+          typeof action === "function"
+            ? {
+                type: "patch",
+                update: (prev) => ({
+                  ...prev,
+                  eventStatus: (action as (p: AgentEventStatus) => AgentEventStatus)(prev.eventStatus),
+                }),
+              }
+            : { type: "connection_status", status: action },
+        ),
     };
   }
 
@@ -240,6 +404,10 @@ export function useAgentState({
     sessionStats: deriveSessionStats(messages),
     agentEventStateRef,
     applyAgentEventState,
+    transitionAgentState,
+    sessionExists: connectionState.sessionExists,
+    sessionDestroyed: connectionState.sessionDestroyed,
+    agentLastUpdated: connectionState.agentLastUpdated,
     dispatch,
     setContextUsage,
     ...settersRef.current,

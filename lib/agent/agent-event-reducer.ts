@@ -216,6 +216,219 @@ export interface AgentEventEffects {
   compactionEndedClean: boolean;
 }
 
+export interface AgentRuntimeSnapshot {
+  running?: boolean;
+  isStreaming?: boolean;
+  isCompacting?: boolean;
+  lastUpdated?: string | null;
+}
+
+export type AgentEventInput =
+  | { kind: "agent_event"; event: AnyAgentEvent; eventAt: string }
+  | { kind: "connection_status"; status: AgentEventStatus; eventAt?: string }
+  | { kind: "runtime_snapshot"; snapshot: AgentRuntimeSnapshot; eventAt?: string }
+  | { kind: "session_destroyed"; eventAt?: string }
+  | { kind: "run_start"; phase?: AgentPhase; eventAt?: string }
+  | { kind: "run_end"; eventAt?: string }
+  | { kind: "compaction_start"; eventAt?: string }
+  | { kind: "compaction_finish"; eventAt?: string }
+  | { kind: "compaction_state"; compacting: boolean; error?: string | null; eventAt?: string }
+  | { kind: "compaction_error"; errorMessage: string; eventAt?: string };
+
+function emptyAgentEventEffects(): AgentEventEffects {
+  return {
+    streamAction: null,
+    bumpLoadGen: false,
+    agentEnded: false,
+    compactionEndedClean: false,
+  };
+}
+
+function isAgentEventStatus(value: unknown): value is AgentEventStatus {
+  return (
+    value === "idle" ||
+    value === "connecting" ||
+    value === "connected" ||
+    value === "reconnecting" ||
+    value === "readonly" ||
+    value === "destroyed"
+  );
+}
+
+function reduceConnectionStatus(
+  state: AgentEventState,
+  status: AgentEventStatus,
+): { state: AgentEventState; effects: AgentEventEffects } {
+  return {
+    state: { ...state, eventStatus: status },
+    effects: emptyAgentEventEffects(),
+  };
+}
+
+function reduceRunStart(
+  state: AgentEventState,
+  phase?: AgentPhase,
+  eventAt?: string,
+): { state: AgentEventState; effects: AgentEventEffects } {
+  return {
+    state: {
+      ...state,
+      agentRunning: true,
+      agentStateRunning: true,
+      agentStateStreaming: true,
+      lastEventAt: eventAt ?? state.lastEventAt,
+      agentPhase: phase ?? state.agentPhase ?? { kind: "waiting_model" },
+    },
+    effects: { ...emptyAgentEventEffects(), streamAction: { type: "start" } },
+  };
+}
+
+function reduceRunEnd(
+  state: AgentEventState,
+  eventAt?: string,
+): { state: AgentEventState; effects: AgentEventEffects } {
+  return {
+    state: {
+      ...state,
+      agentRunning: false,
+      agentStateRunning: false,
+      agentStateStreaming: false,
+      agentStateCompacting: false,
+      isCompacting: false,
+      lastEventAt: eventAt ?? state.lastEventAt,
+      agentPhase: null,
+      retryInfo: null,
+      loadGen: state.loadGen + 1,
+    },
+    effects: {
+      ...emptyAgentEventEffects(),
+      streamAction: { type: "end" },
+      bumpLoadGen: true,
+      agentEnded: true,
+    },
+  };
+}
+
+function reduceCompactionStart(
+  state: AgentEventState,
+  eventAt?: string,
+): { state: AgentEventState; effects: AgentEventEffects } {
+  return {
+    state: {
+      ...state,
+      isCompacting: true,
+      agentStateCompacting: true,
+      lastEventAt: eventAt ?? state.lastEventAt,
+      compactError: null,
+    },
+    effects: emptyAgentEventEffects(),
+  };
+}
+
+function reduceCompactionFinish(
+  state: AgentEventState,
+  eventAt?: string,
+): { state: AgentEventState; effects: AgentEventEffects } {
+  return {
+    state: {
+      ...state,
+      isCompacting: false,
+      agentStateCompacting: false,
+      lastEventAt: eventAt ?? state.lastEventAt,
+      loadGen: state.loadGen + 1,
+    },
+    effects: { ...emptyAgentEventEffects(), bumpLoadGen: true, compactionEndedClean: true },
+  };
+}
+
+function reduceCompactionError(
+  state: AgentEventState,
+  errorMessage: string,
+  eventAt?: string,
+): { state: AgentEventState; effects: AgentEventEffects } {
+  return {
+    state: {
+      ...state,
+      isCompacting: false,
+      agentStateCompacting: false,
+      lastEventAt: eventAt ?? state.lastEventAt,
+      compactError: errorMessage,
+    },
+    effects: emptyAgentEventEffects(),
+  };
+}
+
+export function agentEventInputReducer(
+  state: AgentEventState,
+  input: AgentEventInput,
+): { state: AgentEventState; effects: AgentEventEffects } {
+  switch (input.kind) {
+    case "agent_event": {
+      if (input.event.type === "view:connection_status") {
+        const status = eventValue(input.event, "status");
+        if (isAgentEventStatus(status)) return reduceConnectionStatus(state, status);
+      }
+      if (input.event.type === "agent_start") return reduceRunStart(state, undefined, input.eventAt);
+      if (input.event.type === "agent_end") return reduceRunEnd(state, input.eventAt);
+      return agentEventReducer(state, input.event, input.eventAt);
+    }
+    case "connection_status":
+      return reduceConnectionStatus(state, input.status);
+    case "runtime_snapshot": {
+      const { snapshot } = input;
+      return {
+        state: {
+          ...state,
+          agentStateRunning: snapshot.running ?? state.agentStateRunning,
+          agentStateStreaming: snapshot.isStreaming ?? state.agentStateStreaming,
+          agentStateCompacting: snapshot.isCompacting ?? state.agentStateCompacting,
+          isCompacting: snapshot.isCompacting ?? state.isCompacting,
+          lastEventAt:
+            snapshot.lastUpdated !== undefined ? snapshot.lastUpdated : (input.eventAt ?? state.lastEventAt),
+        },
+        effects: emptyAgentEventEffects(),
+      };
+    }
+    case "session_destroyed":
+      return {
+        state: {
+          ...state,
+          agentRunning: false,
+          agentStateRunning: false,
+          agentStateStreaming: false,
+          agentStateCompacting: false,
+          isCompacting: false,
+          agentPhase: null,
+          retryInfo: null,
+          eventStatus: "destroyed",
+          lastEventAt: input.eventAt ?? state.lastEventAt,
+        },
+        effects: { ...emptyAgentEventEffects(), streamAction: { type: "end" } },
+      };
+    case "run_start":
+      return reduceRunStart(state, input.phase, input.eventAt);
+    case "run_end":
+      return reduceRunEnd(state, input.eventAt);
+    case "compaction_start":
+      return reduceCompactionStart(state, input.eventAt);
+    case "compaction_finish":
+      return reduceCompactionFinish(state, input.eventAt);
+    case "compaction_state":
+      return {
+        state: {
+          ...state,
+          isCompacting: input.compacting,
+          agentStateCompacting: input.compacting,
+          compactError: input.error === undefined ? state.compactError : input.error,
+          lastEventAt: input.eventAt ?? state.lastEventAt,
+        },
+        effects: emptyAgentEventEffects(),
+      };
+    case "compaction_error":
+      return reduceCompactionError(state, input.errorMessage, input.eventAt);
+  }
+}
+
 export function agentEventReducer(
   state: AgentEventState,
   event: AnyAgentEvent,
