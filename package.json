@@ -3,6 +3,10 @@
   "version": "0.0.7",
   "description": "Web UI for the pi coding agent",
   "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "bin": {
     "no-pi-no-gang": "bin/no-pi-no-gang.js"
   },
