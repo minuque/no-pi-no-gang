@@ -1,6 +1,7 @@
 import {
   AGENT_PROTOCOL_VERSION,
   type CreateOrResumeRuntimeRequest,
+  type ForkSessionResult,
   RUNTIME_CAPABILITIES,
   type RuntimeAdapter,
   type RuntimeCapabilities,
@@ -10,8 +11,17 @@ import {
   type RuntimeEventListener,
   type RuntimeSession,
   type RuntimeState,
+  type SessionAdapter,
+  type SessionContextProjection,
+  type SessionSnapshot,
+  type SessionSummary,
   type Turn,
 } from "@no-pi-no-gang/agent-protocol";
+
+import { PiSessionAdapter } from "./session-adapter";
+
+export { mapPiSessionEntries, projectPiSessionRecords } from "./session-records";
+export { PiSessionAdapter } from "./session-adapter";
 
 export interface PiInputImage {
   type: "image";
@@ -35,11 +45,38 @@ export type CreateOrResumePiSession = (
 ) => Promise<PiRuntimeSessionLike>;
 
 export class PiRuntimeAdapter implements RuntimeAdapter {
-  constructor(private readonly createSession: CreateOrResumePiSession) {}
+  constructor(
+    private readonly createSession: CreateOrResumePiSession,
+    private readonly sessionAdapter: SessionAdapter = new PiSessionAdapter(),
+  ) {}
 
   async createOrResume(request: CreateOrResumeRuntimeRequest): Promise<RuntimeSession> {
     const inner = await this.createSession(request);
     return new PiRuntimeSession(inner, request.session.id);
+  }
+
+  listSessions(): Promise<SessionSummary[]> {
+    return this.sessionAdapter.listSessions();
+  }
+
+  getSession(sessionId: string): Promise<SessionSnapshot | null> {
+    return this.sessionAdapter.getSession(sessionId);
+  }
+
+  getSessionContext(sessionId: string, leafId?: string | null): Promise<SessionContextProjection | null> {
+    return this.sessionAdapter.getSessionContext(sessionId, leafId);
+  }
+
+  forkSession(sessionId: string, recordId: string): Promise<ForkSessionResult> {
+    return this.sessionAdapter.forkSession(sessionId, recordId);
+  }
+
+  renameSession(sessionId: string, name: string): Promise<boolean> {
+    return this.sessionAdapter.renameSession(sessionId, name);
+  }
+
+  deleteSession(sessionId: string): Promise<boolean> {
+    return this.sessionAdapter.deleteSession(sessionId);
   }
 }
 

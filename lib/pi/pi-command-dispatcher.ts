@@ -1,6 +1,6 @@
-import { DEFAULT_COMPACTION_SETTINGS, SessionManager, findCutPoint } from "@earendil-works/pi-coding-agent";
+import { DEFAULT_COMPACTION_SETTINGS, findCutPoint } from "@earendil-works/pi-coding-agent";
 
-import { cacheSessionPath } from "../session/session-reader";
+import { forkSessionById } from "../session/session-reader";
 import type { AgentSessionState } from "../types";
 import { dedupeSlashCommands } from "./pi-resources";
 import type { AgentSessionLike, SlashCommandInfoLike, ToolInfo } from "./pi-types";
@@ -80,11 +80,11 @@ export async function handleSetModel(
   return { id: model.id, provider: model.provider };
 }
 
-export function handleFork(
+export async function handleFork(
   session: AgentSessionLike,
   command: PiCommand,
   context: PiCommandHandlerContext,
-): { cancelled: boolean; newSessionId?: string } {
+): Promise<{ cancelled: boolean; newSessionId?: string }> {
   const entryId = command.entryId as string;
   const sessionManager = session.sessionManager;
   const currentSessionFile = session.sessionFile;
@@ -92,27 +92,9 @@ export function handleFork(
   if (!sessionManager.isPersisted()) return { cancelled: true };
   if (!currentSessionFile) throw new Error("Persisted session is missing a session file");
 
-  const entry = sessionManager.getEntry(entryId);
-  if (!entry) throw new Error("Invalid entry ID for forking");
-
-  const sessionDir = sessionManager.getSessionDir();
-  let newSessionFile: string;
-
-  if (!entry.parentId) {
-    const newManager = SessionManager.create(sessionManager.getCwd(), sessionDir);
-    newManager.newSession({ parentSession: currentSessionFile });
-    newSessionFile = newManager.getSessionFile() as string;
-  } else {
-    const sourceManager = SessionManager.open(currentSessionFile, sessionDir);
-    const forkedPath = sourceManager.createBranchedSession(entry.parentId);
-    if (!forkedPath) throw new Error("Failed to create forked session");
-    newSessionFile = forkedPath;
-  }
-
-  const newSessionId = SessionManager.open(newSessionFile, sessionDir).getSessionId();
-  cacheSessionPath(newSessionId, newSessionFile);
-  context.destroySession();
-  return { cancelled: false, newSessionId };
+  const result = await forkSessionById(session.sessionId, entryId, sessionManager.getSessionDir());
+  if (!result.cancelled) context.destroySession();
+  return result;
 }
 
 export async function handleNavigateTree(

@@ -39,6 +39,61 @@ export interface SessionRecord {
   payload: JsonValue;
 }
 
+export interface SessionModel {
+  provider: string;
+  modelId: string;
+}
+
+export interface SessionSummary {
+  id: string;
+  resourceUri: string;
+  workspaceUri: string;
+  name?: string;
+  createdAt: string;
+  updatedAt: string;
+  messageCount: number;
+  firstMessage: string;
+  parentSessionId?: string;
+  model?: SessionModel | null;
+  orphaned?: boolean;
+  hasCompaction?: boolean;
+}
+
+export interface SessionContextProjection {
+  messages: JsonValue[];
+  recordIds: string[];
+  thinkingLevel: string;
+  model: SessionModel | null;
+}
+
+export interface SessionRecordTreeNode {
+  record: SessionRecord;
+  children: SessionRecordTreeNode[];
+  label?: string;
+}
+
+export interface SessionSnapshot {
+  summary: SessionSummary;
+  records: SessionRecord[];
+  tree: SessionRecordTreeNode[];
+  activeLeafId: string | null;
+  context: SessionContextProjection;
+}
+
+export interface ForkSessionResult {
+  cancelled: boolean;
+  newSessionId?: string;
+}
+
+export interface SessionAdapter {
+  listSessions(): Promise<SessionSummary[]>;
+  getSession(sessionId: string): Promise<SessionSnapshot | null>;
+  getSessionContext(sessionId: string, leafId?: string | null): Promise<SessionContextProjection | null>;
+  forkSession(sessionId: string, recordId: string): Promise<ForkSessionResult>;
+  renameSession(sessionId: string, name: string): Promise<boolean>;
+  deleteSession(sessionId: string): Promise<boolean>;
+}
+
 export interface RuntimeEvent {
   type: string;
   turnId?: string;
@@ -116,6 +171,6 @@ export interface CreateOrResumeRuntimeRequest {
   session: Session;
 }
 
-export interface RuntimeAdapter {
+export interface RuntimeAdapter extends SessionAdapter {
   createOrResume(request: CreateOrResumeRuntimeRequest): Promise<RuntimeSession>;
 }

@@ -1,7 +1,5 @@
-import { SessionManager } from "@earendil-works/pi-coding-agent";
-
 import { getAgentSession, startAgentSession } from "@/lib/session/session-bridge";
-import { resolveSessionPath } from "@/lib/session/session-reader";
+import { getSessionById } from "@/lib/session/session-reader";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +8,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   let session = getAgentSession(id);
   if (!session || !session.isAlive()) {
-    const filePath = await resolveSessionPath(id);
-    if (!filePath) {
+    const persisted = await getSessionById(id);
+    if (!persisted) {
       return new Response("Session not found", { status: 404 });
     }
-    const cwd = SessionManager.open(filePath).getHeader()?.cwd ?? process.cwd();
+    const { filePath } = persisted;
+    const cwd = persisted.info.cwd || process.cwd();
     try {
       // 事件路由按需恢复会话，避免列表浏览时无谓地启动 AgentSession。
       ({ session } = await startAgentSession(id, filePath, cwd));

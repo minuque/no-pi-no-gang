@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { SessionManager } from "@earendil-works/pi-coding-agent";
-
 import { getAgentSession, startAgentSession } from "@/lib/session/session-bridge";
-import { resolveSessionPath } from "@/lib/session/session-reader";
+import { getSessionById } from "@/lib/session/session-reader";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,12 +15,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ success: true, data: result });
     }
 
-    const filePath = await resolveSessionPath(id);
-    if (!filePath) {
+    const persisted = await getSessionById(id);
+    if (!persisted) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    const cwd = SessionManager.open(filePath).getHeader()?.cwd ?? process.cwd();
+    const { filePath } = persisted;
+    const cwd = persisted.info.cwd || process.cwd();
 
     // 尚未运行的持久化会话在接收命令前恢复，保持端点的无状态调用方式。
     const { session } = await startAgentSession(id, filePath, cwd);
