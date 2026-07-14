@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeToolCalls } from "../lib/agent/normalize";
-import type { AgentMessage } from "../lib/types";
+import { normalizeToolCalls } from "../apps/web/lib/agent/normalize";
+import type { AgentMessage } from "../apps/web/lib/types";
 
 describe("normalizeToolCalls", () => {
   it("converts SSE-format toolCall blocks", () => {

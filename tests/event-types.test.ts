@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { AgentEvent, SdkEvent, ViewEvent } from "../lib/events/event-types";
-import type { AgentMessage } from "../lib/types";
+import type { AgentEvent, SdkEvent, ViewEvent } from "../apps/web/lib/events/event-types";
+import type { AgentMessage } from "../apps/web/lib/types";
 
 const assistantMessage: AgentMessage = {
   role: "assistant",

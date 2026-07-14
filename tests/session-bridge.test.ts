@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { AgentSessionLike } from "../lib/pi/pi-types";
-import { AgentSessionWrapper } from "../lib/session/session-bridge";
+import type { AgentSessionLike } from "../apps/web/lib/pi/pi-types";
+import { AgentSessionWrapper } from "../apps/web/lib/session/session-bridge";
 
 const { mockCommandHandler } = vi.hoisted(() => ({
   mockCommandHandler: vi.fn(),
@@ -11,7 +11,7 @@ vi.mock("@earendil-works/pi-coding-agent", () => ({
   createAgentSession: vi.fn(),
 }));
 
-vi.mock("../lib/pi/pi-command-dispatcher", () => ({
+vi.mock("../apps/web/lib/pi/pi-command-dispatcher", () => ({
   piCommandHandlers: {
     test_command: mockCommandHandler,
   },

@@ -9,7 +9,8 @@ const fs = require("fs");
 const path = require("path");
 
 const pkgDir = path.resolve(__dirname, "..");
-const chunksDir = path.join(pkgDir, ".next", "server", "chunks");
+const appDir = path.join(pkgDir, "apps", "web");
+const chunksDir = path.join(appDir, ".next", "server", "chunks");
 
 if (!fs.existsSync(chunksDir)) {
   console.error("chunks dir not found, skipping");
@@ -32,6 +33,6 @@ for (const hashedName of hashedPackages) {
   mappings.push({ hashedName, baseName });
 }
 
-const outPath = path.join(pkgDir, ".next", "external-modules.json");
+const outPath = path.join(appDir, ".next", "external-modules.json");
 fs.writeFileSync(outPath, JSON.stringify(mappings, null, 2));
 console.log(`Generated ${outPath} with ${mappings.length} mapping(s)`);

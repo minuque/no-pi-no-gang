@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildSessionCreateRequest } from "../../hooks/useSessionCreator";
+import { buildSessionCreateRequest } from "../../apps/web/hooks/useSessionCreator";
 
 describe("useSessionCreator", () => {
   it("builds prompt create-session requests", () => {

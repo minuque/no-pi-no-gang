@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { formatInstalls, parseInstallCount, parseSearchOutput } from "../app/api/skills/search/parser";
+import {
+  formatInstalls,
+  parseInstallCount,
+  parseSearchOutput,
+} from "../apps/web/app/api/skills/search/parser";
 
 describe("skills search parser", () => {
   it("formats install counts", () => {

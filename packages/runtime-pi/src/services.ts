@@ -117,7 +117,7 @@ export function getRuntimeModels() {
     thinkingLevels[key] = getSupportedThinkingLevels(model);
     if (model.thinkingLevelMap) thinkingLevelMaps[key] = model.thinkingLevelMap;
   }
-  const settings = SettingsManager.create(process.cwd(), getAgentDir());
+  const settings = SettingsManager.create(process.env.NO_PI_NO_GANG_ROOT_DIR ?? process.cwd(), getAgentDir());
   const provider = settings.getDefaultProvider();
   const modelId = settings.getDefaultModel();
   return {

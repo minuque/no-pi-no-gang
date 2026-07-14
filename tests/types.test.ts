@@ -10,7 +10,7 @@ import type {
   TextContent,
   ToolResultMessage,
   UserMessage,
-} from "../lib/types";
+} from "../apps/web/lib/types";
 
 function getEntryType(entry: SessionEntry): string {
   return entry.type;
@@ -20,7 +20,7 @@ function getMessageRole(message: UserMessage | AssistantMessage | ToolResultMess
   return message.role;
 }
 
-describe("lib/types", () => {
+describe("apps/web/lib/types", () => {
   it("accepts valid session and message objects", () => {
     const text: TextContent = { type: "text", text: "hello" };
     const user: UserMessage = { role: "user", content: [text], skillCommand: "review" };

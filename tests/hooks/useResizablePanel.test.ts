@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { clampPanelWidth } from "../../hooks/useResizablePanel";
+import { clampPanelWidth } from "../../apps/web/hooks/useResizablePanel";
 
 describe("useResizablePanel", () => {
   it("keeps width within min and max", () => {

@@ -11,7 +11,8 @@ const fs = require("fs");
 const { parseArgs } = require("util");
 
 const pkgDir = path.join(__dirname, "..");
-const nextDir = path.join(pkgDir, ".next");
+const appDir = path.join(pkgDir, "apps", "web");
+const nextDir = path.join(appDir, ".next");
 
 let nextBin;
 try {
@@ -46,15 +47,15 @@ if (!fs.existsSync(nextDir)) {
 // npm publish 会排除所有 node_modules 路径，导致 symlink 丢失。
 // 优先读取 .next/external-modules.json（build 时生成），
 // 不存在则 fallback 扫描 chunk 文件。
-ensureTurbopackExternalSymlinks(pkgDir);
+ensureTurbopackExternalSymlinks(pkgDir, appDir);
 
-function ensureTurbopackExternalSymlinks(pkgDir) {
+function ensureTurbopackExternalSymlinks(pkgDir, appDir) {
   const projectNodeModules = path.join(pkgDir, "node_modules");
   if (!fs.existsSync(projectNodeModules)) return;
 
-  const externalNodeModulesDir = path.join(pkgDir, ".next", "node_modules");
-  const manifestPath = path.join(pkgDir, ".next", "external-modules.json");
-  const chunksDir = path.join(pkgDir, ".next", "server", "chunks");
+  const externalNodeModulesDir = path.join(appDir, ".next", "node_modules");
+  const manifestPath = path.join(appDir, ".next", "external-modules.json");
+  const chunksDir = path.join(appDir, ".next", "server", "chunks");
 
   let mappings;
   if (fs.existsSync(manifestPath)) {
@@ -98,9 +99,9 @@ const nextArgs = ["start", "-p", port];
 if (hostname) nextArgs.push("-H", hostname);
 
 const child = spawn(process.execPath, [nextBin, ...nextArgs], {
-  cwd: pkgDir,
+  cwd: appDir,
   stdio: ["inherit", "pipe", "inherit"],
-  env: { ...process.env },
+  env: { ...process.env, NO_PI_NO_GANG_ROOT_DIR: pkgDir },
 });
 
 let browserOpened = false;

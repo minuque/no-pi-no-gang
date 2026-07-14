@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveConnectionFailureState, resolveSessionId } from "../../hooks/useSessionConnection";
+import { resolveConnectionFailureState, resolveSessionId } from "../../apps/web/hooks/useSessionConnection";
 
 describe("useSessionConnection", () => {
   it("throws before sending when sessionId is null", () => {

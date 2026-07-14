@@ -8,8 +8,8 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { normalizeToolCalls } from "../lib/agent/normalize";
-import type { AgentMessage } from "../lib/types";
+import { normalizeToolCalls } from "../apps/web/lib/agent/normalize";
+import type { AgentMessage } from "../apps/web/lib/types";
 
 const entries: JsonObject[] = [
   {
@@ -52,17 +52,17 @@ const entries: JsonObject[] = [
 describe("Pi SessionRecord compatibility", () => {
   it("owns persisted session access for the existing Web routes", () => {
     const [reader, ...routes] = [
-      "../lib/session/session-reader.ts",
-      "../app/api/sessions/[id]/route.ts",
-      "../app/api/sessions/[id]/context/route.ts",
-      "../app/api/agent/[id]/route.ts",
-      "../app/api/agent/[id]/events/route.ts",
+      "../apps/web/lib/session/session-reader.ts",
+      "../apps/web/app/api/sessions/[id]/route.ts",
+      "../apps/web/app/api/sessions/[id]/context/route.ts",
+      "../apps/web/app/api/agent/[id]/route.ts",
+      "../apps/web/app/api/agent/[id]/events/route.ts",
     ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
 
     for (const source of [reader, ...routes]) {
       expect(source).not.toMatch(/@earendil-works\/pi-coding-agent|\bSessionManager\b|\bPiSessionEntry\b/);
     }
-    expect(reader).toMatch(/@no-pi-no-gang\/runtime-pi/);
+    expect(reader).toMatch(/@no-pi-no-gang\/web-bff/);
     for (const route of routes) expect(route).toMatch(/@\/lib\/session\/session-reader/);
   });
 

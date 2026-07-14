@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { selectDefaultModel } from "../../hooks/useModelList";
+import { selectDefaultModel } from "../../apps/web/hooks/useModelList";
 
 const models = [
   { provider: "openai", id: "gpt-a", name: "GPT A", contextWindow: 1000 },

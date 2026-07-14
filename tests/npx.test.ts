@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { findNpxCli } from "../lib/npx";
+import { findNpxCli } from "../apps/web/lib/npx";
 
 describe("findNpxCli", () => {
   it("returns an existing npx cli path or null", () => {

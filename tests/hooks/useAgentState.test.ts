@@ -5,8 +5,8 @@ import {
   deriveSessionStats,
   initialAgentEventOwnerState,
   reduceAgentStateTransition,
-} from "../../hooks/useAgentState";
-import type { AgentMessage } from "../../lib/types";
+} from "../../apps/web/hooks/useAgentState";
+import type { AgentMessage } from "../../apps/web/lib/types";
 
 const assistantWithUsage = (overrides: {
   input: number;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveAgentSessionStatus } from "../components/session/hooks/agent-session-hook-types";
+import { deriveAgentSessionStatus } from "../apps/web/components/session/hooks/agent-session-hook-types";
 
 describe("deriveAgentSessionStatus", () => {
   it("combines connection and execution axes without priority collapse", () => {

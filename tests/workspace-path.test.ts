@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { shortenWorkspacePath } from "../lib/file-paths";
+import { shortenWorkspacePath } from "../apps/web/lib/file-paths";
 
 describe("shortenWorkspacePath", () => {
   it("压缩主目录下的深层路径", () => {

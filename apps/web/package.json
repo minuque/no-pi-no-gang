@@ -1,0 +1,45 @@
+{
+  "name": "@no-pi-no-gang/web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 7777 --hostname 127.0.0.1",
+    "build": "next build --turbopack",
+    "start": "next start -p 7788",
+    "start:test": "next start -p 30142 --hostname 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --config ../../eslint.config.mjs --max-warnings=0",
+    "test": "vitest run --config vitest.config.ts --root ../.."
+  },
+  "dependencies": {
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "@lobehub/icons": "5.11.0",
+    "@no-pi-no-gang/agent-protocol": "0.0.0",
+    "@no-pi-no-gang/web-bff": "0.0.0",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "agentation": "^3.0.2",
+    "mammoth": "^1.12.0",
+    "mermaid": "^11.14.0",
+    "next": "16.2.10",
+    "next-intl": "^4.13.0",
+    "nprogress": "^0.2.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-markdown": "^10.1.0",
+    "react-syntax-highlighter": "^16.1.1",
+    "remark-gfm": "^4.0.1",
+    "sonner": "^2.0.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^25",
+    "@types/nprogress": "^0.2.3",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "postcss": "^8",
+    "tailwindcss": "^4.3.2",
+    "typescript": "5.9.3",
+    "vitest": "^4.1.9"
+  }
+}

@@ -1,6 +1,6 @@
 .next
 node_modules
-public
+apps/web/public
 *.md
 package-lock.json
 coverage
