@@ -54,6 +54,7 @@ export interface AgentSessionLike {
     options?: { images?: Array<{ type: "image"; data: string; mimeType: string }> },
   ): Promise<void>;
   abort(): Promise<void>;
+  dispose(): void;
   setModel(model: ModelLike): Promise<void>;
   navigateTree(targetId: string, options?: { summarize?: boolean }): Promise<NavigateTreeResult>;
   setThinkingLevel(level: string): void;

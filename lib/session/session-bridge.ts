@@ -1,4 +1,6 @@
 import { createAgentSession } from "@earendil-works/pi-coding-agent";
+import type { RuntimeCommand } from "@no-pi-no-gang/agent-protocol";
+import { PiRuntimeSession } from "@no-pi-no-gang/runtime-pi";
 
 import type { AnyAgentEvent as AgentEvent } from "../events/event-types";
 import { piCommandHandlers } from "../pi/pi-command-dispatcher";
@@ -16,6 +18,7 @@ export class AgentSessionWrapper {
   private onDestroyCallback: (() => void) | null = null;
   private lastUpdatedAt = Date.now();
   private _alive = true;
+  private runtimeSession: PiRuntimeSession | null = null;
 
   private _ctx = {
     getSnapshotState: () => this.getSnapshotState(),
@@ -23,6 +26,17 @@ export class AgentSessionWrapper {
   };
 
   constructor(public readonly inner: AgentSessionLike) {}
+
+  private getRuntimeSession(): PiRuntimeSession {
+    if (!this.runtimeSession) {
+      this.runtimeSession = new PiRuntimeSession(this.inner, this.sessionId, async (command) => {
+        const handler = piCommandHandlers[command.type];
+        if (!handler) throw new Error(`Unsupported command: ${command.type}`);
+        return handler(this.inner, command, this._ctx);
+      });
+    }
+    return this.runtimeSession;
+  }
 
   get sessionId(): string {
     return this.inner.sessionId;
@@ -38,7 +52,8 @@ export class AgentSessionWrapper {
 
   start(): void {
     // 会话替换后订阅会失效；包装器在此统一重建事件通道并刷新空闲计时。
-    this.unsubscribe = this.inner.subscribe((event: AgentEvent) => {
+    this.unsubscribe?.();
+    this.unsubscribe = this.getRuntimeSession().subscribe((event: AgentEvent) => {
       this.resetIdleTimer();
       this.lastUpdatedAt = Date.now();
       for (const l of this.listeners) l(event);
@@ -66,10 +81,17 @@ export class AgentSessionWrapper {
   async send(command: Record<string, unknown>): Promise<unknown> {
     this.resetIdleTimer();
     this.lastUpdatedAt = Date.now();
-    const type = command.type as string;
-    const handler = piCommandHandlers[type];
-    if (!handler) throw new Error(`Unsupported command: ${type}`);
-    return handler(this.inner, command, this._ctx);
+    const runtime = this.getRuntimeSession();
+    const runtimeCommand = command as RuntimeCommand;
+    if (command.type === "prompt") {
+      void runtime.command(runtimeCommand).catch(() => {});
+      return null;
+    }
+    if (command.type === "abort") {
+      await runtime.abort();
+      return null;
+    }
+    return (await runtime.command(runtimeCommand)).value;
   }
 
   destroy(): void {
@@ -78,6 +100,8 @@ export class AgentSessionWrapper {
     this.lastUpdatedAt = Date.now();
     if (this.idleTimer) clearTimeout(this.idleTimer);
     this.unsubscribe?.();
+    if (this.runtimeSession) void this.runtimeSession.close();
+    else this.inner.dispose();
     this.onDestroyCallback?.();
   }
 

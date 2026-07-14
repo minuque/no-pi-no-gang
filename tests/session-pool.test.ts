@@ -24,6 +24,7 @@ function createInner(sessionId: string): AgentSessionLike {
     subscribe: vi.fn(() => vi.fn()),
     prompt: vi.fn(),
     abort: vi.fn(),
+    dispose: vi.fn(),
     setModel: vi.fn(),
     navigateTree: vi.fn(),
     setThinkingLevel: vi.fn(),

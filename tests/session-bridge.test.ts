@@ -33,6 +33,7 @@ function createInner(overrides: Partial<AgentSessionLike> = {}): AgentSessionLik
     subscribe: vi.fn(() => vi.fn()),
     prompt: vi.fn(),
     abort: vi.fn(),
+    dispose: vi.fn(),
     setModel: vi.fn(),
     navigateTree: vi.fn(),
     setThinkingLevel: vi.fn(),
@@ -67,12 +68,14 @@ describe("AgentSessionWrapper", () => {
     expect(wrapper.inner).toBe(inner);
   });
 
-  it("is alive initially and false after destroy", () => {
-    const wrapper = new AgentSessionWrapper(createInner());
+  it("is alive initially and disposes the inner session after destroy", () => {
+    const dispose = vi.fn();
+    const wrapper = new AgentSessionWrapper(createInner({ dispose }));
 
     expect(wrapper.isAlive()).toBe(true);
     wrapper.destroy();
     expect(wrapper.isAlive()).toBe(false);
+    expect(dispose).toHaveBeenCalledTimes(1);
   });
 
   it("returns a complete snapshot state", () => {
@@ -144,5 +147,59 @@ describe("AgentSessionWrapper", () => {
         destroySession: expect.any(Function),
       }),
     );
+  });
+
+  it("keeps prompt and streaming events compatible through the runtime adapter", async () => {
+    vi.useFakeTimers();
+    let emit!: (event: { type: string; [key: string]: unknown }) => void;
+    let finishPrompt!: () => void;
+    const prompt = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishPrompt = () => {
+            emit({ type: "agent_start" });
+            emit({ type: "message_update", message: { role: "assistant", content: [] } });
+            emit({ type: "agent_end" });
+            resolve();
+          };
+        }),
+    );
+    const inner = createInner({
+      prompt,
+      subscribe: vi.fn((listener) => {
+        emit = listener;
+        return vi.fn();
+      }),
+    });
+    const wrapper = new AgentSessionWrapper(inner);
+    const events: Array<{ type: string; [key: string]: unknown }> = [];
+
+    wrapper.start();
+    wrapper.onEvent((event) => events.push(event));
+
+    let sendSettled = false;
+    const sendResult = wrapper.send({ type: "prompt", message: "hello" }).then((result) => {
+      sendSettled = true;
+      return result;
+    });
+    await Promise.resolve();
+
+    expect(sendSettled).toBe(true);
+    await expect(sendResult).resolves.toBeNull();
+    expect(prompt).toHaveBeenCalledWith("hello", undefined);
+
+    finishPrompt();
+    await Promise.resolve();
+    expect(events.map((event) => event.type)).toEqual(["agent_start", "message_update", "agent_end"]);
+  });
+
+  it("keeps abort compatible through the runtime adapter", async () => {
+    const abort = vi.fn();
+    const wrapper = new AgentSessionWrapper(createInner({ abort }));
+
+    wrapper.start();
+
+    await expect(wrapper.send({ type: "abort" })).resolves.toBeNull();
+    expect(abort).toHaveBeenCalledTimes(1);
   });
 });
