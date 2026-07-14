@@ -1,40 +1,7 @@
-import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
+import { listRuntimeApiKeyProviders } from "@no-pi-no-gang/runtime-pi";
 
 export const dynamic = "force-dynamic";
 
-const OAUTH_PROVIDER_IDS = new Set(["anthropic", "github-copilot", "openai-codex"]);
-
 export async function GET() {
-  const authStorage = AuthStorage.create();
-  const registry = ModelRegistry.create(authStorage);
-  const all = registry.getAll();
-
-  const seen = new Set<string>();
-  const result: {
-    id: string;
-    displayName: string;
-    configured: boolean;
-    source?: string;
-    modelCount: number;
-  }[] = [];
-
-  for (const m of all) {
-    if (seen.has(m.provider)) continue;
-    seen.add(m.provider);
-    if (OAUTH_PROVIDER_IDS.has(m.provider)) continue;
-    const status = registry.getProviderAuthStatus(m.provider);
-
-    if (status.source === "models_json_key") continue;
-    const displayName = registry.getProviderDisplayName(m.provider);
-    const modelCount = all.filter((x) => x.provider === m.provider).length;
-    result.push({
-      id: m.provider,
-      displayName,
-      configured: status.configured,
-      source: status.source,
-      modelCount,
-    });
-  }
-
-  return Response.json({ providers: result });
+  return Response.json({ providers: listRuntimeApiKeyProviders() });
 }

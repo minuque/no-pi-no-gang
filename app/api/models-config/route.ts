@@ -1,40 +1,17 @@
 import { NextResponse } from "next/server";
 
-import { getAgentDir } from "@earendil-works/pi-coding-agent";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
+import { readRuntimeModelsConfig, writeRuntimeModelsConfig } from "@no-pi-no-gang/runtime-pi";
 
 export const dynamic = "force-dynamic";
 
-function getModelsPath(): string {
-  return join(getAgentDir(), "models.json");
-}
-
-function readModelsJson(): Record<string, unknown> {
-  const path = getModelsPath();
-  if (!existsSync(path)) return { providers: {} };
-  try {
-    return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
-  } catch {
-    return { providers: {} };
-  }
-}
-
-function writeModelsJson(data: Record<string, unknown>): void {
-  const path = getModelsPath();
-  const dir = dirname(path);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  writeFileSync(path, JSON.stringify(data, null, 2), "utf8");
-}
-
 export async function GET() {
-  return NextResponse.json(readModelsJson());
+  return NextResponse.json(readRuntimeModelsConfig());
 }
 
 export async function PUT(req: Request) {
   try {
     const body = (await req.json()) as Record<string, unknown>;
-    writeModelsJson(body);
+    writeRuntimeModelsConfig(body);
 
     return NextResponse.json({ success: true });
   } catch (error) {

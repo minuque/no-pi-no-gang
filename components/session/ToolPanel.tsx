@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 export interface ToolEntry {
   name: string;
   description: string;
-  active: boolean;
+  enabled: boolean;
 }
 
 export type ToolPreset = "none" | "default" | "full";
@@ -15,7 +15,7 @@ export const PRESET_FULL: string[] = ["bash", "read", "edit", "write", "grep", "
 
 export function getPresetFromTools(tools: ToolEntry[]): ToolPreset {
   const active = tools
-    .filter((t) => t.active)
+    .filter((t) => t.enabled)
     .map((t) => t.name)
     .sort()
     .join(",");

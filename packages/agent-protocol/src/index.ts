@@ -105,6 +105,7 @@ export interface ToolDescriptor {
   name: string;
   description: string;
   inputSchema: JsonObject;
+  enabled: boolean;
 }
 
 export interface ToolInvocation {
@@ -135,11 +136,52 @@ export const RUNTIME_CAPABILITIES = [
   { name: "runtime.events", version: "1.0.0" },
 ] as const satisfies readonly CapabilityDeclaration[];
 
-export interface RuntimeCommand {
-  type: string;
-  message?: string;
-  [key: string]: unknown;
+export interface RuntimeImage {
+  type: "image";
+  data: string;
+  mimeType: string;
 }
+
+export const RUNTIME_COMMAND_TYPES = [
+  "prompt",
+  "abort",
+  "get_state",
+  "set_model",
+  "fork",
+  "navigate_tree",
+  "set_thinking_level",
+  "compact",
+  "set_auto_compaction",
+  "steer",
+  "follow_up",
+  "get_tools",
+  "set_tools",
+  "abort_compaction",
+  "set_auto_retry",
+  "get_commands",
+  "command",
+] as const;
+
+type RuntimeMessageCommand = { message: string; images?: RuntimeImage[] };
+
+export type RuntimeCommand =
+  | ({ type: "prompt" } & RuntimeMessageCommand)
+  | { type: "abort" }
+  | { type: "get_state" }
+  | { type: "set_model"; provider: string; modelId: string }
+  | { type: "fork"; entryId: string }
+  | { type: "navigate_tree"; targetId: string }
+  | { type: "set_thinking_level"; level: string }
+  | { type: "compact"; customInstructions?: string }
+  | { type: "set_auto_compaction"; enabled: boolean }
+  | ({ type: "steer" } & RuntimeMessageCommand)
+  | ({ type: "follow_up" } & RuntimeMessageCommand)
+  | { type: "get_tools" }
+  | { type: "set_tools"; toolNames: string[] }
+  | { type: "abort_compaction" }
+  | { type: "set_auto_retry"; enabled: boolean }
+  | { type: "get_commands" }
+  | ({ type: "command"; command: string } & RuntimeMessageCommand);
 
 export interface RuntimeCommandResult {
   turn?: Turn;

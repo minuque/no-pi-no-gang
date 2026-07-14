@@ -1,11 +1,12 @@
-import { createAgentSession } from "@earendil-works/pi-coding-agent";
 import type { RuntimeCommand } from "@no-pi-no-gang/agent-protocol";
-import { PiRuntimeSession } from "@no-pi-no-gang/runtime-pi";
+import {
+  type PiAgentSessionLike as AgentSessionLike,
+  PiRuntimeSession,
+  createRuntimeAgentSession,
+} from "@no-pi-no-gang/runtime-pi";
 
 import type { AnyAgentEvent as AgentEvent } from "../events/event-types";
 import { piCommandHandlers } from "../pi/pi-command-dispatcher";
-import { getProjectResourceLoaderOptions } from "../pi/pi-resources";
-import type { AgentSessionLike } from "../pi/pi-types";
 import type { AgentSessionState, SessionInfo, SessionNodeAgentState } from "../types";
 import { cacheSessionPath } from "./session-reader";
 
@@ -213,34 +214,7 @@ export async function startAgentSession(
   if (inflight) return inflight;
 
   const starting = (async () => {
-    const { DefaultResourceLoader, SessionManager, getAgentDir } =
-      await import("@earendil-works/pi-coding-agent");
-    const agentDir = getAgentDir();
-    const resourceLoader = new DefaultResourceLoader({
-      cwd,
-      agentDir,
-      ...getProjectResourceLoaderOptions(cwd),
-    });
-    await resourceLoader.reload();
-
-    const sessionManager = sessionFile
-      ? SessionManager.open(sessionFile, undefined)
-      : SessionManager.create(cwd, undefined);
-
-    // Pi 仅接受工具名；空数组表示明确禁用全部内置工具。
-    const allCodingToolNames = ["read", "bash", "edit", "write", "grep", "find", "ls"];
-    let toolsOption: string[] | undefined;
-    if (toolNames !== undefined) {
-      toolsOption = toolNames.length === 0 ? [] : allCodingToolNames;
-    }
-
-    const { session: inner } = await createAgentSession({
-      cwd,
-      agentDir,
-      sessionManager,
-      resourceLoader,
-      ...(toolsOption !== undefined ? { tools: toolsOption } : {}),
-    });
+    const inner = await createRuntimeAgentSession({ cwd, sessionFile, toolNames });
     const wrapper = new AgentSessionWrapper(inner);
     await inner.bindExtensions?.({
       abortHandler: () => {
@@ -250,15 +224,6 @@ export async function startAgentSession(
         wrapper.destroy();
       },
     });
-
-    if (toolNames && toolNames.length > 0) {
-      inner.setActiveToolsByName(toolNames);
-    }
-
-    if (toolNames?.length === 0) {
-      // Pi 即使无工具仍会生成提示词；此处确保“无工具”语义同时清空提示词。
-      inner.agent.state.systemPrompt = "";
-    }
 
     wrapper.start();
 

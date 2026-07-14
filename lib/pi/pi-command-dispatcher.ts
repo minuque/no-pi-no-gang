@@ -1,8 +1,7 @@
-import { DEFAULT_COMPACTION_SETTINGS, findCutPoint } from "@earendil-works/pi-coding-agent";
+import { assertRuntimeCompactionAvailable, getRuntimeSlashCommands } from "@no-pi-no-gang/runtime-pi";
 
 import { forkSessionById } from "../session/session-reader";
 import type { AgentSessionState } from "../types";
-import { dedupeSlashCommands } from "./pi-resources";
 import type { AgentSessionLike, SlashCommandInfoLike, ToolInfo } from "./pi-types";
 
 type CommandImage = { type: "image"; data: string; mimeType: string };
@@ -31,23 +30,7 @@ export type PiCommandHandler = (
 ) => Promise<unknown> | unknown;
 
 export function getSlashCommands(inner: AgentSessionLike): SlashCommandInfoLike[] {
-  return dedupeSlashCommands([
-    ...(inner.extensionRunner?.getRegisteredCommands().map((command) => ({
-      name: command.invocationName,
-      description: command.description ?? "",
-      source: "extension" as const,
-    })) ?? []),
-    ...(inner.promptTemplates?.map((template) => ({
-      name: template.name,
-      description: template.description ?? "",
-      source: "prompt" as const,
-    })) ?? []),
-    ...(inner.resourceLoader?.getSkills().skills.map((skill) => ({
-      name: `skill:${skill.name}`,
-      description: skill.description ?? "",
-      source: "skill" as const,
-    })) ?? []),
-  ]);
+  return getRuntimeSlashCommands(inner);
 }
 
 export function handlePrompt(session: AgentSessionLike, command: PiCommand): null {
@@ -120,29 +103,7 @@ export function handleSetThinkingLevel(session: AgentSessionLike, command: PiCom
 }
 
 export async function handleCompact(session: AgentSessionLike, command: PiCommand): Promise<unknown> {
-  const pathEntries = session.sessionManager.getBranch() as Array<{ type: string }>;
-  const settings = {
-    ...DEFAULT_COMPACTION_SETTINGS,
-    ...session.settingsManager.getCompactionSettings(),
-  };
-  let prevCompactionIndex = -1;
-  for (let i = pathEntries.length - 1; i >= 0; i--) {
-    if (pathEntries[i].type === "compaction") {
-      prevCompactionIndex = i;
-      break;
-    }
-  }
-  const boundaryStart = prevCompactionIndex + 1;
-  const cutPoint = findCutPoint(
-    pathEntries as never,
-    boundaryStart,
-    pathEntries.length,
-    settings.keepRecentTokens,
-  );
-  const historyEnd = cutPoint.isSplitTurn ? cutPoint.turnStartIndex : cutPoint.firstKeptEntryIndex;
-  if (historyEnd <= boundaryStart) {
-    throw new Error("Conversation too short to compact");
-  }
+  assertRuntimeCompactionAvailable(session);
   return session.compact(command.customInstructions as string | undefined);
 }
 

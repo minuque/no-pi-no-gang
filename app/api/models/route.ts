@@ -1,48 +1,17 @@
-import { getSupportedThinkingLevels } from "@earendil-works/pi-ai";
-import { AuthStorage, ModelRegistry, SettingsManager, getAgentDir } from "@earendil-works/pi-coding-agent";
+import { getRuntimeModels } from "@no-pi-no-gang/runtime-pi";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const nameMap = new Map<string, string>();
-  let modelList: { id: string; name: string; provider: string; contextWindow?: number }[] = [];
-  let defaultModel: { provider: string; modelId: string } | null = null;
-  const thinkingLevels: Record<string, string[]> = {};
-  const thinkingLevelMaps: Record<string, Record<string, string | null>> = {};
-
   try {
-    const agentDir = getAgentDir();
-    const authStorage = AuthStorage.create();
-    const registry = ModelRegistry.create(authStorage);
-    const available = registry.getAvailable();
-    modelList = available.map(
-      (m: { id: string; name: string; provider: string; contextWindow?: number }) => ({
-        id: m.id,
-        name: m.name,
-        provider: m.provider,
-        contextWindow: m.contextWindow,
-      }),
-    );
-    for (const m of available) {
-      const key = `${m.provider}:${m.id}`;
-      nameMap.set(key, m.name);
-      thinkingLevels[key] = getSupportedThinkingLevels(m);
-      if (m.thinkingLevelMap) thinkingLevelMaps[key] = m.thinkingLevelMap;
-    }
-
-    const settings = SettingsManager.create(process.cwd(), agentDir);
-    const provider = settings.getDefaultProvider();
-    const modelId = settings.getDefaultModel();
-    if (provider) {
-      defaultModel = { provider, modelId: modelId ?? available[0]?.id ?? "" };
-    }
-  } catch {}
-
-  return Response.json({
-    models: Object.fromEntries(nameMap),
-    modelList,
-    defaultModel,
-    thinkingLevels,
-    thinkingLevelMaps,
-  });
+    return Response.json(getRuntimeModels());
+  } catch {
+    return Response.json({
+      models: {},
+      modelList: [],
+      defaultModel: null,
+      thinkingLevels: {},
+      thinkingLevelMaps: {},
+    });
+  }
 }

@@ -1,4 +1,4 @@
-import { AuthStorage } from "@earendil-works/pi-coding-agent";
+import { listRuntimeOAuthProviders, loginRuntimeProvider } from "@no-pi-no-gang/runtime-pi";
 
 export const dynamic = "force-dynamic";
 
@@ -48,8 +48,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
 
   const stream = new ReadableStream({
     async start(controller) {
-      const authStorage = AuthStorage.create();
-      const providers = authStorage.getOAuthProviders();
+      const providers = listRuntimeOAuthProviders();
       const providerInfo = providers.find((p) => p.id === provider);
       if (!providerInfo) {
         send(controller, { type: "error", message: `Unknown provider: ${provider}` });
@@ -106,7 +105,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ provider
       abort.signal.addEventListener("abort", cleanup);
 
       try {
-        await authStorage.login(provider, {
+        await loginRuntimeProvider(provider, {
           onAuth: (info: { url: string; instructions?: string }) => {
             const request = getManualInputRequest();
             send(controller, {

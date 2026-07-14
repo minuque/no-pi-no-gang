@@ -1,10 +1,9 @@
-import { AuthStorage } from "@earendil-works/pi-coding-agent";
+import { listRuntimeOAuthProviders } from "@no-pi-no-gang/runtime-pi";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const authStorage = AuthStorage.create();
-  const providers = authStorage.getOAuthProviders();
+  const providers = listRuntimeOAuthProviders();
 
   const EXCLUDED = new Set(["anthropic"]);
   const DISPLAY_NAMES: Record<string, string> = {
@@ -16,12 +15,11 @@ export async function GET() {
     providers
       .filter((p) => !EXCLUDED.has(p.id))
       .map(async (p) => {
-        const loggedIn = authStorage.has(p.id);
         return {
           id: p.id,
           name: DISPLAY_NAMES[p.id] ?? p.name,
           usesCallbackServer: p.usesCallbackServer ?? false,
-          loggedIn,
+          loggedIn: p.loggedIn,
         };
       }),
   );

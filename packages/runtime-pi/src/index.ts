@@ -2,6 +2,7 @@ import {
   AGENT_PROTOCOL_VERSION,
   type CreateOrResumeRuntimeRequest,
   type ForkSessionResult,
+  type JsonValue,
   RUNTIME_CAPABILITIES,
   type RuntimeAdapter,
   type RuntimeCapabilities,
@@ -15,29 +16,30 @@ import {
   type SessionContextProjection,
   type SessionSnapshot,
   type SessionSummary,
+  type ToolInvocation,
+  type ToolResult,
   type Turn,
 } from "@no-pi-no-gang/agent-protocol";
 
+import { dispatchPiRuntimeCommand } from "./command-adapter";
+import type { PiInputImage, PiRuntimeSessionLike } from "./runtime-types";
 import { PiSessionAdapter } from "./session-adapter";
 
 export { mapPiSessionEntries, projectPiSessionRecords } from "./session-records";
 export { PiSessionAdapter } from "./session-adapter";
-
-export interface PiInputImage {
-  type: "image";
-  data: string;
-  mimeType: string;
-}
-
-export interface PiRuntimeSessionLike {
-  readonly sessionId: string;
-  readonly isStreaming: boolean;
-  readonly isCompacting: boolean;
-  subscribe(listener: (event: { type: string; [key: string]: unknown }) => void): () => void;
-  prompt(message: string, options?: { images?: PiInputImage[] }): Promise<void>;
-  abort(): Promise<void>;
-  dispose(): void;
-}
+export * from "./resources";
+export * from "./services";
+export * from "./session-factory";
+export { assertRuntimeCompactionAvailable, getRuntimeSlashCommands } from "./command-adapter";
+export type {
+  PiContextUsage,
+  PiAgentSessionLike,
+  PiInputImage,
+  PiModelLike,
+  PiRuntimeSessionLike,
+  PiSlashCommandInfo,
+  PiToolInfo,
+} from "./runtime-types";
 
 export type PiCommandFallback = (command: RuntimeCommand) => Promise<unknown> | unknown;
 export type CreateOrResumePiSession = (
@@ -106,6 +108,8 @@ export class PiRuntimeSession implements RuntimeSession {
       return {};
     }
     if (command.type !== "prompt") {
+      const dispatched = await dispatchPiRuntimeCommand(this.inner, command);
+      if (dispatched.handled) return { value: dispatched.value };
       if (!this.fallbackCommand) throw new Error(`Unsupported command: ${command.type}`);
       return { value: await this.fallbackCommand(command) };
     }
@@ -182,5 +186,51 @@ export function mapPiRuntimeEvent(
   event: { type: string; [key: string]: unknown },
   turnId?: string,
 ): RuntimeEvent {
-  return turnId === undefined ? { ...event } : { ...event, turnId };
+  let mapped: RuntimeEvent = { ...event };
+  if (event.type === "tool_execution_start") {
+    const invocation: ToolInvocation = {
+      id: String(event.toolCallId ?? ""),
+      toolName: String(event.toolName ?? ""),
+      arguments:
+        typeof event.args === "object" && event.args !== null && !Array.isArray(event.args)
+          ? (event.args as ToolInvocation["arguments"])
+          : {},
+    };
+    mapped = { ...mapped, invocation };
+  } else if (event.type === "tool_execution_end") {
+    const result: ToolResult = {
+      invocationId: String(event.toolCallId ?? ""),
+      output: toJsonValue(event.result),
+      isError: event.isError === true,
+    };
+    mapped = { ...mapped, result };
+  }
+  return turnId === undefined ? mapped : { ...mapped, turnId };
+}
+
+function toJsonValue(value: unknown, seen = new WeakSet<object>()): JsonValue {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string" || typeof value === "boolean") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    if (seen.has(value)) return "[Circular]";
+    seen.add(value);
+    const result = value.map((item) => toJsonValue(item, seen));
+    seen.delete(value);
+    return result;
+  }
+  if (typeof value === "object") {
+    if (seen.has(value)) return "[Circular]";
+    seen.add(value);
+    const result = Object.fromEntries(
+      Object.entries(value).flatMap(([key, item]) =>
+        item === undefined ? [] : [[key, toJsonValue(item, seen)]],
+      ),
+    );
+    seen.delete(value);
+    return result;
+  }
+  return String(value);
 }

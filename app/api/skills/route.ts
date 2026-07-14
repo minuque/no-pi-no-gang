@@ -1,17 +1,7 @@
 import { NextResponse } from "next/server";
 
-import {
-  AuthStorage,
-  DefaultResourceLoader,
-  ExtensionRunner,
-  ModelRegistry,
-  SessionManager,
-  getAgentDir,
-  parseFrontmatter,
-} from "@earendil-works/pi-coding-agent";
-import { existsSync, readFileSync, writeFileSync } from "fs";
-
-import { dedupeSlashCommands, getProjectResourceLoaderOptions } from "@/lib/pi/pi-resources";
+import { getRuntimeSkills, setRuntimeSkillModelInvocation } from "@no-pi-no-gang/runtime-pi";
+import { existsSync } from "fs";
 
 export const dynamic = "force-dynamic";
 
@@ -21,54 +11,7 @@ export async function GET(req: Request) {
   if (!cwd) return NextResponse.json({ error: "cwd required" }, { status: 400 });
 
   try {
-    const agentDir = getAgentDir();
-    const loader = new DefaultResourceLoader({
-      cwd,
-      agentDir,
-      ...getProjectResourceLoaderOptions(cwd),
-    });
-    await loader.reload();
-    const { skills, diagnostics } = loader.getSkills();
-    const { prompts, diagnostics: promptDiagnostics } = loader.getPrompts();
-    const extensionsResult = loader.getExtensions();
-    const runner = new ExtensionRunner(
-      extensionsResult.extensions,
-      extensionsResult.runtime,
-      cwd,
-      SessionManager.inMemory(cwd),
-      ModelRegistry.create(AuthStorage.create()),
-    );
-    const commands = dedupeSlashCommands([
-      ...runner.getRegisteredCommands().map((command) => ({
-        name: command.invocationName,
-        description: command.description ?? "",
-        source: "extension" as const,
-      })),
-      ...prompts.map((prompt) => ({
-        name: prompt.name,
-        description: prompt.description ?? "",
-        source: "prompt" as const,
-      })),
-      ...skills.map((skill) => ({
-        name: `skill:${skill.name}`,
-        description: skill.description ?? "",
-        source: "skill" as const,
-      })),
-    ]);
-    return NextResponse.json({
-      skills,
-      commands,
-      diagnostics: [
-        ...diagnostics,
-        ...promptDiagnostics,
-        ...runner.getCommandDiagnostics(),
-        ...extensionsResult.errors.map((error) => ({
-          type: "error",
-          message: error.error,
-          path: error.path,
-        })),
-      ],
-    });
+    return NextResponse.json(await getRuntimeSkills(cwd));
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
@@ -81,21 +24,7 @@ export async function PATCH(req: Request) {
     if (!filePath) return NextResponse.json({ error: "filePath required" }, { status: 400 });
     if (!existsSync(filePath)) return NextResponse.json({ error: "file not found" }, { status: 404 });
 
-    const content = readFileSync(filePath, "utf8");
-    const key = "disable-model-invocation";
-
-    const { frontmatter } = parseFrontmatter<Record<string, unknown>>(content);
-    const alreadySet = Boolean(frontmatter[key]);
-
-    let updated = content;
-    if (disableModelInvocation && !alreadySet) {
-      updated = content.replace(/^---\r?\n/, `---\n${key}: true\n`);
-      if (updated === content) updated = `---\n${key}: true\n---\n${content}`;
-    } else if (!disableModelInvocation && alreadySet) {
-      updated = content.replace(new RegExp(`^${key}\\s*:.*\\r?\\n`, "m"), "");
-    }
-
-    writeFileSync(filePath, updated, "utf8");
+    setRuntimeSkillModelInvocation(filePath, disableModelInvocation);
     return NextResponse.json({ success: true });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
