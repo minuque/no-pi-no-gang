@@ -21,6 +21,7 @@
     "packages/**/*.ts",
     "tests/**/*.ts",
     "apps/agent-host/**/*.ts",
+    "apps/cli/**/*.ts",
     "apps/web/**/*.ts",
     "apps/web/**/*.tsx",
     "playwright.config.ts",

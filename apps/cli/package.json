@@ -1,0 +1,16 @@
+{
+  "name": "@no-pi-no-gang/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts --root ../.. tests/cli-health.test.ts tests/cli-options.test.ts tests/cli-supervisor.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25",
+    "typescript": "5.9.3",
+    "vitest": "^4.1.9"
+  }
+}

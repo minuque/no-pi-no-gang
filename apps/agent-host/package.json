@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit -p tsconfig.json",
-    "start": "node --experimental-transform-types src/main.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --config vitest.config.ts --root ../.. tests/agent-host-http.test.ts tests/agent-host-bff.test.ts"
   },

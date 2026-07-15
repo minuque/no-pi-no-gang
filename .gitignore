@@ -22,6 +22,10 @@
 
 # production
 /build
+/apps/agent-host/dist/
+/apps/cli/dist/
+/packages/agent-protocol/dist/
+/packages/runtime-pi/dist/
 
 # misc
 .DS_Store

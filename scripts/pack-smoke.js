@@ -10,6 +10,7 @@ const projectDir = path.resolve(__dirname, "..");
 const tempDir = mkdtempSync(path.join(tmpdir(), "no-pi-no-gang-smoke-"));
 const npmCli = process.env.npm_execpath;
 const port = "30143";
+const agentHostPort = "30144";
 
 if (!npmCli) throw new Error("npm_execpath is required");
 
@@ -58,10 +59,37 @@ async function waitForOk(url, timeoutMs = 30_000) {
   throw lastError ?? new Error(`Timed out waiting for ${url}`);
 }
 
+async function waitForUnavailable(url, timeoutMs = 10_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await fetch(url);
+    } catch {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`${url} is still reachable after CLI exit`);
+}
+
+function waitForExit(child, timeoutMs = 15_000) {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    return Promise.resolve({ code: child.exitCode, signal: child.signalCode });
+  }
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error(`CLI did not exit within ${timeoutMs}ms`)), timeoutMs);
+    child.once("exit", (code, signal) => {
+      clearTimeout(timeout);
+      resolve({ code, signal });
+    });
+  });
+}
+
 async function main() {
   let cli;
   let logs = "";
   try {
+    console.log("Packing release tarball");
     const packOutput = runNpm(["pack", "--json", "--pack-destination", tempDir], projectDir);
     const [{ filename }] = JSON.parse(packOutput);
     const tarball = path.join(tempDir, filename);
@@ -71,6 +99,7 @@ async function main() {
       JSON.stringify({ private: true, dependencies: { [packageJson.name]: `file:${tarball}` } }),
     );
 
+    console.log("Installing release tarball");
     const installOutput = runNpm(["install", "--no-audit", "--no-fund"], tempDir);
     if (process.env.SMOKE_VERBOSE === "1") process.stdout.write(installOutput);
 
@@ -80,27 +109,52 @@ async function main() {
       const entries = existsSync(scopeDir) ? readdirSync(scopeDir) : [];
       throw new Error(`Installed package missing at ${installedDir}; found: ${entries.join(", ")}`);
     }
+    const installedPackageJson = JSON.parse(readFileSync(path.join(installedDir, "package.json"), "utf8"));
+    if (installedPackageJson.bin?.["no-pi-no-gang"] !== "apps/cli/dist/main.js") {
+      throw new Error("Installed package does not expose the expected no-pi-no-gang CLI");
+    }
+    console.log("Starting installed CLI");
     cli = spawn(
       process.execPath,
-      [npmCli, "exec", "--offline", "--", "no-pi-no-gang", "--port", port, "--hostname", "127.0.0.1"],
+      [
+        path.join(installedDir, installedPackageJson.bin["no-pi-no-gang"]),
+        "--port",
+        port,
+        "--hostname",
+        "127.0.0.1",
+      ],
       {
         cwd: tempDir,
         detached: process.platform !== "win32",
-        env: { ...process.env, NO_OPEN: "1" },
-        stdio: ["ignore", "pipe", "pipe"],
+        env: { ...process.env, AGENT_HOST_PORT: agentHostPort, NO_OPEN: "1" },
+        stdio: ["ignore", "pipe", "pipe", "ipc"],
       },
     );
 
     cli.stdout.on("data", (chunk) => (logs += chunk));
     cli.stderr.on("data", (chunk) => (logs += chunk));
 
+    console.log("Waiting for AgentHost and Web health");
+    const hostHealth = await waitForOk(`http://127.0.0.1:${agentHostPort}/health`);
+    const hostBody = await hostHealth.json();
+    if (hostBody.status !== "ok") throw new Error("Installed CLI returned unhealthy AgentHost state");
     await waitForOk(`http://127.0.0.1:${port}/`);
+    await waitForOk(`http://127.0.0.1:${port}/api/agent-host/health`);
+    await waitForOk(`http://127.0.0.1:${port}/api/models`);
     const apiResponse = await waitForOk(`http://127.0.0.1:${port}/api/home`);
     const body = await apiResponse.json();
     if (typeof body.home !== "string" || body.home.length === 0) {
       throw new Error("Installed CLI returned an invalid /api/home response");
     }
-    console.log("Installed package CLI smoke passed");
+    console.log("Stopping installed CLI");
+    cli.send("shutdown");
+    const { code, signal } = await waitForExit(cli);
+    if (code !== 143) throw new Error(`Installed CLI exited with ${signal ?? code}, expected 143`);
+    await Promise.all([
+      waitForUnavailable(`http://127.0.0.1:${agentHostPort}/health`),
+      waitForUnavailable(`http://127.0.0.1:${port}/`),
+    ]);
+    console.log("Installed package CLI smoke passed with no orphan services");
   } catch (error) {
     if (cli) console.error(logs.trim());
     throw error;
