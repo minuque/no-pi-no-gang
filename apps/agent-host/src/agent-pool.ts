@@ -1,15 +1,18 @@
 import type {
   CreateOrResumeRuntimeRequest,
   RuntimeCommand,
+  RuntimeCommandResult,
   RuntimeSession,
 } from "@no-pi-no-gang/agent-protocol";
 
 import { EventBus } from "./event-bus.ts";
 import type { RuntimeRegistry } from "./runtime-registry.ts";
+import { ToolRegistry } from "./tool-registry.ts";
 
 export interface RuntimeHandle {
   runtime: string;
   session: RuntimeSession;
+  tools: Awaited<ReturnType<ToolRegistry["createSessionView"]>>;
   unsubscribe(): void;
 }
 
@@ -27,9 +30,15 @@ export class AgentPool {
 
   constructor(
     private readonly runtimes: RuntimeRegistry,
+    private readonly tools = new ToolRegistry(),
     readonly events = new EventBus(),
     private readonly idleTimeoutMs = 10 * 60 * 1000,
-  ) {}
+  ) {
+    this.tools.subscribe((event) => {
+      const { sessionId, ...runtimeEvent } = event;
+      this.events.publish(sessionId, runtimeEvent);
+    });
+  }
 
   get(sessionId: string): RuntimeHandle | undefined {
     return this.handles.get(this.aliases.get(sessionId) ?? sessionId);
@@ -126,6 +135,51 @@ export class AgentPool {
     await this.require(sessionId).session.abort();
   }
 
+  async command(sessionId: string, command: RuntimeCommand): Promise<RuntimeCommandResult> {
+    if (command.type === "abort") {
+      await this.abort(sessionId);
+      return {};
+    }
+    if (command.type === "prompt") {
+      this.prompt(sessionId, command);
+      return {};
+    }
+    const handle = this.require(sessionId);
+    const realId = handle.session.getState().sessionId;
+    const execute = async (): Promise<RuntimeCommandResult> => {
+      if (command.type === "get_tools") return { value: handle.tools.list() };
+      if (command.type === "set_tools") {
+        const previous = handle.tools
+          .list()
+          .filter((tool) => tool.enabled)
+          .map((tool) => tool.name);
+        handle.tools.setEnabled(command.toolNames);
+        try {
+          return await handle.session.command(command);
+        } catch (error) {
+          handle.tools.setEnabled(previous);
+          throw error;
+        }
+      }
+      return await handle.session.command(command);
+    };
+    if (
+      command.type !== "steer" &&
+      command.type !== "follow_up" &&
+      command.type !== "abort_compaction" &&
+      command.type !== "get_commands" &&
+      command.type !== "get_tools"
+    ) {
+      return this.withSessionWrite(realId, execute);
+    }
+    this.clearIdle(realId);
+    try {
+      return await execute();
+    } finally {
+      this.scheduleIdle(realId);
+    }
+  }
+
   async close(sessionId: string): Promise<void> {
     await this.closeSession(this.require(sessionId).session.getState().sessionId, true);
   }
@@ -145,8 +199,13 @@ export class AgentPool {
   private async create(runtimeKind: string, request: CreateOrResumeRuntimeRequest): Promise<RuntimeHandle> {
     const adapter = this.runtimes.get(runtimeKind);
     if (!adapter) throw new Error(`Runtime is not registered: ${runtimeKind}`);
-    const session = await adapter.createOrResume(request);
+    const selectedTools = Array.isArray(request.agent.config.toolNames)
+      ? request.agent.config.toolNames.filter((name): name is string => typeof name === "string")
+      : undefined;
+    const tools = await this.tools.createSessionView(request, selectedTools);
+    const session = await adapter.createOrResume({ ...request, tools });
     const sessionId = session.getState().sessionId;
+    tools.bindSession(sessionId);
     const existing = this.handles.get(sessionId);
     if (existing) {
       await session.close();
@@ -157,7 +216,7 @@ export class AgentPool {
       this.scheduleIdle(sessionId);
       this.events.publish(sessionId, event);
     });
-    const handle = { runtime: runtimeKind, session, unsubscribe };
+    const handle = { runtime: runtimeKind, session, tools, unsubscribe };
     this.handles.set(sessionId, handle);
     this.aliases.set(request.session.id, sessionId);
     this.scheduleIdle(sessionId);
@@ -172,7 +231,17 @@ export class AgentPool {
 
   private scheduleIdle(sessionId: string): void {
     this.clearIdle(sessionId);
-    if (this.activeTurns.has(sessionId) || this.startingSessions.has(sessionId) || this.closing) return;
+    const state = this.handles.get(sessionId)?.session.getState();
+    if (
+      this.activeTurns.has(sessionId) ||
+      this.startingSessions.has(sessionId) ||
+      state?.status === "running" ||
+      state?.isStreaming ||
+      state?.isCompacting ||
+      this.closing
+    ) {
+      return;
+    }
     const timer = setTimeout(() => void this.closeSession(sessionId), this.idleTimeoutMs);
     timer.unref();
     this.idleTimers.set(sessionId, timer);

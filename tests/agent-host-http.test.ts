@@ -1,4 +1,5 @@
 import type {
+  CreateOrResumeRuntimeRequest,
   RuntimeAdapter,
   RuntimeEvent,
   RuntimeSession,
@@ -7,6 +8,7 @@ import type {
   SessionSnapshot,
   SessionSummary,
 } from "@no-pi-no-gang/agent-protocol";
+import { PiRuntimeAdapter, type PiRuntimeSessionLike } from "@no-pi-no-gang/runtime-pi";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -16,6 +18,7 @@ import { AgentPool } from "../apps/agent-host/src/agent-pool";
 import { EventBus } from "../apps/agent-host/src/event-bus";
 import { type AgentHostServer, startAgentHost } from "../apps/agent-host/src/http-server";
 import type { RuntimeRegistry } from "../apps/agent-host/src/runtime-registry";
+import { ToolRegistry } from "../apps/agent-host/src/tool-registry";
 
 const hosts: AgentHostServer[] = [];
 const tempDirectories: string[] = [];
@@ -133,6 +136,80 @@ describe("AgentHost public HTTP boundary", () => {
     expect(observed).toEqual(["message_update"]);
   });
 
+  it("isolates failing tool observers from provider execution", async () => {
+    const tools = new ToolRegistry();
+    tools.registerProvider({
+      id: "fixture",
+      provide: async () => [
+        {
+          descriptor: { name: "echo", description: "Echo", inputSchema: {} },
+          execute: async (invocation) => ({
+            invocationId: invocation.id,
+            output: "done",
+            isError: false,
+          }),
+        },
+      ],
+    });
+    tools.subscribe(() => {
+      throw new Error("observer failed");
+    });
+    const observed: Array<{ type: string; sessionId: string }> = [];
+    tools.subscribe((event) => observed.push({ type: event.type, sessionId: event.sessionId }));
+    const view = await tools.createSessionView({
+      agent: { id: "agent", version: "1", runtime: "test", config: {} },
+      session: {
+        id: "session-1",
+        agentDefinitionId: "agent",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    });
+    view.bindSession("actual-session");
+
+    await expect(view.invoke({ id: "call-1", toolName: "echo", arguments: {} })).resolves.toEqual({
+      invocationId: "call-1",
+      output: "done",
+      isError: false,
+    });
+    expect(observed).toEqual([
+      { type: "tool_invocation", sessionId: "actual-session" },
+      { type: "tool_result", sessionId: "actual-session" },
+    ]);
+  });
+
+  it("completes tool observation when authorization throws", async () => {
+    const tools = new ToolRegistry(async () => {
+      throw new Error("policy unavailable");
+    });
+    tools.registerProvider({
+      id: "fixture",
+      provide: async () => [
+        {
+          descriptor: { name: "echo", description: "Echo", inputSchema: {} },
+          execute: vi.fn(),
+        },
+      ],
+    });
+    const observed: string[] = [];
+    tools.subscribe((event) => observed.push(event.type));
+    const view = await tools.createSessionView({
+      agent: { id: "agent", version: "1", runtime: "test", config: {} },
+      session: {
+        id: "session-1",
+        agentDefinitionId: "agent",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    });
+    view.bindSession("session-1");
+
+    await expect(view.invoke({ id: "call-1", toolName: "echo", arguments: {} })).rejects.toThrow(
+      "policy unavailable",
+    );
+    expect(observed).toEqual(["tool_invocation", "tool_result"]);
+  });
+
   it("reports a replay gap when the requested SSE history has expired", () => {
     const events = new EventBus(2);
     events.publish("session-1", { type: "first" });
@@ -194,6 +271,22 @@ describe("AgentHost public HTTP boundary", () => {
         model: { provider: "test", modelId: "model" },
       },
     });
+  });
+
+  it("discovers slash commands through the runtime-neutral Host boundary", async () => {
+    const { adapter, cwd } = await fixture();
+    adapter.getCommands = vi.fn(async () => [
+      { name: "review", description: "Review changes", source: "extension" as const },
+    ]);
+    const host = await startWith(adapter);
+
+    const response = await fetch(`${host.url}/v1/commands?cwd=${encodeURIComponent(cwd)}`);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      commands: [{ name: "review", description: "Review changes", source: "extension" }],
+    });
+    expect(adapter.getCommands).toHaveBeenCalledWith(expect.objectContaining({ config: { cwd } }));
   });
 
   it("renames a persisted session through the session endpoint", async () => {
@@ -602,19 +695,357 @@ describe("AgentHost public HTTP boundary", () => {
     expect(controlled.runtime.abort).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects runtime control commands outside the realtime ticket scope", async () => {
+  it("routes every runtime control command through the public host boundary", async () => {
     const { adapter } = await fixture();
-    adapter.createOrResume = async () => controllableRuntime().runtime;
+    const controlled = controllableRuntime();
+    const command = vi.fn(async (input) => ({ value: { accepted: input.type } }));
+    controlled.runtime.command = command;
+    adapter.createOrResume = async () => controlled.runtime;
     const host = await startWith(adapter);
 
-    const response = await fetch(`${host.url}/v1/runtimes/session-1/command`, {
+    const controls = [
+      { type: "set_model", provider: "test", modelId: "model-2" },
+      { type: "set_thinking_level", level: "high" },
+      { type: "compact" },
+      { type: "set_auto_compaction", enabled: false },
+      { type: "steer", message: "change direction" },
+      { type: "follow_up", message: "then verify" },
+      { type: "get_commands" },
+      { type: "command", command: "review", message: "this" },
+      { type: "abort_compaction" },
+      { type: "set_auto_retry", enabled: true },
+    ] as const;
+
+    for (const control of controls) {
+      const response = await fetch(`${host.url}/v1/runtimes/session-1/command`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(control),
+      });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ success: true, data: { accepted: control.type } });
+    }
+    expect(command).toHaveBeenCalledTimes(controls.length);
+  });
+
+  it("routes provider tools through session-isolated host capability views", async () => {
+    const { adapter, cwd } = await fixture();
+    const views = new Map<string, NonNullable<CreateOrResumeRuntimeRequest["tools"]>>();
+    adapter.createOrResume = async (request) => {
+      views.set(request.session.id, request.tools!);
+      return {
+        command: async (command) => {
+          if (command.type !== "command") return {};
+          return {
+            value: await request.tools!.invoke({
+              id: `${request.session.id}:call`,
+              toolName: command.command,
+              arguments: { message: command.message },
+            }),
+          };
+        },
+        abort: async () => {},
+        close: async () => {},
+        getState: () => ({
+          sessionId: request.session.id,
+          status: "ready",
+          isStreaming: false,
+          isCompacting: false,
+        }),
+        getCapabilities: () => ({ protocolVersion: "1.0.0", capabilities: [] }),
+        subscribe: () => () => {},
+      };
+    };
+    const host = await startAgentHost({
+      port: 0,
+      initializeRuntimes: async (registry, tools) => {
+        registry.register("test", adapter);
+        tools.subscribe(() => {
+          throw new Error("observer failed");
+        });
+        tools.registerProvider({
+          id: "fixture",
+          provide: async () => [
+            {
+              descriptor: { name: "echo", description: "Echo input", inputSchema: { type: "object" } },
+              enabledByDefault: true,
+              execute: async (invocation) => ({
+                invocationId: invocation.id,
+                output: invocation.arguments,
+                isError: false,
+              }),
+            },
+            {
+              descriptor: { name: "hidden", description: "Hidden tool", inputSchema: { type: "object" } },
+              enabledByDefault: false,
+              execute: async (invocation) => ({
+                invocationId: invocation.id,
+                output: null,
+                isError: false,
+              }),
+            },
+          ],
+        });
+      },
+    });
+    hosts.push(host);
+
+    const created = await fetch(`${host.url}/v1/runtimes`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ type: "set_thinking_level", level: "high" }),
+      body: JSON.stringify({ runtime: "test", cwd, type: "command", command: "echo", message: "one" }),
+    });
+    const { sessionId } = (await created.json()) as { sessionId: string };
+
+    const listed = await fetch(`${host.url}/v1/runtimes/${sessionId}/command`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "get_tools" }),
+    });
+    expect(await listed.json()).toEqual({
+      success: true,
+      data: [
+        { name: "echo", description: "Echo input", inputSchema: { type: "object" }, enabled: true },
+        { name: "hidden", description: "Hidden tool", inputSchema: { type: "object" }, enabled: false },
+      ],
     });
 
-    expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({ error: expect.stringContaining("not available yet") });
+    const invoked = await fetch(`${host.url}/v1/runtimes/${sessionId}/command`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "command", command: "echo", message: "two" }),
+    });
+    expect(await invoked.json()).toEqual({
+      success: true,
+      data: { invocationId: `${sessionId}:call`, output: { message: "two" }, isError: false },
+    });
+    expect(
+      views
+        .get(sessionId)
+        ?.list()
+        .find((tool) => tool.name === "hidden")?.enabled,
+    ).toBe(false);
+  });
+
+  it("routes an HTTP prompt through ToolRegistry and the Pi runtime adapter", async () => {
+    const { cwd } = await fixture();
+    const executed = Promise.withResolvers<unknown>();
+    const providerExecute = vi.fn(async (invocation) => {
+      const result = {
+        invocationId: invocation.id,
+        output: invocation.arguments,
+        isError: false,
+      };
+      executed.resolve(result);
+      return result;
+    });
+    const adapter = new PiRuntimeAdapter(async (request): Promise<PiRuntimeSessionLike> => ({
+      sessionId: request.session.id,
+      isStreaming: false,
+      isCompacting: false,
+      subscribe: () => () => {},
+      prompt: async (message) => {
+        await request.tools!.invoke({
+          id: `${request.session.id}:call`,
+          toolName: "echo",
+          arguments: { message },
+        });
+      },
+      abort: async () => {},
+      dispose: () => {},
+    }));
+    const host = await startAgentHost({
+      port: 0,
+      initializeRuntimes: async (registry, tools) => {
+        registry.register("pi-test", adapter);
+        tools.registerProvider({
+          id: "fixture",
+          provide: async () => [
+            {
+              descriptor: { name: "echo", description: "Echo", inputSchema: {} },
+              execute: providerExecute,
+            },
+          ],
+        });
+      },
+    });
+    hosts.push(host);
+
+    const response = await fetch(`${host.url}/v1/runtimes`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ runtime: "pi-test", cwd, type: "prompt", message: "hello" }),
+    });
+
+    expect(response.status).toBe(201);
+    await expect(executed.promise).resolves.toMatchObject({ output: { message: "hello" } });
+    expect(providerExecute).toHaveBeenCalledTimes(1);
+  });
+
+  it("resumes a persisted session with its owning non-default runtime", async () => {
+    const { adapter } = await fixture();
+    const controlled = controllableRuntime();
+    const createOrResume = vi.fn(async () => controlled.runtime);
+    adapter.createOrResume = createOrResume;
+    adapter.renameSession = vi.fn(async () => true);
+    const emptyAdapter = {
+      ...adapter,
+      listSessions: async () => [],
+      getSession: async () => null,
+      renameSession: async () => false,
+    };
+    const host = await startAgentHost({
+      port: 0,
+      initializeRuntimes: async (registry) => {
+        registry.register("empty", emptyAdapter);
+        registry.register("owner", adapter);
+      },
+    });
+    hosts.push(host);
+
+    const response = await fetch(`${host.url}/v1/runtimes/session-1`, { method: "PUT" });
+    const list = await fetch(`${host.url}/v1/sessions`);
+    const detail = await fetch(`${host.url}/v1/sessions/session-1`);
+    const rename = await fetch(`${host.url}/v1/sessions/session-1`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Owner" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(createOrResume).toHaveBeenCalledTimes(1);
+    expect(((await list.json()) as { sessions: SessionSummary[] }).sessions).toHaveLength(1);
+    expect(detail.status).toBe(200);
+    expect(rename.status).toBe(200);
+    expect(adapter.renameSession).toHaveBeenCalledWith("session-1", "Owner");
+  });
+
+  it("rejects denied tool invocations before the provider executes", async () => {
+    const { adapter, cwd } = await fixture();
+    const execute = vi.fn(async (invocation) => ({
+      invocationId: invocation.id,
+      output: "should not run",
+      isError: false,
+    }));
+    adapter.createOrResume = async (request) => ({
+      command: async () => ({
+        value: await request.tools!.invoke({ id: "denied-call", toolName: "write", arguments: {} }),
+      }),
+      abort: async () => {},
+      close: async () => {},
+      getState: () => ({
+        sessionId: request.session.id,
+        status: "ready",
+        isStreaming: false,
+        isCompacting: false,
+      }),
+      getCapabilities: () => ({ protocolVersion: "1.0.0", capabilities: [] }),
+      subscribe: () => () => {},
+    });
+    const host = await startAgentHost({
+      port: 0,
+      authorizeTool: ({ tool }) => tool.name !== "write",
+      initializeRuntimes: async (registry, tools) => {
+        registry.register("test", adapter);
+        tools.registerProvider({
+          id: "fixture",
+          provide: async () => [
+            {
+              descriptor: { name: "write", description: "Write a file", inputSchema: {} },
+              execute,
+            },
+          ],
+        });
+      },
+    });
+    hosts.push(host);
+    const created = await fetch(`${host.url}/v1/runtimes`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ runtime: "test", cwd }),
+    });
+    const { sessionId } = (await created.json()) as { sessionId: string };
+
+    const denied = await fetch(`${host.url}/v1/runtimes/${sessionId}/command`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "command", command: "write", message: "" }),
+    });
+
+    expect(denied.status).toBe(403);
+    expect(await denied.json()).toEqual({ error: "Tool permission denied: write" });
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it("keeps tool selection isolated between runtime sessions", async () => {
+    const { adapter, cwd } = await fixture();
+    adapter.createOrResume = async (request) => ({
+      command: async () => ({}),
+      abort: async () => {},
+      close: async () => {},
+      getState: () => ({
+        sessionId: request.session.id,
+        status: "ready",
+        isStreaming: false,
+        isCompacting: false,
+      }),
+      getCapabilities: () => ({ protocolVersion: "1.0.0", capabilities: [] }),
+      subscribe: () => () => {},
+    });
+    const host = await startAgentHost({
+      port: 0,
+      initializeRuntimes: async (registry, tools) => {
+        registry.register("test", adapter);
+        tools.registerProvider({
+          id: "fixture",
+          provide: async () =>
+            ["read", "write"].map((name) => ({
+              descriptor: { name, description: name, inputSchema: {} },
+              execute: async (invocation) => ({
+                invocationId: invocation.id,
+                output: null,
+                isError: false,
+              }),
+            })),
+        });
+      },
+    });
+    hosts.push(host);
+    const create = async (toolNames: string[]) => {
+      const response = await fetch(`${host.url}/v1/runtimes`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ runtime: "test", cwd, toolNames }),
+      });
+      return ((await response.json()) as { sessionId: string }).sessionId;
+    };
+    const [readSession, writeSession] = await Promise.all([create(["read"]), create(["write"])]);
+    const list = async (sessionId: string) => {
+      const response = await fetch(`${host.url}/v1/runtimes/${sessionId}/command`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ type: "get_tools" }),
+      });
+      return ((await response.json()) as { data: Array<{ name: string; enabled: boolean }> }).data;
+    };
+
+    expect(await list(readSession)).toMatchObject([
+      { name: "read", enabled: true },
+      { name: "write", enabled: false },
+    ]);
+    expect(await list(writeSession)).toMatchObject([
+      { name: "read", enabled: false },
+      { name: "write", enabled: true },
+    ]);
+    await fetch(`${host.url}/v1/runtimes/${readSession}/command`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "set_tools", toolNames: ["write"] }),
+    });
+    expect(await list(writeSession)).toMatchObject([
+      { name: "read", enabled: false },
+      { name: "write", enabled: true },
+    ]);
   });
 
   it("rolls back a newly created runtime when initialization fails", async () => {
@@ -663,6 +1094,29 @@ describe("AgentHost public HTTP boundary", () => {
     expect(replay).toContain("id: 1");
     expect(replay).toContain('"delta":"missed"');
     expect(createOrResume).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps healthy SSE subscribers flowing after another subscriber disconnects", async () => {
+    const { adapter } = await fixture();
+    const controlled = controllableRuntime();
+    adapter.createOrResume = async () => controlled.runtime;
+    const host = await startWith(adapter);
+    await fetch(`${host.url}/v1/runtimes/session-1`, { method: "PUT" });
+
+    const disconnected = new AbortController();
+    const first = await fetch(`${host.url}/v1/runtimes/session-1/events`, {
+      signal: disconnected.signal,
+    });
+    const second = await fetch(`${host.url}/v1/runtimes/session-1/events`);
+    await first.body!.getReader().read();
+    const healthyReader = second.body!.getReader();
+    await healthyReader.read();
+    disconnected.abort();
+    controlled.emit({ type: "message_update", delta: "healthy" });
+
+    const chunk = new TextDecoder().decode((await healthyReader.read()).value);
+    expect(chunk).toContain('"delta":"healthy"');
+    await healthyReader.cancel();
   });
 
   it("closes active runtimes and SSE subscribers exactly once", async () => {

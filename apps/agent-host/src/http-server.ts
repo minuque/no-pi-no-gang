@@ -18,9 +18,10 @@ import { type IncomingMessage, type Server, type ServerResponse, createServer } 
 
 import { AgentPool, SessionBusyError } from "./agent-pool.ts";
 import { RuntimeRegistry, loadDefaultRuntimes } from "./runtime-registry.ts";
+import { type ToolPermission, ToolPermissionDeniedError, ToolRegistry } from "./tool-registry.ts";
 import { InvalidWorkspaceError, WorkspaceRegistry } from "./workspace-registry.ts";
 
-type RuntimeInitializer = (registry: RuntimeRegistry) => Promise<void>;
+type RuntimeInitializer = (registry: RuntimeRegistry, tools: ToolRegistry) => Promise<void>;
 
 class RequestBodyTooLargeError extends Error {}
 class SessionTargetNotFoundError extends Error {}
@@ -28,6 +29,7 @@ class SessionTargetNotFoundError extends Error {}
 export interface AgentHostOptions {
   initializeRuntimes?: RuntimeInitializer;
   workspaceRegistry?: WorkspaceRegistry;
+  authorizeTool?: ToolPermission;
 }
 
 export interface AgentHostServer {
@@ -187,20 +189,23 @@ function createRuntimeRequest(input: {
   };
 }
 
-async function resumeRuntime(
-  pool: AgentPool,
-  runtimeKind: string,
-  runtime: NonNullable<ReturnType<RuntimeRegistry["get"]>>,
-  sessionId: string,
-) {
+async function resumeRuntime(pool: AgentPool, registry: RuntimeRegistry, sessionId: string) {
   const active = pool.get(sessionId);
   if (active) return active;
-  const snapshot = await runtime.getSession(sessionId);
-  if (!snapshot) return null;
-  const cwd = snapshot.summary.localWorkspacePath;
-  const sessionFile = snapshot.summary.localPath;
+  const owner = await findSessionRuntime(registry, sessionId);
+  if (!owner) return null;
+  const cwd = owner.snapshot.summary.localWorkspacePath;
+  const sessionFile = owner.snapshot.summary.localPath;
   if (!cwd || !sessionFile) throw new Error(`Session resources are unavailable: ${sessionId}`);
-  return pool.start(runtimeKind, createRuntimeRequest({ runtime: runtimeKind, sessionId, cwd, sessionFile }));
+  return pool.start(owner.name, createRuntimeRequest({ runtime: owner.name, sessionId, cwd, sessionFile }));
+}
+
+async function findSessionRuntime(registry: RuntimeRegistry, sessionId: string) {
+  for (const entry of registry.entries()) {
+    const snapshot = await entry.adapter.getSession(sessionId);
+    if (snapshot) return { ...entry, snapshot };
+  }
+  return null;
 }
 
 function streamEvents(
@@ -304,7 +309,7 @@ function createRequestHandler(
 ): (request: IncomingMessage, response: ServerResponse) => Promise<void> {
   return async (request, response) => {
     const url = new URL(request.url ?? "/", "http://agent-host");
-    const runtime = registry.get("pi");
+    const defaultRuntime = registry.default();
 
     if (request.method === "GET" && url.pathname === "/health") {
       const health: HostHealth = startupError
@@ -323,8 +328,8 @@ function createRequestHandler(
       return;
     }
 
-    if (startupError || !runtime) {
-      json(response, 503, unavailable(startupError ?? "pi runtime is not registered"));
+    if (startupError || !defaultRuntime) {
+      json(response, 503, unavailable(startupError ?? "No runtime is registered"));
       return;
     }
 
@@ -343,15 +348,35 @@ function createRequestHandler(
         return;
       }
 
+      if (request.method === "GET" && url.pathname === "/v1/commands") {
+        const runtimeKind = url.searchParams.get("runtime") ?? defaultRuntime.name;
+        const commandRuntime = registry.get(runtimeKind);
+        if (!commandRuntime) {
+          json(response, 404, { error: "Runtime not found" });
+          return;
+        }
+        const resolved = await workspaces.resolve(url.searchParams.get("cwd") ?? "");
+        const agent: AgentDefinition = {
+          id: `${runtimeKind}:discovery`,
+          version: "1.0.0",
+          runtime: runtimeKind,
+          config: { cwd: resolved.resolvedPath },
+        };
+        json(response, 200, { commands: (await commandRuntime.getCommands?.(agent)) ?? [] });
+        return;
+      }
+
       if (request.method === "GET" && url.pathname === "/v1/sessions") {
-        const sessions = await runtime.listSessions();
+        const sessions = (
+          await Promise.all(registry.entries().map(({ adapter }) => adapter.listSessions()))
+        ).flat();
         json(response, 200, { sessions: sessions.map((summary) => sessionInfo(summary, workspaces)) });
         return;
       }
 
       if (request.method === "POST" && url.pathname === "/v1/runtimes") {
         const body = await readJson(request);
-        const runtimeKind = typeof body.runtime === "string" ? body.runtime : "pi";
+        const runtimeKind = typeof body.runtime === "string" ? body.runtime : defaultRuntime.name;
         const cwd = typeof body.cwd === "string" ? body.cwd : "";
         const resolved = await workspaces.resolve(cwd);
         const pendingId = `pending-${randomUUID()}`;
@@ -402,7 +427,7 @@ function createRequestHandler(
       const runtimeMatch = /^\/v1\/runtimes\/([^/]+)$/.exec(url.pathname);
       if (request.method === "PUT" && runtimeMatch) {
         const id = decodeURIComponent(runtimeMatch[1]);
-        const handle = await resumeRuntime(pool, "pi", runtime, id);
+        const handle = await resumeRuntime(pool, registry, id);
         if (!handle) {
           json(response, 404, { error: "Session not found" });
           return;
@@ -424,7 +449,7 @@ function createRequestHandler(
       const promptMatch = /^\/v1\/runtimes\/([^/]+)\/prompt$/.exec(url.pathname);
       if (request.method === "POST" && promptMatch) {
         const id = decodeURIComponent(promptMatch[1]);
-        const handle = await resumeRuntime(pool, "pi", runtime, id);
+        const handle = await resumeRuntime(pool, registry, id);
         if (!handle) {
           json(response, 404, { error: "Session not found" });
           return;
@@ -463,7 +488,7 @@ function createRequestHandler(
       const commandMatch = /^\/v1\/runtimes\/([^/]+)\/command$/.exec(url.pathname);
       if (request.method === "POST" && commandMatch) {
         const id = decodeURIComponent(commandMatch[1]);
-        const handle = await resumeRuntime(pool, "pi", runtime, id);
+        const handle = await resumeRuntime(pool, registry, id);
         if (!handle) {
           json(response, 404, { error: "Session not found" });
           return;
@@ -479,23 +504,16 @@ function createRequestHandler(
             json(response, 400, { error: "Prompt message is required" });
             return;
           }
-          pool.prompt(id, command);
-          json(response, 200, { success: true, data: null });
-          return;
         }
-        if (command.type === "abort") {
-          await pool.abort(id);
-          json(response, 200, { success: true, data: null });
-          return;
-        }
-        json(response, 400, { error: `Runtime command is not available yet: ${command.type}` });
+        const result = await pool.command(id, command);
+        json(response, 200, { success: true, data: result.value ?? null });
         return;
       }
 
       const eventsMatch = /^\/v1\/runtimes\/([^/]+)\/events$/.exec(url.pathname);
       if (request.method === "GET" && eventsMatch) {
         const id = decodeURIComponent(eventsMatch[1]);
-        const handle = await resumeRuntime(pool, "pi", runtime, id);
+        const handle = await resumeRuntime(pool, registry, id);
         if (!handle) {
           json(response, 404, { error: "Session not found" });
           return;
@@ -512,15 +530,15 @@ function createRequestHandler(
           json(response, 400, { error: "leafId is required" });
           return;
         }
-        const snapshot = await runtime.getSession(id);
-        if (!snapshot) {
+        const owner = await findSessionRuntime(registry, id);
+        if (!owner) {
           json(response, 404, { error: "Session not found" });
           return;
         }
-        if (!snapshot.records.some((record) => record.id === body.leafId)) {
+        if (!owner.snapshot.records.some((record) => record.id === body.leafId)) {
           throw new SessionTargetNotFoundError(`Session record not found: ${body.leafId}`);
         }
-        if (!(await resumeRuntime(pool, "pi", runtime, id))) {
+        if (!(await resumeRuntime(pool, registry, id))) {
           json(response, 404, { error: "Session not found" });
           return;
         }
@@ -539,7 +557,7 @@ function createRequestHandler(
           ) {
             return { status: "cancelled" as const };
           }
-          const context = await runtime.getSessionContext(id);
+          const context = await owner.adapter.getSessionContext(id);
           return context ? { status: "ok" as const, context } : { status: "missing" as const };
         });
         if (navigation.status === "missing") {
@@ -555,7 +573,8 @@ function createRequestHandler(
       }
       if (request.method === "GET" && contextMatch) {
         const id = decodeURIComponent(contextMatch[1]);
-        const context = await runtime.getSessionContext(id, url.searchParams.get("leafId"));
+        const owner = await findSessionRuntime(registry, id);
+        const context = await owner?.adapter.getSessionContext(id, url.searchParams.get("leafId"));
         if (!context) {
           json(response, 404, { error: "Session not found" });
           return;
@@ -573,12 +592,12 @@ function createRequestHandler(
           return;
         }
         const result = await pool.withSessionWrite(id, async () => {
-          const snapshot = await runtime.getSession(id);
-          if (!snapshot) return null;
-          if (!snapshot.records.some((record) => record.id === body.entryId)) {
+          const owner = await findSessionRuntime(registry, id);
+          if (!owner) return null;
+          if (!owner.snapshot.records.some((record) => record.id === body.entryId)) {
             throw new SessionTargetNotFoundError(`Session record not found: ${body.entryId}`);
           }
-          const forked = await runtime.forkSession(id, body.entryId as string);
+          const forked = await owner.adapter.forkSession(id, body.entryId as string);
           if (!forked.cancelled && pool.get(id)) await pool.close(id);
           return forked;
         });
@@ -598,7 +617,11 @@ function createRequestHandler(
           json(response, 400, { error: "name is required" });
           return;
         }
-        if (!(await pool.withSessionWrite(id, () => runtime.renameSession(id, body.name as string)))) {
+        const renamed = await pool.withSessionWrite(id, async () => {
+          const owner = await findSessionRuntime(registry, id);
+          return owner ? owner.adapter.renameSession(id, body.name as string) : false;
+        });
+        if (!renamed) {
           json(response, 404, { error: "Session not found" });
           return;
         }
@@ -608,7 +631,8 @@ function createRequestHandler(
       if (request.method === "DELETE" && sessionMatch) {
         const id = decodeURIComponent(sessionMatch[1]);
         const deleted = await pool.withSessionWrite(id, async () => {
-          const result = await runtime.deleteSession(id);
+          const owner = await findSessionRuntime(registry, id);
+          const result = owner ? await owner.adapter.deleteSession(id) : false;
           if (result && pool.get(id)) await pool.close(id);
           return result;
         });
@@ -621,12 +645,12 @@ function createRequestHandler(
       }
       if (request.method === "GET" && sessionMatch) {
         const id = decodeURIComponent(sessionMatch[1]);
-        const snapshot = await runtime.getSession(id);
-        if (!snapshot) {
+        const owner = await findSessionRuntime(registry, id);
+        if (!owner) {
           json(response, 404, { error: "Session not found" });
           return;
         }
-        json(response, 200, sessionDetail(snapshot, workspaces, url.searchParams.has("includeState")));
+        json(response, 200, sessionDetail(owner.snapshot, workspaces, url.searchParams.has("includeState")));
         return;
       }
 
@@ -648,6 +672,10 @@ function createRequestHandler(
         json(response, 400, { error: error.message });
         return;
       }
+      if (error instanceof ToolPermissionDeniedError) {
+        json(response, 403, { error: error.message });
+        return;
+      }
       if (error instanceof SyntaxError) {
         json(response, 400, { error: "Invalid JSON body" });
         return;
@@ -665,11 +693,12 @@ export async function startAgentHost(
   options: AgentHostOptions & { port?: number } = {},
 ): Promise<AgentHostServer> {
   const registry = new RuntimeRegistry();
+  const tools = new ToolRegistry(options.authorizeTool);
   const workspaces = options.workspaceRegistry ?? new WorkspaceRegistry();
-  const pool = new AgentPool(registry);
+  const pool = new AgentPool(registry, tools);
   let startupError: unknown;
   try {
-    await (options.initializeRuntimes ?? loadDefaultRuntimes)(registry);
+    await (options.initializeRuntimes ?? loadDefaultRuntimes)(registry, tools);
   } catch (error) {
     startupError = error;
   }

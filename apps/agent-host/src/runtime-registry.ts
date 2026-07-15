@@ -5,6 +5,8 @@ import {
   type RuntimeAdapter,
 } from "@no-pi-no-gang/agent-protocol";
 
+import type { ToolRegistry } from "./tool-registry.ts";
+
 export class RuntimeRegistry {
   private readonly adapters = new Map<string, RuntimeAdapter>();
 
@@ -19,6 +21,15 @@ export class RuntimeRegistry {
 
   names(): string[] {
     return [...this.adapters.keys()];
+  }
+
+  entries(): Array<{ name: string; adapter: RuntimeAdapter }> {
+    return [...this.adapters].map(([name, adapter]) => ({ name, adapter }));
+  }
+
+  default(): { name: string; adapter: RuntimeAdapter } | undefined {
+    const entry = this.adapters.entries().next().value;
+    return entry ? { name: entry[0], adapter: entry[1] } : undefined;
   }
 
   getCapabilities(): HostCapabilities {
@@ -41,8 +52,13 @@ function requiredConfigString(config: Record<string, unknown>, key: string, allo
   return value;
 }
 
-export async function loadDefaultRuntimes(registry: RuntimeRegistry): Promise<void> {
-  const { PiRuntimeAdapter, createRuntimeAgentSession } = await import("@no-pi-no-gang/runtime-pi");
+export async function loadDefaultRuntimes(registry: RuntimeRegistry, tools: ToolRegistry): Promise<void> {
+  const { PiRuntimeAdapter, createPiCodingTools, createRuntimeAgentSession } =
+    await import("@no-pi-no-gang/runtime-pi");
+  tools.registerProvider({
+    id: "pi-coding-tools",
+    provide: async ({ agent }) => createPiCodingTools(requiredConfigString(agent.config, "cwd")),
+  });
   registry.register(
     "pi",
     new PiRuntimeAdapter(async (request) => {
@@ -53,6 +69,7 @@ export async function loadDefaultRuntimes(registry: RuntimeRegistry): Promise<vo
         ...(Array.isArray(config.toolNames)
           ? { toolNames: config.toolNames.filter((name): name is string => typeof name === "string") }
           : {}),
+        ...(request.tools ? { tools: request.tools } : {}),
       });
     }),
   );

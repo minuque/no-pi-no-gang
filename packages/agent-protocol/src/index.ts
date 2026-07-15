@@ -104,10 +104,13 @@ export interface RuntimeEvent {
   [key: string]: unknown;
 }
 
-export interface ToolDescriptor {
+export interface ToolDefinition {
   name: string;
   description: string;
   inputSchema: JsonObject;
+}
+
+export interface ToolDescriptor extends ToolDefinition {
   enabled: boolean;
 }
 
@@ -121,6 +124,28 @@ export interface ToolResult {
   invocationId: string;
   output: JsonValue;
   isError: boolean;
+}
+
+export interface Tool {
+  descriptor: ToolDefinition;
+  enabledByDefault?: boolean;
+  execute(invocation: ToolInvocation): Promise<ToolResult>;
+}
+
+export interface ToolProviderContext {
+  agent: AgentDefinition;
+  session: Session;
+}
+
+export interface ToolProvider {
+  id: string;
+  provide(context: ToolProviderContext): Promise<readonly Tool[]>;
+}
+
+export interface ToolCapabilityView {
+  list(): ToolDescriptor[];
+  setEnabled(toolNames: readonly string[]): void;
+  invoke(invocation: ToolInvocation): Promise<ToolResult>;
 }
 
 export interface CapabilityDeclaration {
@@ -212,6 +237,12 @@ export interface RuntimeState {
 
 export type RuntimeEventListener = (event: RuntimeEvent) => void;
 
+export interface RuntimeCommandDescriptor {
+  name: string;
+  description: string;
+  source?: "extension" | "prompt" | "skill";
+}
+
 export interface RuntimeSession {
   command(command: RuntimeCommand): Promise<RuntimeCommandResult>;
   abort(): Promise<void>;
@@ -224,10 +255,12 @@ export interface RuntimeSession {
 export interface CreateOrResumeRuntimeRequest {
   agent: AgentDefinition;
   session: Session;
+  tools?: ToolCapabilityView;
 }
 
 export interface RuntimeAdapter extends SessionAdapter {
   createOrResume(request: CreateOrResumeRuntimeRequest): Promise<RuntimeSession>;
+  getCommands?(agent: AgentDefinition): Promise<RuntimeCommandDescriptor[]>;
 }
 
 export type WorkspaceId = string;

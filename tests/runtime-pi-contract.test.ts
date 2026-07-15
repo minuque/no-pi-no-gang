@@ -3,6 +3,7 @@ import {
   PiRuntimeAdapter,
   PiRuntimeSession,
   type PiRuntimeSessionLike,
+  adaptHostTools,
   mapPiRuntimeEvent,
 } from "@no-pi-no-gang/runtime-pi";
 import { describe, expect, it, vi } from "vitest";
@@ -10,6 +11,38 @@ import { describe, expect, it, vi } from "vitest";
 import { exerciseRuntimeAdapterContract } from "./runtime-adapter-contract";
 
 describe("Pi Runtime Adapter", () => {
+  it("adapts the Host capability view into Pi tools without bypassing routing", async () => {
+    const invoke = vi.fn(async (invocation) => ({
+      invocationId: invocation.id,
+      output: { content: [{ type: "text", text: "host result" }], details: { source: "host" } },
+      isError: false,
+    }));
+    const tools = adaptHostTools({
+      list: () => [
+        {
+          name: "read",
+          description: "Read through Host",
+          inputSchema: { type: "object", properties: { path: { type: "string" } } },
+          enabled: true,
+        },
+      ],
+      setEnabled: () => {},
+      invoke,
+    });
+
+    const result = await tools[0].execute("call-1", { path: "README.md" }, undefined, undefined, {} as never);
+
+    expect(invoke).toHaveBeenCalledWith({
+      id: "call-1",
+      toolName: "read",
+      arguments: { path: "README.md" },
+    });
+    expect(result).toEqual({
+      content: [{ type: "text", text: "host result" }],
+      details: { source: "host" },
+    });
+  });
+
   it("conforms to the shared basic lifecycle", async () => {
     let abortCount = 0;
     let unsubscribeCount = 0;

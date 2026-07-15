@@ -23,6 +23,7 @@ import {
 
 import { dispatchPiRuntimeCommand } from "./command-adapter.ts";
 import type { PiInputImage, PiRuntimeSessionLike } from "./runtime-types.ts";
+import { getRuntimeSkills } from "./services.ts";
 import { PiSessionAdapter } from "./session-adapter.ts";
 
 export { mapPiSessionEntries, projectPiSessionRecords } from "./session-records.ts";
@@ -30,6 +31,7 @@ export { PiSessionAdapter } from "./session-adapter.ts";
 export * from "./resources.ts";
 export * from "./services.ts";
 export * from "./session-factory.ts";
+export * from "./tool-adapter.ts";
 export { assertRuntimeCompactionAvailable, getRuntimeSlashCommands } from "./command-adapter.ts";
 export type {
   PiContextUsage,
@@ -55,6 +57,12 @@ export class PiRuntimeAdapter implements RuntimeAdapter {
   async createOrResume(request: CreateOrResumeRuntimeRequest): Promise<RuntimeSession> {
     const inner = await this.createSession(request);
     return new PiRuntimeSession(inner);
+  }
+
+  async getCommands(agent: CreateOrResumeRuntimeRequest["agent"]) {
+    const cwd = agent.config.cwd;
+    if (typeof cwd !== "string" || !cwd) throw new Error("Missing runtime config: cwd");
+    return (await getRuntimeSkills(cwd)).commands;
   }
 
   listSessions(): Promise<SessionSummary[]> {

@@ -109,7 +109,7 @@ export function useSessionActions({
 
   const fetchCommands = useCallback(async (cwd: string) => {
     try {
-      const res = await fetch(`/api/skills?cwd=${encodeURIComponent(cwd)}`);
+      const res = await fetch(`/api/agent/commands?cwd=${encodeURIComponent(cwd)}`);
       if (!res.ok) return;
       const data = (await res.json()) as {
         commands?: SlashCommandItem[];
