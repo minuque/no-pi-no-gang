@@ -23,6 +23,7 @@ import { InvalidWorkspaceError, WorkspaceRegistry } from "./workspace-registry.t
 type RuntimeInitializer = (registry: RuntimeRegistry) => Promise<void>;
 
 class RequestBodyTooLargeError extends Error {}
+class SessionTargetNotFoundError extends Error {}
 
 export interface AgentHostOptions {
   initializeRuntimes?: RuntimeInitializer;
@@ -504,6 +505,54 @@ function createRequestHandler(
       }
 
       const contextMatch = /^\/v1\/sessions\/([^/]+)\/context$/.exec(url.pathname);
+      if (request.method === "PATCH" && contextMatch) {
+        const id = decodeURIComponent(contextMatch[1]);
+        const body = await readJson(request);
+        if (typeof body.leafId !== "string") {
+          json(response, 400, { error: "leafId is required" });
+          return;
+        }
+        const snapshot = await runtime.getSession(id);
+        if (!snapshot) {
+          json(response, 404, { error: "Session not found" });
+          return;
+        }
+        if (!snapshot.records.some((record) => record.id === body.leafId)) {
+          throw new SessionTargetNotFoundError(`Session record not found: ${body.leafId}`);
+        }
+        if (!(await resumeRuntime(pool, "pi", runtime, id))) {
+          json(response, 404, { error: "Session not found" });
+          return;
+        }
+        const navigation = await pool.withSessionWrite(id, async () => {
+          const handle = pool.get(id);
+          if (!handle) return { status: "missing" as const };
+          const result = await handle.session.command({
+            type: "navigate_tree",
+            targetId: body.leafId as string,
+          });
+          if (
+            result.value &&
+            typeof result.value === "object" &&
+            "cancelled" in result.value &&
+            result.value.cancelled === true
+          ) {
+            return { status: "cancelled" as const };
+          }
+          const context = await runtime.getSessionContext(id);
+          return context ? { status: "ok" as const, context } : { status: "missing" as const };
+        });
+        if (navigation.status === "missing") {
+          json(response, 404, { error: "Session not found" });
+          return;
+        }
+        if (navigation.status === "cancelled") {
+          json(response, 409, { error: "Branch navigation cancelled" });
+          return;
+        }
+        json(response, 200, { context: contextToLegacy(navigation.context) });
+        return;
+      }
       if (request.method === "GET" && contextMatch) {
         const id = decodeURIComponent(contextMatch[1]);
         const context = await runtime.getSessionContext(id, url.searchParams.get("leafId"));
@@ -515,7 +564,61 @@ function createRequestHandler(
         return;
       }
 
+      const forkMatch = /^\/v1\/sessions\/([^/]+)\/forks$/.exec(url.pathname);
+      if (request.method === "POST" && forkMatch) {
+        const id = decodeURIComponent(forkMatch[1]);
+        const body = await readJson(request);
+        if (typeof body.entryId !== "string") {
+          json(response, 400, { error: "entryId is required" });
+          return;
+        }
+        const result = await pool.withSessionWrite(id, async () => {
+          const snapshot = await runtime.getSession(id);
+          if (!snapshot) return null;
+          if (!snapshot.records.some((record) => record.id === body.entryId)) {
+            throw new SessionTargetNotFoundError(`Session record not found: ${body.entryId}`);
+          }
+          const forked = await runtime.forkSession(id, body.entryId as string);
+          if (!forked.cancelled && pool.get(id)) await pool.close(id);
+          return forked;
+        });
+        if (!result) {
+          json(response, 404, { error: "Session not found" });
+          return;
+        }
+        json(response, 200, result);
+        return;
+      }
+
       const sessionMatch = /^\/v1\/sessions\/([^/]+)$/.exec(url.pathname);
+      if (request.method === "PATCH" && sessionMatch) {
+        const id = decodeURIComponent(sessionMatch[1]);
+        const body = await readJson(request);
+        if (typeof body.name !== "string") {
+          json(response, 400, { error: "name is required" });
+          return;
+        }
+        if (!(await pool.withSessionWrite(id, () => runtime.renameSession(id, body.name as string)))) {
+          json(response, 404, { error: "Session not found" });
+          return;
+        }
+        json(response, 200, { ok: true });
+        return;
+      }
+      if (request.method === "DELETE" && sessionMatch) {
+        const id = decodeURIComponent(sessionMatch[1]);
+        const deleted = await pool.withSessionWrite(id, async () => {
+          const result = await runtime.deleteSession(id);
+          if (result && pool.get(id)) await pool.close(id);
+          return result;
+        });
+        if (!deleted) {
+          json(response, 404, { error: "Session not found" });
+          return;
+        }
+        json(response, 200, { ok: true });
+        return;
+      }
       if (request.method === "GET" && sessionMatch) {
         const id = decodeURIComponent(sessionMatch[1]);
         const snapshot = await runtime.getSession(id);
@@ -531,6 +634,10 @@ function createRequestHandler(
     } catch (error) {
       if (error instanceof SessionBusyError) {
         json(response, 409, { error: error.message });
+        return;
+      }
+      if (error instanceof SessionTargetNotFoundError) {
+        json(response, 404, { error: error.message });
         return;
       }
       if (error instanceof RequestBodyTooLargeError) {

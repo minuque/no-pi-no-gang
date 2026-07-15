@@ -15,6 +15,7 @@ import {
   type UseAgentSessionOptions,
   deriveAgentSessionStatus,
 } from "./agent-session-hook-types";
+import { requestSessionContext } from "./session-action-utils";
 import { type ThinkingLevelOption, useSessionActions } from "./useSessionActions";
 
 export type {
@@ -198,15 +199,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const started = performance.now();
       setBranchLoading(true);
       try {
-        const url = leafId
-          ? `/api/sessions/${encodeURIComponent(sid)}/context?leafId=${encodeURIComponent(leafId)}`
-          : `/api/sessions/${encodeURIComponent(sid)}/context`;
-        const res = await fetch(url);
-        if (loadGenRef.current !== gen) return;
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const d = (await res.json()) as {
-          context: { messages: AgentMessage[]; entryIds: string[] };
-        };
+        const d = await requestSessionContext<AgentMessage>(sid, leafId);
         if (loadGenRef.current !== gen) return;
         const mergedMessages = mergeToolCallMessages(d.context.messages);
         setActiveLeafId(leafId);

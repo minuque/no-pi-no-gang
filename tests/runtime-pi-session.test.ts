@@ -58,6 +58,7 @@ describe("Pi SessionRecord compatibility", () => {
     const hostRoutes = [
       "../apps/web/app/api/sessions/route.ts",
       "../apps/web/app/api/sessions/[id]/route.ts",
+      "../apps/web/app/api/sessions/[id]/forks/route.ts",
       "../apps/web/app/api/sessions/[id]/context/route.ts",
       "../apps/web/app/api/agent/[id]/route.ts",
       "../apps/web/app/api/agent/[id]/events/route.ts",
@@ -69,6 +70,9 @@ describe("Pi SessionRecord compatibility", () => {
     }
     expect(reader).toMatch(/@no-pi-no-gang\/web-bff/);
     for (const route of hostRoutes) expect(route).toMatch(/@\/lib\/server\/agent-host-proxy/);
+    for (const route of hostRoutes.slice(1, 4)) {
+      expect(route).not.toMatch(/session-reader|session-bridge/);
+    }
   });
 
   it("maps Pi JSONL entries without changing their persisted fields", () => {

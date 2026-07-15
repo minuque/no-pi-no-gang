@@ -2,6 +2,7 @@ import type {
   RuntimeAdapter,
   RuntimeEvent,
   RuntimeSession,
+  RuntimeState,
   SessionContextProjection,
   SessionSnapshot,
   SessionSummary,
@@ -11,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { AgentPool } from "../apps/agent-host/src/agent-pool";
 import { EventBus } from "../apps/agent-host/src/event-bus";
 import { type AgentHostServer, startAgentHost } from "../apps/agent-host/src/http-server";
 import type { RuntimeRegistry } from "../apps/agent-host/src/runtime-registry";
@@ -53,7 +55,15 @@ async function fixture(): Promise<{ adapter: RuntimeAdapter; cwd: string; sessio
   };
   const snapshot: SessionSnapshot = {
     summary,
-    records: [],
+    records: [
+      {
+        id: "record-1",
+        sessionId: "session-1",
+        kind: "message",
+        timestamp: "2026-01-01T00:00:00.000Z",
+        payload: { message: { role: "user", content: "hello" } },
+      },
+    ],
     tree: [],
     activeLeafId: "record-1",
     context,
@@ -184,6 +194,311 @@ describe("AgentHost public HTTP boundary", () => {
         model: { provider: "test", modelId: "model" },
       },
     });
+  });
+
+  it("renames a persisted session through the session endpoint", async () => {
+    const { adapter } = await fixture();
+    adapter.renameSession = vi.fn(async (id, name) => id === "session-1" && name === "Renamed");
+    const host = await startWith(adapter);
+
+    const response = await fetch(`${host.url}/v1/sessions/session-1`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Renamed" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true });
+    expect(adapter.renameSession).toHaveBeenCalledWith("session-1", "Renamed");
+  });
+
+  it("deletes a persisted session through the session endpoint", async () => {
+    const { adapter } = await fixture();
+    adapter.deleteSession = vi.fn(async (id) => id === "session-1");
+    const controlled = controllableRuntime();
+    adapter.createOrResume = async () => controlled.runtime;
+    const host = await startWith(adapter);
+    await fetch(`${host.url}/v1/runtimes/session-1`, { method: "PUT" });
+
+    const response = await fetch(`${host.url}/v1/sessions/session-1`, { method: "DELETE" });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true });
+    expect(adapter.deleteSession).toHaveBeenCalledWith("session-1");
+    expect(controlled.runtime.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("forks a persisted session through the dedicated fork endpoint", async () => {
+    const { adapter } = await fixture();
+    adapter.forkSession = vi.fn(async (id, recordId) =>
+      id === "session-1" && recordId === "record-1"
+        ? { cancelled: false, newSessionId: "session-2" }
+        : { cancelled: true },
+    );
+    const controlled = controllableRuntime();
+    adapter.createOrResume = async () => controlled.runtime;
+    const host = await startWith(adapter);
+    await fetch(`${host.url}/v1/runtimes/session-1`, { method: "PUT" });
+
+    const response = await fetch(`${host.url}/v1/sessions/session-1/forks`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ entryId: "record-1" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ cancelled: false, newSessionId: "session-2" });
+    expect(adapter.forkSession).toHaveBeenCalledWith("session-1", "record-1");
+    expect(controlled.runtime.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores a branch through the runtime before returning its context", async () => {
+    const { adapter } = await fixture();
+    const snapshot = await adapter.getSession("session-1");
+    snapshot!.records.push({
+      id: "branch-2",
+      sessionId: "session-1",
+      parentId: "record-1",
+      kind: "message",
+      timestamp: "2026-01-01T00:02:00.000Z",
+      payload: { message: { role: "user", content: "branch" } },
+    });
+    let activeLeaf = "record-1";
+    adapter.getSessionContext = vi.fn(async (id) =>
+      id === "session-1"
+        ? {
+            messages: [{ role: "user", content: activeLeaf }],
+            recordIds: [activeLeaf],
+            thinkingLevel: "medium",
+            model: null,
+          }
+        : null,
+    );
+    const controlled = controllableRuntime();
+    controlled.runtime.command = vi.fn(async (command) => {
+      if (command.type === "navigate_tree") activeLeaf = command.targetId;
+      return { value: { cancelled: false } };
+    });
+    adapter.createOrResume = async () => controlled.runtime;
+    const host = await startWith(adapter);
+
+    const response = await fetch(`${host.url}/v1/sessions/session-1/context`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ leafId: "branch-2" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      context: {
+        messages: [{ role: "user", content: "branch-2" }],
+        entryIds: ["branch-2"],
+        thinkingLevel: "medium",
+        model: null,
+      },
+    });
+    expect(controlled.runtime.command).toHaveBeenCalledWith({
+      type: "navigate_tree",
+      targetId: "branch-2",
+    });
+  });
+
+  it("does not publish stale context when branch navigation is cancelled", async () => {
+    const { adapter } = await fixture();
+    const controlled = controllableRuntime();
+    controlled.runtime.command = vi.fn(async () => ({ value: { cancelled: true } }));
+    adapter.createOrResume = async () => controlled.runtime;
+    const getContext = vi.spyOn(adapter, "getSessionContext");
+    const host = await startWith(adapter);
+
+    const response = await fetch(`${host.url}/v1/sessions/session-1/context`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ leafId: "record-1" }),
+    });
+
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "Branch navigation cancelled" });
+    expect(getContext).not.toHaveBeenCalled();
+  });
+
+  it("rejects prompts that race with a persisted session write", async () => {
+    const { adapter } = await fixture();
+    const controlled = controllableRuntime();
+    const command = vi.spyOn(controlled.runtime, "command");
+    adapter.createOrResume = async () => controlled.runtime;
+    const writeStarted = Promise.withResolvers<void>();
+    const releaseWrite = Promise.withResolvers<void>();
+    adapter.renameSession = vi.fn(async () => {
+      writeStarted.resolve();
+      await releaseWrite.promise;
+      return true;
+    });
+    const host = await startWith(adapter);
+    await fetch(`${host.url}/v1/runtimes/session-1`, { method: "PUT" });
+    const rename = fetch(`${host.url}/v1/sessions/session-1`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Renamed" }),
+    });
+    await writeStarted.promise;
+
+    const prompt = await fetch(`${host.url}/v1/runtimes/session-1/prompt`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "prompt", message: "race" }),
+    });
+    releaseWrite.resolve();
+
+    expect(prompt.status).toBe(409);
+    expect((await rename).status).toBe(200);
+    expect(command).not.toHaveBeenCalled();
+  });
+
+  it("rejects persisted writes that race with runtime startup", async () => {
+    const { adapter } = await fixture();
+    const controlled = controllableRuntime();
+    const startEntered = Promise.withResolvers<void>();
+    const releaseStart = Promise.withResolvers<void>();
+    adapter.createOrResume = async () => {
+      startEntered.resolve();
+      await releaseStart.promise;
+      return controlled.runtime;
+    };
+    adapter.renameSession = vi.fn(async () => true);
+    const host = await startWith(adapter);
+    const starting = fetch(`${host.url}/v1/runtimes/session-1`, { method: "PUT" });
+    await startEntered.promise;
+
+    const rename = await fetch(`${host.url}/v1/sessions/session-1`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Renamed" }),
+    });
+    releaseStart.resolve();
+
+    expect(rename.status).toBe(409);
+    expect((await starting).status).toBe(200);
+    expect(adapter.renameSession).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 for missing fork and branch targets", async () => {
+    const { adapter } = await fixture();
+    const host = await startWith(adapter);
+    const headers = { "content-type": "application/json" };
+
+    const [fork, branch] = await Promise.all([
+      fetch(`${host.url}/v1/sessions/session-1/forks`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ entryId: "missing" }),
+      }),
+      fetch(`${host.url}/v1/sessions/session-1/context`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ leafId: "missing" }),
+      }),
+    ]);
+
+    expect([fork.status, branch.status]).toEqual([404, 404]);
+  });
+
+  it("rejects session writes while the runtime is active", async () => {
+    const { adapter } = await fixture();
+    adapter.renameSession = vi.fn(async () => true);
+    adapter.deleteSession = vi.fn(async () => true);
+    adapter.forkSession = vi.fn(async () => ({ cancelled: false, newSessionId: "session-2" }));
+    const controlled = controllableRuntime();
+    let state: RuntimeState = {
+      sessionId: "session-1",
+      status: "ready",
+      isStreaming: false,
+      isCompacting: false,
+    };
+    controlled.runtime.getState = () => state;
+    adapter.createOrResume = async () => controlled.runtime;
+    const host = await startWith(adapter);
+    await fetch(`${host.url}/v1/runtimes/session-1`, { method: "PUT" });
+
+    state = { ...state, status: "running" };
+    const rename = await fetch(`${host.url}/v1/sessions/session-1`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Renamed" }),
+    });
+    state = { ...state, status: "ready", isStreaming: true };
+    const remove = await fetch(`${host.url}/v1/sessions/session-1`, { method: "DELETE" });
+    state = { ...state, isStreaming: false, isCompacting: true };
+    const fork = await fetch(`${host.url}/v1/sessions/session-1/forks`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ entryId: "record-1" }),
+    });
+    const navigate = await fetch(`${host.url}/v1/sessions/session-1/context`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ leafId: "record-1" }),
+    });
+
+    expect([rename.status, remove.status, fork.status, navigate.status]).toEqual([409, 409, 409, 409]);
+    expect(adapter.renameSession).not.toHaveBeenCalled();
+    expect(adapter.deleteSession).not.toHaveBeenCalled();
+    expect(adapter.forkSession).not.toHaveBeenCalled();
+  });
+
+  it("serializes concurrent writes for the same session", async () => {
+    const pool = new AgentPool({} as RuntimeRegistry);
+    const firstStarted = Promise.withResolvers<void>();
+    const releaseFirst = Promise.withResolvers<void>();
+    const names: string[] = [];
+    const write = (name: string) =>
+      pool.withSessionWrite("session-1", async () => {
+        names.push(name);
+        if (name === "First") {
+          firstStarted.resolve();
+          await releaseFirst.promise;
+        }
+      });
+
+    const first = write("First");
+    await firstStarted.promise;
+    const second = write("Second");
+
+    expect(names).toEqual(["First"]);
+    releaseFirst.resolve();
+    await Promise.all([first, second]);
+
+    expect(names).toEqual(["First", "Second"]);
+  });
+
+  it("returns 404 for session writes targeting a missing session", async () => {
+    const { adapter } = await fixture();
+    const host = await startWith(adapter);
+    const jsonHeaders = { "content-type": "application/json" };
+
+    const responses = await Promise.all([
+      fetch(`${host.url}/v1/sessions/missing`, {
+        method: "PATCH",
+        headers: jsonHeaders,
+        body: JSON.stringify({ name: "Renamed" }),
+      }),
+      fetch(`${host.url}/v1/sessions/missing`, { method: "DELETE" }),
+      fetch(`${host.url}/v1/sessions/missing/forks`, {
+        method: "POST",
+        headers: jsonHeaders,
+        body: JSON.stringify({ entryId: "record-1" }),
+      }),
+      fetch(`${host.url}/v1/sessions/missing/context`, {
+        method: "PATCH",
+        headers: jsonHeaders,
+        body: JSON.stringify({ leafId: "record-1" }),
+      }),
+    ]);
+
+    expect(responses.map((response) => response.status)).toEqual([404, 404, 404, 404]);
+    for (const response of responses) {
+      await expect(response.json()).resolves.toEqual({ error: "Session not found" });
+    }
   });
 
   it("resolves valid workspaces and rejects missing paths and files", async () => {

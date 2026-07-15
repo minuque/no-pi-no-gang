@@ -12,7 +12,7 @@ import type { NewSessionModel } from "@/hooks/useModelList";
 import type { SlashCommandItem } from "@/lib/pi/pi-resources";
 import type { AgentMessage, SessionInfo } from "@/lib/types";
 
-import { resolveSlashCommand } from "./session-action-utils";
+import { forkSessionAtEntry, resolveSlashCommand } from "./session-action-utils";
 import { useSessionMessageActions } from "./useSessionMessageActions";
 
 export { resolveSlashCommand };
@@ -166,10 +166,7 @@ export function useSessionActions({
       if (!sid) return;
       setForkingEntryId(entryId);
       try {
-        const result = await sendAgentCommand<{ cancelled?: boolean; newSessionId?: string }>(
-          { type: "fork", entryId },
-          sid,
-        );
+        const result = await forkSessionAtEntry(sid, entryId);
         const { cancelled, newSessionId } = result ?? {};
         if (!cancelled && newSessionId) onSessionForked?.(newSessionId);
       } catch (e) {
@@ -178,7 +175,7 @@ export function useSessionActions({
         setForkingEntryId(null);
       }
     },
-    [onSessionForked, sendAgentCommand, sessionIdRef],
+    [onSessionForked, sessionIdRef],
   );
 
   const handleNavigate = useCallback(
@@ -186,10 +183,9 @@ export function useSessionActions({
       const sid = sessionIdRef.current;
       if (!sid) return;
       loadGenRef.current += 1;
-      sendAgentCommand({ type: "navigate_tree", targetId: entryId }, sid).catch(() => {});
       await loadContext(sid, entryId);
     },
-    [loadContext, loadGenRef, sendAgentCommand, sessionIdRef],
+    [loadContext, loadGenRef, sessionIdRef],
   );
 
   const handleLeafChange = useCallback(
@@ -200,11 +196,8 @@ export function useSessionActions({
       startTransition(() => {
         loadContext(sid, leafId);
       });
-      if (leafId) {
-        sendAgentCommand({ type: "navigate_tree", targetId: leafId }, sid).catch(() => {});
-      }
     },
-    [loadContext, loadGenRef, sendAgentCommand, sessionIdRef],
+    [loadContext, loadGenRef, sessionIdRef],
   );
 
   const handleModelChange = useCallback(
