@@ -1,8 +1,8 @@
 import { DEFAULT_COMPACTION_SETTINGS, findCutPoint } from "@earendil-works/pi-coding-agent";
 import type { JsonObject, RuntimeCommand, ToolDescriptor } from "@no-pi-no-gang/agent-protocol";
 
-import { dedupeSlashCommands } from "./resources";
-import type { PiRuntimeSessionLike, PiSlashCommandInfo } from "./runtime-types";
+import { dedupeSlashCommands } from "./resources.ts";
+import type { PiRuntimeSessionLike, PiSlashCommandInfo } from "./runtime-types.ts";
 
 export interface PiCommandDispatchResult {
   handled: boolean;

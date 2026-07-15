@@ -10,6 +10,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
     "jsx": "react-jsx",
     "paths": {
       "@/*": ["./apps/web/*"]
@@ -19,6 +20,7 @@
   "include": [
     "packages/**/*.ts",
     "tests/**/*.ts",
+    "apps/agent-host/**/*.ts",
     "apps/web/**/*.ts",
     "apps/web/**/*.tsx",
     "playwright.config.ts",

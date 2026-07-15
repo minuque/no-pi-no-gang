@@ -47,7 +47,10 @@ export interface SessionModel {
 export interface SessionSummary {
   id: string;
   resourceUri: string;
+  workspaceId?: string;
   workspaceUri: string;
+  localPath?: string;
+  localWorkspacePath?: string;
   name?: string;
   createdAt: string;
   updatedAt: string;
@@ -215,4 +218,44 @@ export interface CreateOrResumeRuntimeRequest {
 
 export interface RuntimeAdapter extends SessionAdapter {
   createOrResume(request: CreateOrResumeRuntimeRequest): Promise<RuntimeSession>;
+}
+
+export type WorkspaceId = string;
+export type ResourceUri = string;
+
+export interface WorkspaceDescriptor {
+  id: WorkspaceId;
+  resourceUri: ResourceUri;
+  displayName: string;
+}
+
+export interface ResolveWorkspaceRequest {
+  path: string;
+}
+
+export interface ResolveWorkspaceResponse {
+  workspace: WorkspaceDescriptor;
+  resolvedPath: string;
+}
+
+export interface HostRuntimeCapabilities {
+  runtime: string;
+  protocolVersion: typeof AGENT_PROTOCOL_VERSION;
+  capabilities: readonly CapabilityDeclaration[];
+}
+
+export interface HostCapabilities {
+  protocolVersion: typeof AGENT_PROTOCOL_VERSION;
+  runtimes: readonly HostRuntimeCapabilities[];
+}
+
+export interface HostHealth {
+  status: "ok" | "unavailable";
+  protocolVersion: typeof AGENT_PROTOCOL_VERSION;
+  runtimes: readonly string[];
+  error?: string;
+}
+
+export interface HostError {
+  error: string;
 }

@@ -14,7 +14,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { dedupeSlashCommands, getProjectResourceLoaderOptions } from "./resources";
+import { dedupeSlashCommands, getProjectResourceLoaderOptions } from "./resources.ts";
 
 export interface RuntimeLoginOptions {
   onAuth(info: { url: string; instructions?: string }): void;

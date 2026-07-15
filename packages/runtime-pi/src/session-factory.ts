@@ -5,8 +5,8 @@ import {
   getAgentDir,
 } from "@earendil-works/pi-coding-agent";
 
-import { getProjectResourceLoaderOptions } from "./resources";
-import type { PiAgentSessionLike } from "./runtime-types";
+import { getProjectResourceLoaderOptions } from "./resources.ts";
+import type { PiAgentSessionLike } from "./runtime-types.ts";
 
 export async function createRuntimeAgentSession(options: {
   cwd: string;

@@ -5,9 +5,9 @@ import { PiSessionAdapter, mapPiSessionEntries, projectPiSessionRecords } from "
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { WorkspaceRegistry } from "../apps/agent-host/src/workspace-registry";
 import { normalizeToolCalls } from "../apps/web/lib/agent/normalize";
 import type { AgentMessage } from "../apps/web/lib/types";
 
@@ -51,19 +51,26 @@ const entries: JsonObject[] = [
 
 describe("Pi SessionRecord compatibility", () => {
   it("owns persisted session access for the existing Web routes", () => {
-    const [reader, ...routes] = [
-      "../apps/web/lib/session/session-reader.ts",
+    const reader = readFileSync(
+      new URL("../apps/web/lib/session/session-reader.ts", import.meta.url),
+      "utf8",
+    );
+    const hostRoutes = [
+      "../apps/web/app/api/sessions/route.ts",
       "../apps/web/app/api/sessions/[id]/route.ts",
       "../apps/web/app/api/sessions/[id]/context/route.ts",
+    ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
+    const compatibilityRoutes = [
       "../apps/web/app/api/agent/[id]/route.ts",
       "../apps/web/app/api/agent/[id]/events/route.ts",
     ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
 
-    for (const source of [reader, ...routes]) {
+    for (const source of [reader, ...hostRoutes, ...compatibilityRoutes]) {
       expect(source).not.toMatch(/@earendil-works\/pi-coding-agent|\bSessionManager\b|\bPiSessionEntry\b/);
     }
     expect(reader).toMatch(/@no-pi-no-gang\/web-bff/);
-    for (const route of routes) expect(route).toMatch(/@\/lib\/session\/session-reader/);
+    for (const route of hostRoutes) expect(route).toMatch(/@\/lib\/server\/agent-host-proxy/);
+    for (const route of compatibilityRoutes) expect(route).toMatch(/@\/lib\/session\/session-reader/);
   });
 
   it("maps Pi JSONL entries without changing their persisted fields", () => {
@@ -207,15 +214,22 @@ describe("Pi Session Adapter", () => {
     const path = createSessionFile(dir, "session-1");
     const adapter = new PiSessionAdapter(dir);
 
-    await expect(adapter.listSessions()).resolves.toEqual([
+    const sessions = await adapter.listSessions();
+    expect(sessions).toEqual([
       expect.objectContaining({
         id: "session-1",
-        resourceUri: pathToFileURL(path).href,
-        workspaceUri: pathToFileURL("G:\\workspace").href,
+        resourceUri: expect.stringMatching(/^session:\/\//),
+        workspaceId: expect.any(String),
+        workspaceUri: expect.stringMatching(/^workspace:\/\//),
+        localPath: path,
+        localWorkspacePath: "G:\\workspace",
         messageCount: 1,
         firstMessage: "hello",
       }),
     ]);
+    expect(sessions[0].workspaceId).toBe(
+      new WorkspaceRegistry().describePath("G:\\workspace\\.").workspace.id,
+    );
     await expect(adapter.getSessionContext("session-1")).resolves.toEqual({
       messages: [{ role: "user", content: "hello", timestamp: Date.parse("2026-07-14T00:00:01.000Z") }],
       recordIds: ["session-1-entry"],

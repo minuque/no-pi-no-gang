@@ -21,16 +21,16 @@ import {
   type Turn,
 } from "@no-pi-no-gang/agent-protocol";
 
-import { dispatchPiRuntimeCommand } from "./command-adapter";
-import type { PiInputImage, PiRuntimeSessionLike } from "./runtime-types";
-import { PiSessionAdapter } from "./session-adapter";
+import { dispatchPiRuntimeCommand } from "./command-adapter.ts";
+import type { PiInputImage, PiRuntimeSessionLike } from "./runtime-types.ts";
+import { PiSessionAdapter } from "./session-adapter.ts";
 
-export { mapPiSessionEntries, projectPiSessionRecords } from "./session-records";
-export { PiSessionAdapter } from "./session-adapter";
-export * from "./resources";
-export * from "./services";
-export * from "./session-factory";
-export { assertRuntimeCompactionAvailable, getRuntimeSlashCommands } from "./command-adapter";
+export { mapPiSessionEntries, projectPiSessionRecords } from "./session-records.ts";
+export { PiSessionAdapter } from "./session-adapter.ts";
+export * from "./resources.ts";
+export * from "./services.ts";
+export * from "./session-factory.ts";
+export { assertRuntimeCompactionAvailable, getRuntimeSlashCommands } from "./command-adapter.ts";
 export type {
   PiContextUsage,
   PiAgentSessionLike,
@@ -39,7 +39,7 @@ export type {
   PiRuntimeSessionLike,
   PiSlashCommandInfo,
   PiToolInfo,
-} from "./runtime-types";
+} from "./runtime-types.ts";
 
 export type PiCommandFallback = (command: RuntimeCommand) => Promise<unknown> | unknown;
 export type CreateOrResumePiSession = (

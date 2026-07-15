@@ -15,13 +15,31 @@ import type {
   SessionSnapshot,
   SessionSummary,
 } from "@no-pi-no-gang/agent-protocol";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { dirname, join, resolve } from "node:path";
 
-import { mapPiSessionEntries, projectPiSessionRecords } from "./session-records";
+import { mapPiSessionEntries, projectPiSessionRecords } from "./session-records.ts";
 
 type PiSessionTreeNode = ReturnType<SessionManager["getTree"]>[number];
+
+function workspaceId(cwd: string): string {
+  const normalized = resolve(cwd);
+  const identity = process.platform === "win32" ? normalized.toLowerCase() : normalized;
+  return createHash("sha256").update(identity).digest("hex").slice(0, 24);
+}
+
+function resourceIdentity(
+  sessionId: string,
+  cwd: string,
+): Pick<SessionSummary, "resourceUri" | "workspaceId" | "workspaceUri"> {
+  const id = workspaceId(cwd);
+  return {
+    resourceUri: `session://${id}/${encodeURIComponent(sessionId)}`,
+    workspaceId: id,
+    workspaceUri: `workspace://${id}/`,
+  };
+}
 
 function entriesToRecords(sessionId: string, entries: PiSessionEntry[]): SessionRecord[] {
   return mapPiSessionEntries(sessionId, entries as unknown as JsonObject[]);
@@ -121,8 +139,9 @@ export class PiSessionAdapter implements SessionAdapter {
       const parentSessionId = session.parentSessionPath ? pathToId.get(session.parentSessionPath) : undefined;
       return {
         id: session.id,
-        resourceUri: pathToFileURL(session.path).href,
-        workspaceUri: pathToFileURL(session.cwd).href,
+        ...resourceIdentity(session.id, session.cwd),
+        localPath: session.path,
+        localWorkspacePath: session.cwd,
         ...(session.name === undefined ? {} : { name: session.name }),
         createdAt: session.created instanceof Date ? session.created.toISOString() : String(session.created),
         updatedAt:
@@ -156,8 +175,9 @@ export class PiSessionAdapter implements SessionAdapter {
     }
     const summary: SessionSummary = {
       id: header.id,
-      resourceUri: pathToFileURL(path).href,
-      workspaceUri: pathToFileURL(header.cwd ?? "").href,
+      ...resourceIdentity(header.id, header.cwd ?? ""),
+      localPath: path,
+      localWorkspacePath: header.cwd ?? "",
       ...(manager.getSessionName() === undefined ? {} : { name: manager.getSessionName() }),
       createdAt: header.timestamp,
       updatedAt,

@@ -1,0 +1,21 @@
+{
+  "name": "@no-pi-no-gang/agent-host",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit -p tsconfig.json",
+    "start": "node --experimental-transform-types src/main.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts --root ../.. tests/agent-host-http.test.ts tests/agent-host-bff.test.ts"
+  },
+  "dependencies": {
+    "@no-pi-no-gang/agent-protocol": "0.0.0",
+    "@no-pi-no-gang/runtime-pi": "0.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25",
+    "typescript": "5.9.3",
+    "vitest": "^4.1.9"
+  }
+}
