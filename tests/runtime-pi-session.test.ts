@@ -59,18 +59,16 @@ describe("Pi SessionRecord compatibility", () => {
       "../apps/web/app/api/sessions/route.ts",
       "../apps/web/app/api/sessions/[id]/route.ts",
       "../apps/web/app/api/sessions/[id]/context/route.ts",
-    ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
-    const compatibilityRoutes = [
       "../apps/web/app/api/agent/[id]/route.ts",
       "../apps/web/app/api/agent/[id]/events/route.ts",
+      "../apps/web/app/api/agent/new/route.ts",
     ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
 
-    for (const source of [reader, ...hostRoutes, ...compatibilityRoutes]) {
+    for (const source of [reader, ...hostRoutes]) {
       expect(source).not.toMatch(/@earendil-works\/pi-coding-agent|\bSessionManager\b|\bPiSessionEntry\b/);
     }
     expect(reader).toMatch(/@no-pi-no-gang\/web-bff/);
     for (const route of hostRoutes) expect(route).toMatch(/@\/lib\/server\/agent-host-proxy/);
-    for (const route of compatibilityRoutes) expect(route).toMatch(/@\/lib\/session\/session-reader/);
   });
 
   it("maps Pi JSONL entries without changing their persisted fields", () => {

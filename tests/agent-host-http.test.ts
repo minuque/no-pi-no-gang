@@ -1,5 +1,6 @@
 import type {
   RuntimeAdapter,
+  RuntimeEvent,
   RuntimeSession,
   SessionContextProjection,
   SessionSnapshot,
@@ -8,8 +9,9 @@ import type {
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { EventBus } from "../apps/agent-host/src/event-bus";
 import { type AgentHostServer, startAgentHost } from "../apps/agent-host/src/http-server";
 import type { RuntimeRegistry } from "../apps/agent-host/src/runtime-registry";
 
@@ -79,7 +81,64 @@ async function startWith(adapter: RuntimeAdapter): Promise<AgentHostServer> {
   return host;
 }
 
+function controllableRuntime(sessionId = "session-1") {
+  const listeners = new Set<(event: RuntimeEvent) => void>();
+  let finishPrompt: (() => void) | undefined;
+  const promptStarted = Promise.withResolvers<void>();
+  const runtime: RuntimeSession = {
+    command: async (command) => {
+      if (command.type !== "prompt") return {};
+      promptStarted.resolve();
+      await new Promise<void>((resolve) => {
+        finishPrompt = resolve;
+      });
+      return {};
+    },
+    abort: vi.fn(async () => finishPrompt?.()),
+    close: vi.fn(async () => undefined),
+    getState: () => ({ sessionId, status: "ready", isStreaming: false, isCompacting: false }),
+    getCapabilities: () => ({ protocolVersion: "1.0.0", capabilities: [] }),
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  };
+  return {
+    runtime,
+    promptStarted: promptStarted.promise,
+    emit: (event: RuntimeEvent) => listeners.forEach((listener) => listener(event)),
+  };
+}
+
 describe("AgentHost public HTTP boundary", () => {
+  it("isolates failing EventBus subscribers", () => {
+    const events = new EventBus();
+    const observed: string[] = [];
+    events.subscribe("session-1", 0, () => {
+      throw new Error("observer failed");
+    });
+    events.subscribe("session-1", 0, ({ event }) => observed.push(event.type));
+
+    expect(() => events.publish("session-1", { type: "message_update" })).not.toThrow();
+    expect(observed).toEqual(["message_update"]);
+  });
+
+  it("reports a replay gap when the requested SSE history has expired", () => {
+    const events = new EventBus(2);
+    events.publish("session-1", { type: "first" });
+    events.publish("session-1", { type: "second" });
+    events.publish("session-1", { type: "third" });
+    const observed: RuntimeEvent[] = [];
+
+    events.subscribe("session-1", 1, ({ event }) => observed.push(event));
+
+    expect(observed).toEqual([{ type: "second" }, { type: "third" }]);
+    const stale: RuntimeEvent[] = [];
+    events.publish("session-1", { type: "fourth" });
+    events.subscribe("session-1", 1, ({ event }) => stale.push(event));
+    expect(stale[0]).toEqual({ type: "replay_gap", afterId: 1, oldestAvailableId: 3 });
+  });
+
   it("serves health, capabilities and read-only session projections", async () => {
     const { adapter, cwd, sessionPath } = await fixture();
     const host = await startWith(adapter);
@@ -190,5 +249,120 @@ describe("AgentHost public HTTP boundary", () => {
 
     const malformed = await fetch(`${host.url}/v1/sessions/%E0%A4%A`);
     expect(malformed.status).toBe(400);
+  });
+
+  it("coalesces concurrent resume requests and aborts a background prompt", async () => {
+    const { adapter } = await fixture();
+    const controlled = controllableRuntime();
+    const createOrResume = vi.fn(async () => controlled.runtime);
+    adapter.createOrResume = createOrResume;
+    const host = await startWith(adapter);
+
+    const [first, second] = await Promise.all([
+      fetch(`${host.url}/v1/runtimes/session-1`, { method: "PUT" }),
+      fetch(`${host.url}/v1/runtimes/session-1`, { method: "PUT" }),
+    ]);
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(createOrResume).toHaveBeenCalledTimes(1);
+
+    const prompt = await fetch(`${host.url}/v1/runtimes/session-1/prompt`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "prompt", message: "hello" }),
+    });
+    expect(prompt.status).toBe(200);
+    expect(await prompt.json()).toEqual({ success: true, data: null });
+    await controlled.promptStarted;
+
+    const concurrent = await fetch(`${host.url}/v1/runtimes/session-1/prompt`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "prompt", message: "again" }),
+    });
+    expect(concurrent.status).toBe(409);
+
+    const abort = await fetch(`${host.url}/v1/runtimes/session-1/abort`, { method: "POST" });
+    expect(abort.status).toBe(200);
+    expect(controlled.runtime.abort).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects runtime control commands outside the realtime ticket scope", async () => {
+    const { adapter } = await fixture();
+    adapter.createOrResume = async () => controllableRuntime().runtime;
+    const host = await startWith(adapter);
+
+    const response = await fetch(`${host.url}/v1/runtimes/session-1/command`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "set_thinking_level", level: "high" }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ error: expect.stringContaining("not available yet") });
+  });
+
+  it("rolls back a newly created runtime when initialization fails", async () => {
+    const { adapter, cwd } = await fixture();
+    const controlled = controllableRuntime("created-session");
+    controlled.runtime.command = vi.fn(async () => {
+      throw new Error("model rejected");
+    });
+    adapter.createOrResume = async () => controlled.runtime;
+    const host = await startWith(adapter);
+
+    const response = await fetch(`${host.url}/v1/runtimes`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cwd, provider: "test", modelId: "missing" }),
+    });
+
+    expect(response.status).toBe(500);
+    expect(controlled.runtime.close).toHaveBeenCalledTimes(1);
+    expect(await (await fetch(`${host.url}/v1/runtimes/created-session`)).json()).toEqual({
+      running: false,
+    });
+  });
+
+  it("replays missed SSE events after reconnect without restarting the runtime", async () => {
+    const { adapter } = await fixture();
+    const controlled = controllableRuntime();
+    const createOrResume = vi.fn(async () => controlled.runtime);
+    adapter.createOrResume = createOrResume;
+    const host = await startWith(adapter);
+    await fetch(`${host.url}/v1/runtimes/session-1`, { method: "PUT" });
+
+    const firstController = new AbortController();
+    const first = await fetch(`${host.url}/v1/runtimes/session-1/events`, {
+      signal: firstController.signal,
+    });
+    const firstReader = first.body!.getReader();
+    await firstReader.read();
+    firstController.abort();
+    controlled.emit({ type: "message_update", delta: "missed" });
+
+    const reconnected = await fetch(`${host.url}/v1/runtimes/session-1/events`, {
+      headers: { "last-event-id": "0" },
+    });
+    const replay = new TextDecoder().decode((await reconnected.body!.getReader().read()).value);
+    expect(replay).toContain("id: 1");
+    expect(replay).toContain('"delta":"missed"');
+    expect(createOrResume).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes active runtimes and SSE subscribers exactly once", async () => {
+    const { adapter } = await fixture();
+    const controlled = controllableRuntime();
+    adapter.createOrResume = async () => controlled.runtime;
+    const host = await startWith(adapter);
+    await fetch(`${host.url}/v1/runtimes/session-1`, { method: "PUT" });
+    const stream = await fetch(`${host.url}/v1/runtimes/session-1/events`);
+    const reader = stream.body!.getReader();
+    await reader.read();
+
+    await host.close();
+    hosts.splice(hosts.indexOf(host), 1);
+    expect(controlled.runtime.close).toHaveBeenCalledTimes(1);
+    expect((await reader.read()).done).toBe(true);
   });
 });

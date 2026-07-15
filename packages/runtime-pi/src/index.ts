@@ -54,7 +54,7 @@ export class PiRuntimeAdapter implements RuntimeAdapter {
 
   async createOrResume(request: CreateOrResumeRuntimeRequest): Promise<RuntimeSession> {
     const inner = await this.createSession(request);
-    return new PiRuntimeSession(inner, request.session.id);
+    return new PiRuntimeSession(inner);
   }
 
   listSessions(): Promise<SessionSummary[]> {
@@ -89,6 +89,7 @@ export class PiRuntimeSession implements RuntimeSession {
   private closed = false;
   private activeTurn: Turn | undefined;
   private turnSequence = 0;
+  private lastUpdatedAt = Date.now();
 
   constructor(
     private readonly inner: PiRuntimeSessionLike,
@@ -96,6 +97,7 @@ export class PiRuntimeSession implements RuntimeSession {
     private readonly fallbackCommand?: PiCommandFallback,
   ) {
     this.unsubscribeInner = inner.subscribe((event) => {
+      this.lastUpdatedAt = Date.now();
       const mapped = mapPiRuntimeEvent(event, this.activeTurn?.id);
       for (const listener of this.listeners) listener(mapped);
     });
@@ -103,6 +105,7 @@ export class PiRuntimeSession implements RuntimeSession {
 
   async command(command: RuntimeCommand): Promise<RuntimeCommandResult> {
     if (this.status === "closed") throw new Error("Runtime session is closed");
+    this.lastUpdatedAt = Date.now();
     if (command.type === "abort") {
       await this.abort();
       return {};
@@ -161,11 +164,28 @@ export class PiRuntimeSession implements RuntimeSession {
   }
 
   getState(): RuntimeState {
+    const contextUsage = this.inner.getContextUsage?.();
     return {
       sessionId: this.sessionId,
       status: this.status,
       isStreaming: this.inner.isStreaming,
       isCompacting: this.inner.isCompacting,
+      ...(this.inner.sessionFile ? { sessionFile: this.inner.sessionFile } : {}),
+      ...(this.inner.autoCompactionEnabled !== undefined
+        ? { autoCompactionEnabled: this.inner.autoCompactionEnabled }
+        : {}),
+      ...(this.inner.autoRetryEnabled !== undefined ? { autoRetryEnabled: this.inner.autoRetryEnabled } : {}),
+      ...(this.inner.model ? { model: this.inner.model } : {}),
+      ...(this.inner.agent?.state?.thinkingLevel
+        ? { thinkingLevel: this.inner.agent.state.thinkingLevel }
+        : {}),
+      ...(this.inner.agent?.state?.systemPrompt !== undefined
+        ? { systemPrompt: this.inner.agent.state.systemPrompt }
+        : {}),
+      ...(contextUsage ? { contextUsage } : {}),
+      messageCount: 0,
+      pendingMessageCount: 0,
+      lastUpdated: new Date(this.lastUpdatedAt).toISOString(),
     };
   }
 

@@ -92,6 +92,37 @@ describe("Pi Runtime Adapter", () => {
     });
   });
 
+  it("exposes the legacy runtime snapshot fields through the shared state", () => {
+    const inner: PiRuntimeSessionLike = {
+      sessionId: "session-1",
+      sessionFile: "C:\\sessions\\session-1.jsonl",
+      isStreaming: false,
+      isCompacting: false,
+      autoCompactionEnabled: true,
+      autoRetryEnabled: false,
+      model: { provider: "openai", id: "gpt-test" },
+      agent: { state: { systemPrompt: "system", thinkingLevel: "high" } },
+      getContextUsage: () => ({ percent: 25, contextWindow: 1000, tokens: 250 }),
+      subscribe: () => () => {},
+      prompt: async () => {},
+      abort: async () => {},
+      dispose: () => {},
+    };
+
+    expect(new PiRuntimeSession(inner).getState()).toMatchObject({
+      sessionFile: "C:\\sessions\\session-1.jsonl",
+      autoCompactionEnabled: true,
+      autoRetryEnabled: false,
+      model: { provider: "openai", id: "gpt-test" },
+      systemPrompt: "system",
+      thinkingLevel: "high",
+      contextUsage: { percent: 25, contextWindow: 1000, tokens: 250 },
+      messageCount: 0,
+      pendingMessageCount: 0,
+      lastUpdated: expect.any(String),
+    });
+  });
+
   it("adapts model, thinking and automatic recovery controls", async () => {
     const model = { id: "gpt-test", provider: "openai" };
     const findModel = vi.fn(() => model);

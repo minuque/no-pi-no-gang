@@ -13,6 +13,7 @@ export async function proxyAgentHost(request: Request, pathname: string): Promis
     timedOut = true;
     controller.abort();
   }, AGENT_HOST_TIMEOUT_MS);
+  let keepAbortListener = false;
   try {
     const baseUrl = process.env.AGENT_HOST_URL ?? DEFAULT_AGENT_HOST_URL;
     const body =
@@ -21,6 +22,9 @@ export async function proxyAgentHost(request: Request, pathname: string): Promis
       method: request.method,
       headers: {
         accept: request.headers.get("accept") ?? "application/json",
+        ...(request.headers.get("last-event-id")
+          ? { "last-event-id": request.headers.get("last-event-id") as string }
+          : {}),
         ...(request.headers.get("content-type")
           ? { "content-type": request.headers.get("content-type") as string }
           : {}),
@@ -29,10 +33,15 @@ export async function proxyAgentHost(request: Request, pathname: string): Promis
       cache: "no-store",
       signal: controller.signal,
     });
-    return new NextResponse(await upstream.arrayBuffer(), {
+    const contentType = upstream.headers.get("content-type") ?? "application/json; charset=utf-8";
+    keepAbortListener = contentType.startsWith("text/event-stream");
+    return new NextResponse(upstream.body, {
       status: upstream.status,
       headers: {
-        "content-type": upstream.headers.get("content-type") ?? "application/json; charset=utf-8",
+        "content-type": contentType,
+        ...(upstream.headers.get("cache-control")
+          ? { "cache-control": upstream.headers.get("cache-control") as string }
+          : {}),
       },
     });
   } catch (error) {
@@ -42,6 +51,6 @@ export async function proxyAgentHost(request: Request, pathname: string): Promis
     );
   } finally {
     clearTimeout(timeout);
-    request.signal.removeEventListener("abort", abortUpstream);
+    if (!keepAbortListener) request.signal.removeEventListener("abort", abortUpstream);
   }
 }

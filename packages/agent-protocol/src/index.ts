@@ -198,6 +198,16 @@ export interface RuntimeState {
   status: RuntimeStatus;
   isStreaming: boolean;
   isCompacting: boolean;
+  sessionFile?: string;
+  autoCompactionEnabled?: boolean;
+  autoRetryEnabled?: boolean;
+  model?: { provider: string; id: string };
+  thinkingLevel?: string;
+  systemPrompt?: string;
+  contextUsage?: { percent: number | null; contextWindow: number; tokens: number | null };
+  messageCount?: number;
+  pendingMessageCount?: number;
+  lastUpdated?: string;
 }
 
 export type RuntimeEventListener = (event: RuntimeEvent) => void;

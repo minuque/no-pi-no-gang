@@ -73,6 +73,7 @@ export function useSessionConnection(sessionId: string | null, options: UseSessi
   const [agentLastUpdated, setAgentLastUpdated] = useState<string | null>(null);
 
   const eventSourceRef = useRef<EventSource | null>(null);
+  const connectionProbeRef = useRef<AbortController | null>(null);
   const onEventRef = useRef<((event: AgentEvent) => void) | null>(null);
   const sessionIdRef = useRef<string | null>(sessionId);
   const optionsRef = useRef(options);
@@ -90,6 +91,8 @@ export function useSessionConnection(sessionId: string | null, options: UseSessi
   }, []);
 
   const disconnectEvents = useCallback(() => {
+    connectionProbeRef.current?.abort();
+    connectionProbeRef.current = null;
     eventSourceRef.current?.close();
     eventSourceRef.current = null;
   }, []);
@@ -104,7 +107,11 @@ export function useSessionConnection(sessionId: string | null, options: UseSessi
       const es = new EventSource(`/api/agent/${encodeURIComponent(sid)}/events`);
       eventSourceRef.current = es;
       es.onopen = () => {
-        if (eventSourceRef.current === es) setEventStatus("connected");
+        if (eventSourceRef.current === es) {
+          connectionProbeRef.current?.abort();
+          connectionProbeRef.current = null;
+          setEventStatus("connected");
+        }
       };
       es.onmessage = (e) => {
         if (eventSourceRef.current === es) setEventStatus("connected");
@@ -115,15 +122,24 @@ export function useSessionConnection(sessionId: string | null, options: UseSessi
       };
       es.onerror = () => {
         if (eventSourceRef.current !== es) return;
-        es.close();
-        eventSourceRef.current = null;
-        fetch(`/api/sessions/${encodeURIComponent(sid)}`, { cache: "no-store" })
+        connectionProbeRef.current?.abort();
+        const probe = new AbortController();
+        connectionProbeRef.current = probe;
+        fetch(`/api/sessions/${encodeURIComponent(sid)}`, {
+          cache: "no-store",
+          signal: probe.signal,
+        })
           .then((res) => {
+            if (eventSourceRef.current !== es || sessionIdRef.current !== sid || probe.signal.aborted) {
+              return;
+            }
             const failure = resolveConnectionFailureState(
               res.status,
               optionsRef.current.isAgentRunning?.() ?? false,
             );
             if (failure.destroyed) {
+              es.close();
+              eventSourceRef.current = null;
               setSessionExists(false);
               setSessionDestroyed(true);
               setAgentLastUpdated(new Date().toISOString());
@@ -134,23 +150,16 @@ export function useSessionConnection(sessionId: string | null, options: UseSessi
             setSessionExists(true);
             setSessionDestroyed(false);
             setEventStatus(failure.status);
-            if (failure.status === "reconnecting") {
-              setTimeout(() => {
-                if (optionsRef.current.isAgentRunning?.()) connectEvents(sid);
-              }, 1000);
-            }
           })
           .catch(() => {
+            if (eventSourceRef.current !== es || sessionIdRef.current !== sid || probe.signal.aborted) {
+              return;
+            }
             const failure = resolveConnectionFailureState(
               null,
               optionsRef.current.isAgentRunning?.() ?? false,
             );
             setEventStatus(failure.status);
-            if (failure.status === "reconnecting") {
-              setTimeout(() => {
-                if (optionsRef.current.isAgentRunning?.()) connectEvents(sid);
-              }, 1000);
-            }
           });
       };
     },

@@ -33,9 +33,11 @@ export class RuntimeRegistry {
   }
 }
 
-function requiredConfigString(config: Record<string, unknown>, key: string): string {
+function requiredConfigString(config: Record<string, unknown>, key: string, allowEmpty = false): string {
   const value = config[key];
-  if (typeof value !== "string" || !value) throw new Error(`Missing runtime config: ${key}`);
+  if (typeof value !== "string" || (!allowEmpty && !value)) {
+    throw new Error(`Missing runtime config: ${key}`);
+  }
   return value;
 }
 
@@ -47,7 +49,7 @@ export async function loadDefaultRuntimes(registry: RuntimeRegistry): Promise<vo
       const config = request.agent.config as Record<string, unknown>;
       return createRuntimeAgentSession({
         cwd: requiredConfigString(config, "cwd"),
-        sessionFile: requiredConfigString(config, "sessionFile"),
+        sessionFile: requiredConfigString(config, "sessionFile", true),
         ...(Array.isArray(config.toolNames)
           ? { toolNames: config.toolNames.filter((name): name is string => typeof name === "string") }
           : {}),
