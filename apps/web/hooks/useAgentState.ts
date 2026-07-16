@@ -210,7 +210,8 @@ export function deriveContextUsage(
     const msg = messages[i];
     if (msg.role !== "assistant") continue;
     const usage = (msg as AssistantMessage).usage as
-      (AssistantMessage["usage"] & { totalTokens?: number }) | undefined;
+      | (AssistantMessage["usage"] & { totalTokens?: number })
+      | undefined;
     if (!usage) continue;
     const tokens =
       usage.totalTokens ??

@@ -839,21 +839,23 @@ describe("AgentHost public HTTP boundary", () => {
       executed.resolve(result);
       return result;
     });
-    const adapter = new PiRuntimeAdapter(async (request): Promise<PiRuntimeSessionLike> => ({
-      sessionId: request.session.id,
-      isStreaming: false,
-      isCompacting: false,
-      subscribe: () => () => {},
-      prompt: async (message) => {
-        await request.tools!.invoke({
-          id: `${request.session.id}:call`,
-          toolName: "echo",
-          arguments: { message },
-        });
-      },
-      abort: async () => {},
-      dispose: () => {},
-    }));
+    const adapter = new PiRuntimeAdapter(
+      async (request): Promise<PiRuntimeSessionLike> => ({
+        sessionId: request.session.id,
+        isStreaming: false,
+        isCompacting: false,
+        subscribe: () => () => {},
+        prompt: async (message) => {
+          await request.tools!.invoke({
+            id: `${request.session.id}:call`,
+            toolName: "echo",
+            arguments: { message },
+          });
+        },
+        abort: async () => {},
+        dispose: () => {},
+      }),
+    );
     const host = await startAgentHost({
       port: 0,
       initializeRuntimes: async (registry, tools) => {

@@ -1,7 +1,12 @@
 import type { AgentMessage } from "../types";
 
 export type AgentEventStatus =
-  "idle" | "connecting" | "connected" | "reconnecting" | "readonly" | "destroyed";
+  | "idle"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "readonly"
+  | "destroyed";
 
 export type SdkEvent =
   | { type: "agent_start"; timestamp?: string }

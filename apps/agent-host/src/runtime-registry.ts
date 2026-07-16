@@ -53,8 +53,9 @@ function requiredConfigString(config: Record<string, unknown>, key: string, allo
 }
 
 export async function loadDefaultRuntimes(registry: RuntimeRegistry, tools: ToolRegistry): Promise<void> {
-  const { PiRuntimeAdapter, createPiCodingTools, createRuntimeAgentSession } =
-    await import("@no-pi-no-gang/runtime-pi");
+  const { PiRuntimeAdapter, createPiCodingTools, createRuntimeAgentSession } = await import(
+    "@no-pi-no-gang/runtime-pi"
+  );
   tools.registerProvider({
     id: "pi-coding-tools",
     provide: async ({ agent }) => createPiCodingTools(requiredConfigString(agent.config, "cwd")),
