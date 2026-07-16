@@ -3,6 +3,22 @@ import { NextResponse } from "next/server";
 const DEFAULT_AGENT_HOST_URL = "http://127.0.0.1:7789";
 const AGENT_HOST_TIMEOUT_MS = 10_000;
 
+export async function requestAgentHostJson<T>(pathname: string): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AGENT_HOST_TIMEOUT_MS);
+  try {
+    const baseUrl = process.env.AGENT_HOST_URL ?? DEFAULT_AGENT_HOST_URL;
+    const response = await fetch(new URL(pathname, baseUrl), {
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`AgentHost request failed: HTTP ${response.status}`);
+    return (await response.json()) as T;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function proxyAgentHost(request: Request, pathname: string): Promise<NextResponse> {
   const controller = new AbortController();
   let timedOut = false;

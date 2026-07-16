@@ -15,7 +15,6 @@
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@lobehub/icons": "5.11.0",
     "@no-pi-no-gang/agent-protocol": "0.0.0",
-    "@no-pi-no-gang/web-bff": "0.0.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "agentation": "^3.0.2",
     "mammoth": "^1.12.0",

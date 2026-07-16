@@ -32,7 +32,6 @@
     "dev": "npm run dev --workspace @no-pi-no-gang/web",
     "agent-host": "npm run start --workspace @no-pi-no-gang/agent-host",
     "build": "npm run build --workspace @no-pi-no-gang/agent-protocol && npm run build --workspace @no-pi-no-gang/runtime-pi && npm run build --workspace @no-pi-no-gang/agent-host && npm run build --workspace @no-pi-no-gang/cli && npm run build --workspace @no-pi-no-gang/web",
-    "postbuild": "node scripts/generate-external-modules-manifest.js",
     "start": "npm run start --workspace @no-pi-no-gang/web",
     "start:test": "npm run start:test --workspace @no-pi-no-gang/web",
     "test": "npm run test --workspace @no-pi-no-gang/web && npm run test --workspace @no-pi-no-gang/cli",

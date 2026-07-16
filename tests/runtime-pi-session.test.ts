@@ -51,10 +51,6 @@ const entries: JsonObject[] = [
 
 describe("Pi SessionRecord compatibility", () => {
   it("owns persisted session access for the existing Web routes", () => {
-    const reader = readFileSync(
-      new URL("../apps/web/lib/session/session-reader.ts", import.meta.url),
-      "utf8",
-    );
     const hostRoutes = [
       "../apps/web/app/api/sessions/route.ts",
       "../apps/web/app/api/sessions/[id]/route.ts",
@@ -65,10 +61,9 @@ describe("Pi SessionRecord compatibility", () => {
       "../apps/web/app/api/agent/new/route.ts",
     ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
 
-    for (const source of [reader, ...hostRoutes]) {
+    for (const source of hostRoutes) {
       expect(source).not.toMatch(/@earendil-works\/pi-coding-agent|\bSessionManager\b|\bPiSessionEntry\b/);
     }
-    expect(reader).toMatch(/@no-pi-no-gang\/web-bff/);
     for (const route of hostRoutes) expect(route).toMatch(/@\/lib\/server\/agent-host-proxy/);
     for (const route of hostRoutes.slice(1, 4)) {
       expect(route).not.toMatch(/session-reader|session-bridge/);

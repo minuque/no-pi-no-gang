@@ -1,7 +1,7 @@
-import { listRuntimeApiKeyProviders } from "@no-pi-no-gang/web-bff";
+import { proxyAgentHost } from "@/lib/server/agent-host-proxy";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  return Response.json({ providers: listRuntimeApiKeyProviders() });
+export async function GET(request: Request) {
+  return proxyAgentHost(request, "/v1/auth/all-providers");
 }

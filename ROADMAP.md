@@ -16,8 +16,8 @@
 
 | 场景                                     | 优先级 |
 | ---------------------------------------- | ------ |
-| 查看历史 session / branch / fork / clone | P0     |
-| 随时观察 agent 当前在做什么              | P0     |
+| 查看历史 Session / Branch / Fork / Clone | P0     |
+| 随时观察 Agent 当前在做什么              | P0     |
 | 控制危险操作（审批）                     | P0     |
 | 恢复中断运行                             | P1     |
 | 审计 agent 做过什么                      | P0     |
@@ -30,17 +30,19 @@
 - ❌ 自研 Agent Runtime
 - ❌ DAG 图可视化
 
-### Session 实体模型（基于 Pi SDK 语义）
+### 核心实体模型
 
-| 概念    | SDK 映射                                              | 用户操作                 | UI 标识                     |
-| ------- | ----------------------------------------------------- | ------------------------ | --------------------------- |
-| Session | 一个 JSONL 文件                                       | 点击/新建                | ChatList 中的一行           |
-| Branch  | `sessionManager.branch(entryId)` — 原地移叶指针    | 翻到旧消息，"从这里继续" | 同一 Session 内 breadcrumb  |
-| Fork    | `runtime.fork(entryId)` — 新 session 文件          | "以此为基础开新会话"     | tag badge`← fork of ...` |
-| Clone   | `createBranchedSession()` / `fork(position:"at")` | Fork 的变体              | tag badge（同 Fork）        |
+| 概念            | 定义                                                     | 用户操作                 | UI 标识                    |
+| --------------- | -------------------------------------------------------- | ------------------------ | -------------------------- |
+| Session         | 由 Session ID 标识、以 JSONL 持久化的对话聚合            | 点击/新建                | ChatList 中的一行          |
+| Turn            | Session 内从一次 prompt 到完成的一轮执行                 | 发送消息/命令            | Turn 卡片                  |
+| SessionRecord   | Session 中不可变的持久化记录，构成消息历史和分支树       | 查看历史/选择分支节点    | 消息、工具结果、分支节点   |
+| Branch          | 在同一 Session 的 SessionRecord 树中切换活动叶节点       | 翻到旧消息，“从这里继续” | 同一 Session 内 breadcrumb |
+| Fork            | 从指定 SessionRecord 创建新的 Session                    | “以此为基础开新会话”     | tag badge `← fork of ...`  |
+| RuntimeEvent    | Turn 执行期间由运行时产生并经 AgentHost 发布的标准化事件 | 实时观察执行             | 流式消息与状态             |
 
 - 所有 Branch/Fork/Clone 的溯源关系只通过 tag badge 标识，不做 DAG 图
-- 历史列表：flat session list，不渲染 entry tree
+- 历史列表：flat Session list，不直接渲染完整 SessionRecord tree
 - 每个 Session 内用 breadcrumb 表示当前位置
 
 ---
@@ -86,11 +88,12 @@
 
 ## 3. Observability Taste：可观测性
 
-**架构模式：** 双通道 SSE（B1）
+**架构模式：** AgentHost RuntimeEvent 流 + Web 投影
 
 ```
-Pi SDK Event → Projection Layer ─┬─ raw stream: text_delta, thinking_delta (实时)
-                                  └─ view events: turn_completed, trace_span, permission_prompt (投影后)
+Pi SDK Event → runtime-pi → RuntimeEvent → AgentHost EventBus → SSE → Web Projection
+                                                            ├─ raw: text_delta, thinking_delta
+                                                            └─ view: turn_completed, trace_span, permission_prompt
 ```
 
 ### Trace 数据模型
@@ -105,7 +108,7 @@ Trace (一次 agent_start → agent_end)
 ```
 
 - 时序从 Pi SDK 事件在投影层重建
-- 不在 session 文件中额外持久化 —— messages[] 是持久化形态，trace 在运行中构造，用于实时+事后展示
+- 不在 Session 文件中额外持久化 Trace；SessionRecord 是持久化形态，Trace 由 RuntimeEvent 与历史记录投影得到
 
 ### UI 展示
 
@@ -141,14 +144,16 @@ Trace (一次 agent_start → agent_end)
 ### 架构
 
 ```
-Pi Extension Event Bus (pi.events)
+Pi Extension Event Bus (`pi.events`)
   → permissions:ui_prompt          ← permissions:rpc:prompt:reply:xxx
   ↕
 permission-ui-bridge extension
   → 自定义事件 bridge:permission_prompt（推 SSE）
   ← 前端 decision → bridge:permission_decision（回写 RPC reply）
   ↕
-AgentSessionWrapper (SSE 推 + HTTP API 收)
+runtime-pi（转为 RuntimeEvent）
+  ↕
+AgentHost / AgentPool（SSE 推 + HTTP API 收）
   ↕
 前端 → 审批 Modal
 ```
@@ -176,29 +181,43 @@ AgentSessionWrapper (SSE 推 + HTTP API 收)
 
 ---
 
-## 5. Architecture Taste：架构边界
+## 5. Architecture Taste：唯一实现路径
 
-### 分层
+### Monorepo 分层
 
 ```
-浏览器 (厚 UI)
-  ↑ SSE (双通道 — raw stream + view events)
-Projection Layer (Node.js，增量建设)
-AgentSessionWrapper + 扩展系统 (permission-ui-bridge 等)
-Pi SDK (不 fork, 不修改)
+apps/cli（生产入口、双进程监督）
+  ├─ apps/web（浏览器 UI + Next.js BFF）
+  │    └─ HTTP / SSE 代理
+  └─ apps/agent-host（运行时唯一所有者）
+       ├─ AgentPool（Session、Turn、并发与空闲回收）
+       ├─ packages/agent-protocol（契约、SessionRecord、RuntimeEvent）
+       └─ packages/runtime-pi（Pi RuntimeAdapter）
+            └─ Pi SDK（不 fork、不修改）
 ```
+
+### 所有权
+
+| 模块 | 拥有 | 不拥有 |
+| ---- | ---- | ------ |
+| CLI | AgentHost/Web 启停顺序、健康检查、信号与进程树清理 | Session 或 UI 状态 |
+| Web | 浏览器交互、展示状态、BFF 请求校验与代理、文件预览 | 运行时、AgentPool、活动 Turn |
+| AgentHost | RuntimeAdapter 注册、AgentPool、Session 修改、工具状态、RuntimeEvent 发布 | 浏览器展示状态 |
+| AgentPool | 活动运行时句柄、Session 串行化、活动 Turn、空闲回收 | 持久化格式细节 |
+| runtime-pi | Pi SDK 适配、SessionRecord 映射 | HTTP 与 UI |
 
 ### 开发原则
 
-- **薄 Web UI，厚投影层** — 前端只负责渲染和交互，状态加工在投影层做
-- **尊重 Pi SDK，不 fork Runtime** — 所有 loop 变更通过 Extension API 实现
-- **增量引入投影层** — permission-ui-bridge 是第一个投影层实践；其余观测事件的投影逐步从 `agent-event-reducer` 搬过来
-- **当前 controller/command dispatcher 不做大重构** — 但新功能走投影层
+- **Monorepo 是唯一实现路径** — 新能力只能进入上述 workspace 边界，不建立第二套进程内运行时
+- **AgentHost 独占运行态** — Web 不创建 RuntimeAdapter、AgentPool 或活动 Session
+- **协议先行** — 跨进程数据先定义在 `agent-protocol`，使用 Session、Turn、SessionRecord、RuntimeEvent 等统一术语
+- **尊重 Pi SDK，不 fork Runtime** — Runtime 差异封装在 `runtime-pi`，循环扩展通过 Pi Extension API 实现
+- **持久化单一事实源** — SessionRecord 继续写入 Pi JSONL，不增加并行业务数据库
 
 ### 权限系统集成路径
 
 1. Install `@gotgenes/pi-permission-system`
-2. 写 `permission-ui-bridge` 扩展 → 注册到 `extensionFactories`
-3. Wrapper 监听 bridge:permission_prompt → 推 SSE
-4. 前端弹 Modal → 审批 → POST API → bridge:permission_decision
+2. 写 `permission-ui-bridge` 扩展 → 注册到 `runtime-pi`
+3. `runtime-pi` 将 `bridge:permission_prompt` 转为 RuntimeEvent，AgentHost 推送 SSE
+4. 前端弹 Modal → 审批 → Web BFF → AgentHost → `bridge:permission_decision`
 5. `registerToolInputFormatter` 为 write/edit 注册预览

@@ -1,6 +1,5 @@
 import type { NextConfig } from "next";
 
-import { BFF_SERVER_EXTERNAL_PACKAGES } from "@no-pi-no-gang/web-bff/next-config";
 import path from "node:path";
 
 const workspaceRoot = path.resolve(__dirname, "../..");
@@ -9,7 +8,6 @@ process.env.NO_PI_NO_GANG_ROOT_DIR ??= workspaceRoot;
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   outputFileTracingRoot: workspaceRoot,
-  serverExternalPackages: BFF_SERVER_EXTERNAL_PACKAGES,
   allowedDevOrigins: ["localhost"],
   experimental: {
     viewTransition: true,

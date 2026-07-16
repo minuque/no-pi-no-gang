@@ -1,83 +1,94 @@
-<div align="center">
+# no-pi-no-gang
 
-## Overview
+no-pi-no-gang is a local agent workbench for [pi.dev](https://github.com/badlogic/pi-mono). It combines session browsing, real-time chat, branch navigation, a file workspace, model configuration, and skill management in one browser UI.
 
-no-pi-no-gang is a local Web UI for [pi.dev](https://github.com/badlogic/pi-mono). It brings session browsing, real-time chat, branch navigation, a file workspace, model configuration, and skill management into one browser-based workbench.
-
-The app follows pi's `.jsonl` session history and `AgentSession` execution model. It does not add a separate business database.
+The repository is a monorepo with one production architecture: the CLI supervises the Web app and AgentHost, the Web app handles interaction and presentation, and AgentHost owns all agent runtime execution. Pi's `.jsonl` history remains the durable source of truth; no separate business database is introduced.
 
 ## Features
 
 | Feature             | Description                                                                                  |
 | ------------------- | -------------------------------------------------------------------------------------------- |
 | Session browsing    | Group local pi sessions by working directory and inspect history, messages, and branch trees |
-| Real-time chat      | Stream replies, tool calls, thinking state, and compression state over SSE                   |
-| Branch operations   | Fork sessions, fork from file context, and navigate message branches                         |
+| Real-time chat      | Stream replies, tool calls, thinking state, and compaction state over SSE                    |
+| Branch operations   | Fork sessions, fork from file context, and navigate SessionRecord branches                   |
 | File workspace      | Browse the active working directory, preview files, and insert file context                  |
 | Model configuration | Manage providers, models, API keys, and OAuth login from the UI                              |
 | Skill management    | Search, install, and inspect local skill configuration                                       |
-| Run-state recovery  | Detect running sessions after refresh and reconnect the event stream                         |
+| Run-state recovery  | Detect active Sessions after refresh and reconnect the RuntimeEvent stream                   |
 | Resizable layout    | Dark-first three-column workspace with draggable sidebar and workspace panels                |
 
 ## Quick Start
 
 ```bash
 npm install
+npm run build
+```
+
+For source development, run AgentHost and the Web app in separate terminals:
+
+```bash
+npm run agent-host
 npm run dev
 ```
 
-The default development server runs at `http://localhost:7777`.
-
-For agent verification or parallel local work, use a separate port:
-
-```bash
-npx next dev -p 7788 --hostname 127.0.0.1
-```
-
-Production build:
-
-```bash
-npm run build
-npm run start
-```
+The Web app uses `http://localhost:7777`; AgentHost listens on `http://127.0.0.1:7789` by default. The published `no-pi-no-gang` CLI is the production entry point and supervises both processes.
 
 ## Scripts
 
-| Command                  | Description                                                     |
-| ------------------------ | --------------------------------------------------------------- |
-| `npm run dev`          | Start Next dev with webpack on port 7777                        |
-| `npm run dev:turbo`    | Try the faster Turbopack development server                     |
-| `npm run dev:debug`    | Start server-side debugging on port 9229                        |
-| `npm run dev:profile`  | Capture CPU profiles under`.next/cpu-profiles/`               |
-| `npm run dev:light`    | Start a lower-memory dev mode on port 7777                      |
-| `npm run build`        | Build for production and generate the external modules manifest |
-| `npm run start`        | Start the production server on port 7777                        |
-| `npm run typecheck`    | Run TypeScript type checking                                    |
-| `npm run lint`         | Run ESLint across the repository                                |
-| `npm run test`         | Run Vitest                                                      |
-| `npm run format:check` | Check formatting with Prettier                                  |
-| `npm run lint:design`  | Validate DESIGN.md                                              |
+| Command                  | Description                                                             |
+| ------------------------ | ----------------------------------------------------------------------- |
+| `npm run dev`            | Start the Web development server on port 7777                           |
+| `npm run agent-host`     | Start the built AgentHost process on port 7789                          |
+| `npm run build`          | Build protocol, runtime adapter, AgentHost, CLI, and Web workspaces     |
+| `npm run typecheck`      | Type-check all workspaces                                               |
+| `npm run lint`           | Run ESLint across the monorepo                                          |
+| `npm run test`           | Run Web and CLI Vitest suites                                           |
+| `npm run verify:fast`    | Run type checking, linting, and unit tests                              |
+| `npm run verify`         | Run formatting, design, fast checks, and the production build          |
+| `npm run verify:release` | Run the full checks, production E2E suite, and installed-package smoke |
 
-## Verification
-
-Run after changes:
-
-```bash
-npm run typecheck
-npm run lint
-```
-
-Run before shipping:
-
-```bash
-npm run build
-```
-
-See [AGENTS.md](AGENTS.md) for repository-specific agent workflow and verification rules.
+See [AGENTS.md](AGENTS.md) for repository-specific workflow and verification rules.
 
 ## Architecture
 
-The browser owns interaction and display state. The Next.js API layer handles local file access, session history reads, command forwarding, and SSE. pi's `AgentSession` performs the actual agent work and keeps writing session history to the local pi data directory.
+```text
+Browser
+  │ HTTP + SSE
+  ▼
+Web (Next.js UI and BFF)
+  │ AgentHost protocol
+  ▼
+AgentHost ── AgentPool ── RuntimeAdapter ── Pi SDK
+  │                              │
+  └── RuntimeEvent stream        └── SessionRecord JSONL
+```
+
+- **AgentHost** is the only owner of runtime creation, commands, Session mutation, tool state, concurrency, and runtime event delivery.
+- **AgentPool** lives inside AgentHost and owns active runtime handles, per-Session serialization, active Turns, idle cleanup, and shutdown.
+- **Web** owns browser interaction and display state. Its Next.js routes are a BFF: they validate browser requests, proxy AgentHost, and serve Web-only local resources such as file previews.
+- **CLI** starts AgentHost before Web, waits for health, forwards configuration, and terminates both process trees together.
+- **RuntimeAdapter** is the boundary between AgentHost and a concrete runtime. `runtime-pi` is the pi implementation.
+
+### Shared Terminology
+
+| Term             | Meaning                                                                                   |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| `AgentHost`      | Independent service that owns runtime execution and exposes the versioned host API        |
+| `AgentPool`      | AgentHost component that owns active runtime handles and their lifecycle                  |
+| `Session`        | Durable conversation aggregate identified by a session ID                                |
+| `Turn`           | One prompt-to-completion execution within a Session                                      |
+| `SessionRecord`  | Immutable persisted record used to reconstruct messages, context, and the branch tree     |
+| `RuntimeEvent`   | Runtime-neutral event emitted during execution and delivered through the AgentHost stream |
+
+### Core Paths
+
+| Path               | Entry                                  | Owner                             | Output                                      |
+| ------------------ | -------------------------------------- | --------------------------------- | ------------------------------------------- |
+| Session read       | `GET /api/sessions*`                   | AgentHost through the Web BFF     | Session summaries, records, tree, context   |
+| Session mutation   | `PATCH/DELETE/POST /api/sessions*`     | AgentHost and RuntimeAdapter      | Rename, delete, fork, context navigation    |
+| Runtime command    | `POST /api/agent/*`                    | AgentHost and AgentPool           | Prompt, abort, compaction, model, tool state |
+| RuntimeEvent stream | `GET /api/agent/[id]/events`           | AgentHost EventBus through Web BFF | SSE events and active Turn state            |
+| File preview       | `/api/files/[...path]`                 | Web BFF                           | Workspace file content                      |
 
 ### Data Directory
 
@@ -88,31 +99,19 @@ The browser owns interaction and display state. The Next.js API layer handles lo
   settings.json
 ```
 
-### Core Paths
-
-| Path         | Entry                                     | Core module                                                    | Output                                           |
-| ------------ | ----------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------ |
-| History read | `GET /api/sessions`                     | `lib/session-reader.ts`                                      | Session lists, messages, branch context          |
-| Command send | `POST /api/agent/*`                     | `lib/session-bridge.ts`, `lib/pi/pi-command-dispatcher.ts` | Messages, forks, navigation, compression actions |
-| Event stream | `GET /api/agent/[id]/events`            | `lib/session-pool.ts`, `AgentSession.subscribe()`          | SSE messages, tool calls, run state              |
-| Model config | `/api/models*`, `/api/models-config*` | pi model configuration read/write                              | Providers, models, authentication state          |
-| Skill config | `/api/skills*`                          | Skill search, install, and list APIs                           | Local skill lists and install results            |
-| File reads   | `/api/files/[...path]`                  | Local path validation and file reads                           | Workspace file content                           |
-
 ## Project Structure
 
 ```text
-app/api/              Next.js API routes
-components/           Three-column UI, chat stream, config panels, workspace
-hooks/                Frontend session state and event handling
-lib/                  pi bridge, session reads, event normalization, shared types
-lib/pi/               pi command dispatch
-lib/types/            Message, session, and RPC types
-docs/                 Architecture diagrams and supplementary docs
-bin/                  npm CLI entry
-public/               Static assets
-scripts/              Build helper scripts
-tests/                Vitest tests
+apps/
+  cli/              Production entry point and dual-process supervisor
+  agent-host/       Runtime ownership, AgentPool, HTTP API, events, tools, workspaces
+  web/              Next.js UI and browser-facing BFF
+packages/
+  agent-protocol/   Runtime-neutral contracts and shared terminology
+  runtime-pi/       Pi RuntimeAdapter and SessionRecord persistence mapping
+docs/adr/           Accepted architecture decisions
+scripts/            Build, release, and package smoke helpers
+tests/              Cross-workspace Vitest tests
 ```
 
 ## Design Constraints
@@ -121,11 +120,11 @@ Visual and component changes must follow [DESIGN.md](DESIGN.md). Prefer existing
 
 ## Related Docs
 
-- [AGENTS.md](AGENTS.md): Collaboration, verification, and repository workflow rules
-- [DESIGN.md](DESIGN.md): Design system and visual tokens
+- [AGENTS.md](AGENTS.md): collaboration, verification, and repository workflow rules
+- [DESIGN.md](DESIGN.md): design system and visual tokens
 - [Pi_SDK.md](Pi_SDK.md): pi SDK interface reference
-- [TODO.md](TODO.md): Task breakdown and priorities
-- [docs/architecture.html](docs/architecture.html): Architecture documentation page
+- [ROADMAP.md](ROADMAP.md): product and architecture direction
+- [docs/adr/](docs/adr/): accepted architecture decisions
 
 ## Acknowledgments
 

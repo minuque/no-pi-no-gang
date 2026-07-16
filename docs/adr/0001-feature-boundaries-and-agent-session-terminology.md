@@ -1,21 +1,43 @@
-# ADR 0001：功能域边界与 AgentSession 术语
+# ADR 0001：Monorepo 边界与统一术语
+
+## 状态
+
+已接受。
 
 ## 决策
 
-前端实现按工作台、聊天、会话、工作区、设置和共享组件 6 个功能域组织，置于 `components/` 目录下：
+项目只有一条生产实现路径：
 
+```text
+CLI → Web BFF → AgentHost → AgentPool → RuntimeAdapter → Pi SDK
 ```
-components/{workbench,chat,session,workspace,settings,shared}/
-```
 
-`hooks/` 目录保持扁平（hook 天然跨域），不再有 re-export 兼容门面。
+- `apps/cli` 是生产入口，监督 AgentHost 与 Web 两个进程。
+- `apps/web` 负责浏览器交互、展示状态和 BFF 代理，不持有智能体运行时。
+- `apps/agent-host` 是运行时创建、命令、Session 修改、工具状态、并发和 RuntimeEvent 发布的唯一所有者。
+- `packages/agent-protocol` 定义跨进程、运行时无关的契约。
+- `packages/runtime-pi` 实现 Pi RuntimeAdapter 和 SessionRecord 映射。
 
-进程内运行对象统一称为 AgentSession。`RPC` 仅指 Pi SDK 的真实 JSON-RPC 运行模式，不能用于本项目的会话包装器、状态或启动函数。
+所有代码和文档统一使用以下术语：
+
+| 术语 | 定义 |
+| ---- | ---- |
+| AgentHost | 独立服务，拥有运行时执行并暴露版本化 Host API |
+| AgentPool | AgentHost 内管理活动运行时句柄、并发、Turn 和空闲回收的组件 |
+| Session | 由 Session ID 标识的持久化对话聚合 |
+| Turn | Session 内从一次 prompt 到完成的一轮执行 |
+| SessionRecord | 不可变持久化记录，用于重建消息、上下文和分支树 |
+| RuntimeEvent | 运行时无关事件，由 RuntimeAdapter 产生并经 AgentHost 交付 |
+
+`RPC` 只描述实际的远程过程调用机制，不作为 Session、运行时句柄或生命周期组件的名称。
 
 ## 原因
 
-AgentSession 会跨请求和热更新持续存在，其注册表、启动锁、事件订阅和状态投影需要明确的生命周期边界。功能域目录使实现位置与产品职责一致，同时避免一次性破坏仓内导入。
+独立 AgentHost 让运行时生命周期脱离 Next.js 请求与热更新，AgentPool 可以集中处理 Session 串行化、活动 Turn、事件订阅和关闭。统一协议术语避免 Web 模型、Pi SDK 名称与跨进程契约表达同一概念时出现多套名称。
 
-## 注释原则
+## 结果
 
-删除英文注释。中文注释只说明缓存、并发锁、会话恢复、事件订阅、安全校验和异常恢复等“为什么”；直观代码不添加注释。
+- 新运行时通过 RuntimeAdapter 接入 AgentHost。
+- Web 只能通过 AgentHost 协议执行运行时操作。
+- SessionRecord 是持久化与分支语义的标准名称；RuntimeEvent 是实时事件的标准名称。
+- 不增加并行的 Web 进程内运行时实现。

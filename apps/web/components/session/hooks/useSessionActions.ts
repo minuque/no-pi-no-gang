@@ -9,7 +9,7 @@ import type {
   StreamAction,
 } from "@/hooks/useAgentState";
 import type { NewSessionModel } from "@/hooks/useModelList";
-import type { SlashCommandItem } from "@/lib/pi/pi-resources";
+import type { SlashCommandItem } from "@/lib/types";
 import type { AgentMessage, SessionInfo } from "@/lib/types";
 
 import { forkSessionAtEntry, resolveSlashCommand } from "./session-action-utils";

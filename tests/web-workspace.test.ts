@@ -30,21 +30,30 @@ describe("web workspace boundary", () => {
     expect(existsSync(path.join(root, "app"))).toBe(false);
   });
 
-  it("keeps Pi SDK and runtime dependencies behind the BFF workspace", () => {
+  it("keeps Pi SDK, persisted sessions and runtime services out of Next", () => {
     const webPackage = readJson("apps/web/package.json");
     const dependencies = (webPackage.dependencies ?? {}) as Record<string, string>;
 
     expect(dependencies["@no-pi-no-gang/agent-protocol"]).toBe("0.0.0");
-    expect(dependencies["@no-pi-no-gang/web-bff"]).toBe("0.0.0");
+    expect(dependencies).not.toHaveProperty("@no-pi-no-gang/web-bff");
     expect(dependencies).not.toHaveProperty("@no-pi-no-gang/runtime-pi");
     expect(Object.keys(dependencies).some((name) => name.startsWith("@earendil-works/pi-"))).toBe(false);
 
     const webSource = readSourceTree(path.join(root, "apps/web"));
-    expect(webSource).not.toMatch(/from ["']@no-pi-no-gang\/runtime-pi["']/);
-    expect(webSource).not.toMatch(/from ["']@earendil-works\/pi-/);
-
-    const bffPackage = readJson("packages/web-bff/package.json");
-    expect(bffPackage.dependencies).toMatchObject({ "@no-pi-no-gang/runtime-pi": "0.0.0" });
+    expect(webSource).not.toMatch(/@no-pi-no-gang\/(?:runtime-pi|web-bff)/);
+    expect(webSource).not.toMatch(/@earendil-works\/pi-/);
+    expect(webSource).not.toMatch(/\bPiSessionAdapter\b|\bAgentSessionWrapper\b|__piSessions|__piStartLocks/);
+    expect(existsSync(path.join(root, "packages/web-bff/package.json"))).toBe(false);
+    for (const legacyPath of [
+      "apps/web/lib/session/session-reader.ts",
+      "apps/web/lib/session/session-bridge.ts",
+      "apps/web/lib/session/session-pool.ts",
+      "apps/web/lib/pi/pi-command-dispatcher.ts",
+      "apps/web/lib/pi/pi-types.ts",
+      "apps/web/lib/pi/pi-resources.ts",
+    ]) {
+      expect(existsSync(path.join(root, legacyPath)), legacyPath).toBe(false);
+    }
   });
 
   it("proxies root application commands to the web workspace", () => {

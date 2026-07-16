@@ -1,17 +1,7 @@
-import { getRuntimeModels } from "@no-pi-no-gang/web-bff";
+import { proxyAgentHost } from "@/lib/server/agent-host-proxy";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  try {
-    return Response.json(getRuntimeModels());
-  } catch {
-    return Response.json({
-      models: {},
-      modelList: [],
-      defaultModel: null,
-      thinkingLevels: {},
-      thinkingLevelMaps: {},
-    });
-  }
+export async function GET(request: Request) {
+  return proxyAgentHost(request, "/v1/models");
 }

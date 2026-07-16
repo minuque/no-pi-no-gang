@@ -1,4 +1,4 @@
-import type { SlashCommandItem } from "@/lib/pi/pi-resources";
+import type { SlashCommandItem } from "@/lib/types";
 
 export interface AttachedImage {
   data: string;

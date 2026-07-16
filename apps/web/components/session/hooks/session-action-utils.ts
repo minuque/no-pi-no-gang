@@ -1,4 +1,4 @@
-import type { SlashCommandItem } from "@/lib/pi/pi-resources";
+import type { SlashCommandItem } from "@/lib/types";
 
 type ForkSessionResponse = { cancelled: boolean; newSessionId?: string };
 

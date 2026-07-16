@@ -17,19 +17,21 @@ import { randomUUID } from "node:crypto";
 import { type IncomingMessage, type Server, type ServerResponse, createServer } from "node:http";
 
 import { AgentPool, SessionBusyError } from "./agent-pool.ts";
+import { InvalidJsonBodyError, RequestBodyTooLargeError, json, readJson } from "./http-json.ts";
+import { RuntimeApi, type RuntimeServices } from "./runtime-api.ts";
 import { RuntimeRegistry, loadDefaultRuntimes } from "./runtime-registry.ts";
 import { type ToolPermission, ToolPermissionDeniedError, ToolRegistry } from "./tool-registry.ts";
 import { InvalidWorkspaceError, WorkspaceRegistry } from "./workspace-registry.ts";
 
 type RuntimeInitializer = (registry: RuntimeRegistry, tools: ToolRegistry) => Promise<void>;
 
-class RequestBodyTooLargeError extends Error {}
 class SessionTargetNotFoundError extends Error {}
 
 export interface AgentHostOptions {
   initializeRuntimes?: RuntimeInitializer;
   workspaceRegistry?: WorkspaceRegistry;
   authorizeTool?: ToolPermission;
+  runtimeServices?: RuntimeServices;
 }
 
 export interface AgentHostServer {
@@ -60,26 +62,6 @@ interface LegacySessionInfo {
     isStreaming: false;
     isCompacting: false;
   };
-}
-
-function json(response: ServerResponse, status: number, body: unknown): void {
-  response.writeHead(status, { "content-type": "application/json; charset=utf-8" });
-  response.end(JSON.stringify(body));
-}
-
-async function readJson(request: IncomingMessage): Promise<JsonObject> {
-  const chunks: Buffer[] = [];
-  let size = 0;
-  for await (const chunk of request) {
-    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    size += buffer.length;
-    if (size > 1024 * 1024) throw new RequestBodyTooLargeError("Request body is too large");
-    chunks.push(buffer);
-  }
-  if (chunks.length === 0) return {};
-  const value = JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
-  if (!value || Array.isArray(value) || typeof value !== "object") throw new Error("JSON object required");
-  return value as JsonObject;
 }
 
 function recordToLegacy(record: SessionRecord): Record<string, unknown> {
@@ -306,6 +288,7 @@ function createRequestHandler(
   workspaces: WorkspaceRegistry,
   pool: AgentPool,
   startupError: unknown,
+  runtimeApi: RuntimeApi,
 ): (request: IncomingMessage, response: ServerResponse) => Promise<void> {
   return async (request, response) => {
     const url = new URL(request.url ?? "/", "http://agent-host");
@@ -325,6 +308,15 @@ function createRequestHandler(
             runtimes: registry.names(),
           };
       json(response, startupError ? 503 : 200, health);
+      return;
+    }
+
+    try {
+      if (await runtimeApi.handle(request, response, url)) return;
+    } catch (error) {
+      const status =
+        error instanceof RequestBodyTooLargeError ? 413 : error instanceof InvalidJsonBodyError ? 400 : 500;
+      json(response, status, { error: error instanceof Error ? error.message : String(error) });
       return;
     }
 
@@ -676,8 +668,8 @@ function createRequestHandler(
         json(response, 403, { error: error.message });
         return;
       }
-      if (error instanceof SyntaxError) {
-        json(response, 400, { error: "Invalid JSON body" });
+      if (error instanceof InvalidJsonBodyError) {
+        json(response, 400, { error: error.message });
         return;
       }
       if (error instanceof URIError) {
@@ -696,6 +688,7 @@ export async function startAgentHost(
   const tools = new ToolRegistry(options.authorizeTool);
   const workspaces = options.workspaceRegistry ?? new WorkspaceRegistry();
   const pool = new AgentPool(registry, tools);
+  const runtimeApi = new RuntimeApi(options.runtimeServices);
   let startupError: unknown;
   try {
     await (options.initializeRuntimes ?? loadDefaultRuntimes)(registry, tools);
@@ -703,7 +696,7 @@ export async function startAgentHost(
     startupError = error;
   }
 
-  const handler = createRequestHandler(registry, workspaces, pool, startupError);
+  const handler = createRequestHandler(registry, workspaces, pool, startupError, runtimeApi);
   const server = createServer((request, response) => void handler(request, response));
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
@@ -721,6 +714,7 @@ export async function startAgentHost(
     close: () => {
       closing ??= (async () => {
         pool.events.close();
+        runtimeApi.close();
         await pool.closeAll();
         await new Promise<void>((resolve, reject) =>
           server.close((error) => (error ? reject(error) : resolve())),

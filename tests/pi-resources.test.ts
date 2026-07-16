@@ -1,9 +1,8 @@
+import { dedupeSlashCommands, getProjectResourceLoaderOptions } from "@no-pi-no-gang/runtime-pi";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-
-import { dedupeSlashCommands, getProjectResourceLoaderOptions } from "../apps/web/lib/pi/pi-resources";
 
 const createdRoots: string[] = [];
 

@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-import { listAllSessions } from "@/lib/session/session-reader";
+import { requestAgentHostJson } from "@/lib/server/agent-host-proxy";
 
 export const IGNORED_NAMES = new Set([
   "node_modules",
@@ -134,7 +134,7 @@ export function getLanguage(filePath: string): string {
 }
 
 declare global {
-  var __piAllowedRootsCache: { roots: Set<string>; expiresAt: number } | undefined;
+  var __allowedRootsCache: { roots: Set<string>; expiresAt: number } | undefined;
 }
 
 const ALLOWED_ROOTS_TTL_MS = 5_000;
@@ -157,10 +157,10 @@ export function filePathFromSegments(segments: string[]): string {
 
 export async function getAllowedRoots(): Promise<Set<string>> {
   const now = Date.now();
-  const cached = globalThis.__piAllowedRootsCache;
+  const cached = globalThis.__allowedRootsCache;
   if (cached && cached.expiresAt > now) return cached.roots;
 
-  const sessions = await listAllSessions();
+  const { sessions } = await requestAgentHostJson<{ sessions: Array<{ cwd?: string }> }>("/v1/sessions");
   const roots = new Set<string>();
   for (const s of sessions) {
     if (s.cwd) roots.add(s.cwd);
@@ -176,7 +176,7 @@ export async function getAllowedRoots(): Promise<Set<string>> {
     }
   } catch {}
 
-  globalThis.__piAllowedRootsCache = { roots, expiresAt: now + ALLOWED_ROOTS_TTL_MS };
+  globalThis.__allowedRootsCache = { roots, expiresAt: now + ALLOWED_ROOTS_TTL_MS };
   return roots;
 }
 

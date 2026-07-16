@@ -4,7 +4,7 @@ import { useCallback } from "react";
 
 import { toast } from "sonner";
 
-import type { SlashCommandItem } from "@/lib/pi/pi-resources";
+import type { SlashCommandItem } from "@/lib/types";
 import type { AgentMessage, AssistantMessage } from "@/lib/types";
 
 import { resolveSlashCommand } from "./session-action-utils";

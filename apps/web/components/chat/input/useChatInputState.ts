@@ -11,7 +11,7 @@ import {
 
 import { useTranslations } from "next-intl";
 
-import type { SlashCommandItem } from "@/lib/pi/pi-resources";
+import type { SlashCommandItem } from "@/lib/types";
 
 import {
   type ChatInputHandle,

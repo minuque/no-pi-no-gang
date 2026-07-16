@@ -5,7 +5,7 @@ import {
   requestSessionContext,
 } from "../../apps/web/components/session/hooks/session-action-utils";
 import { resolveSlashCommand } from "../../apps/web/components/session/hooks/useSessionActions";
-import type { SlashCommandItem } from "../../apps/web/lib/pi/pi-resources";
+import type { SlashCommandItem } from "../../apps/web/lib/types";
 
 const commands: SlashCommandItem[] = [
   { name: "review", description: "Review code", source: "skill" },

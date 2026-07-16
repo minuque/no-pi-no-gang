@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { type ChildProcess, spawn } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, symlinkSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,62 +14,6 @@ import { supervise } from "./supervisor.js";
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const webDir = path.join(packageRoot, "apps", "web");
 const agentHostDir = path.join(packageRoot, "apps", "agent-host");
-
-function resolvePackageRoot(packageName: string): string | null {
-  let current: string;
-  try {
-    current = path.dirname(fileURLToPath(import.meta.resolve(packageName)));
-  } catch {
-    return null;
-  }
-  while (true) {
-    const packageJson = path.join(current, "package.json");
-    if (existsSync(packageJson)) {
-      try {
-        if ((JSON.parse(readFileSync(packageJson, "utf8")) as { name?: string }).name === packageName) {
-          return current;
-        }
-      } catch {}
-    }
-    const parent = path.dirname(current);
-    if (parent === current) return null;
-    current = parent;
-  }
-}
-
-function ensureTurbopackExternalLinks(): void {
-  const externalModulesDir = path.join(webDir, ".next", "node_modules");
-  const manifestPath = path.join(webDir, ".next", "external-modules.json");
-  const chunksDir = path.join(webDir, ".next", "server", "chunks");
-  let mappings: Array<{ hashedName: string; baseName: string }> = [];
-  if (existsSync(manifestPath)) {
-    mappings = JSON.parse(readFileSync(manifestPath, "utf8")) as typeof mappings;
-  } else if (existsSync(chunksDir)) {
-    const hashedPackages = new Set<string>();
-    for (const file of readdirSync(chunksDir).filter((name) => name.endsWith(".js"))) {
-      const source = readFileSync(path.join(chunksDir, file), "utf8");
-      for (const match of source.matchAll(/@([a-z0-9_-]+)\/([a-z0-9_-]+-[a-f0-9]{16})/gi)) {
-        hashedPackages.add(`@${match[1]}/${match[2]}`);
-      }
-    }
-    mappings = [...hashedPackages].map((hashedName) => ({
-      hashedName,
-      baseName: hashedName.replace(/-[a-f0-9]{16}$/, ""),
-    }));
-  }
-  for (const { hashedName, baseName } of mappings) {
-    const link = path.join(externalModulesDir, hashedName);
-    if (existsSync(link)) continue;
-    const target = resolvePackageRoot(baseName);
-    if (!target) continue;
-    mkdirSync(path.dirname(link), { recursive: true });
-    try {
-      symlinkSync(target, link, process.platform === "win32" ? "junction" : "dir");
-    } catch {
-      cpSync(target, link, { recursive: true });
-    }
-  }
-}
 
 function ensureWorkspaceLinks(): void {
   const scopeDir = path.join(packageRoot, "node_modules", "@no-pi-no-gang");
@@ -110,7 +54,6 @@ async function main(): Promise<number> {
     throw new Error("Build artifacts not found. Please report this issue.");
   }
   ensureWorkspaceLinks();
-  ensureTurbopackExternalLinks();
   const nextBin = resolveNextBin();
   const agentHostMain = path.join(agentHostDir, "dist", "main.js");
 
