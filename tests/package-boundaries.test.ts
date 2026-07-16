@@ -20,7 +20,9 @@ it("keeps release runtime dependencies at the publishable root", () => {
   const web = readManifest("apps/web/package.json");
 
   expect(root.private).not.toBe(true);
-  expect(root.dependencies?.agentation).toBe(web.dependencies?.agentation);
+  expect(root.devDependencies?.agentation).toBe(web.devDependencies?.agentation);
+  expect(root.dependencies ?? {}).not.toHaveProperty("agentation");
+  expect(web.dependencies ?? {}).not.toHaveProperty("agentation");
   expect(root.dependencies ?? {}).not.toHaveProperty("@types/react-syntax-highlighter");
   expect(web.devDependencies ?? {}).toHaveProperty("@types/react-syntax-highlighter");
 });
