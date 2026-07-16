@@ -145,7 +145,8 @@ The repository's accepted boundaries and terminology live in [CONTEXT.md](CONTEX
 
 ## Acknowledgments
 
-This project is forked from [agegr/pi-web](https://github.com/agegr/pi-web). Thanks to the original author for the foundation.
+1. Inspired by [agegr/pi-web](https://github.com/agegr/pi-web). Thanks to the original author for the foundation.
+2. The core agent runtime is powered by [earendil-works/pi](https://github.com/earendil-works/pi) — grateful for the robust runtime support.
 
 ## License
 

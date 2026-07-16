@@ -145,7 +145,8 @@ tests/              跨 workspace Vitest 测试
 
 ## 致谢
 
-本项目 fork 自 [agegr/pi-web](https://github.com/agegr/pi-web)，感谢原作者奠定基础。
+1. 灵感来自于 [agegr/pi-web](https://github.com/agegr/pi-web)，感谢原作者奠定基础。
+2. 核心 Agent 运行时基于 [earendil-works/pi](https://github.com/earendil-works/pi)，感谢提供强大的 Runtime 支持。
 
 ## License
 
