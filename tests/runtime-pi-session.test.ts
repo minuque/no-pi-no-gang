@@ -224,9 +224,7 @@ describe("Pi Session Adapter", () => {
         firstMessage: "hello",
       }),
     ]);
-    expect(sessions[0].workspaceId).toBe(
-      new WorkspaceRegistry().describePath("G:\\workspace\\.").workspace.id,
-    );
+    expect(sessions[0].workspaceId).toBe(new WorkspaceRegistry().describePath("G:\\workspace").workspace.id);
     await expect(adapter.getSessionContext("session-1")).resolves.toEqual({
       messages: [{ role: "user", content: "hello", timestamp: Date.parse("2026-07-14T00:00:01.000Z") }],
       recordIds: ["session-1-entry"],
