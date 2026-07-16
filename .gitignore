@@ -42,6 +42,7 @@ yarn-error.log*
 .vscode/*
 .codegraph/*
 .claude/*
+.codex/*
 .agents/*
 .reasonix/*
 

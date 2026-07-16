@@ -14,6 +14,14 @@ _Avoid_: Agent, Session（单用时产生歧义）
 `AgentSessionLike` 的本地包装器，添加了多路事件监听（`onEvent`）、空闲计时器→自动销毁、命令派发（`send()`）以及 `_alive` 标志。
 _Avoid_: SessionWrapper
 
+**AgentHost**:
+独立后端进程边界，负责运行时协议、Agent Runtime 生命周期、MCP 连接和事件发布。Web 通过 HTTP/SSE 与其通信。
+_Avoid_: AgentPool（当指进程或服务边界时）
+
+**AgentPool**:
+AgentHost 内部管理运行中 Agent Runtime 实例的集合，负责实例注册、查找与销毁，不代表进程边界。
+_Avoid_: AgentHost
+
 **Session**:
 磁盘上的 `.jsonl` 文件，记录一次完整的代理对话。由 Pi SDK 的 `SessionManager` 管理，包含头部、Entry 树和叶子指针。
 _Avoid_: Conversation, Chat
