@@ -15,8 +15,8 @@
     }
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.80.6",
-    "@earendil-works/pi-coding-agent": "^0.78.0",
+    "@earendil-works/pi-ai": "0.80.7",
+    "@earendil-works/pi-coding-agent": "^0.80.6",
     "@no-pi-no-gang/agent-protocol": "0.0.0"
   },
   "devDependencies": {

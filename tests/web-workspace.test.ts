@@ -34,13 +34,12 @@ describe("web workspace boundary", () => {
     const webPackage = readJson("apps/web/package.json");
     const dependencies = (webPackage.dependencies ?? {}) as Record<string, string>;
 
-    expect(dependencies["@no-pi-no-gang/agent-protocol"]).toBe("0.0.0");
     expect(dependencies).not.toHaveProperty("@no-pi-no-gang/web-bff");
     expect(dependencies).not.toHaveProperty("@no-pi-no-gang/runtime-pi");
     expect(Object.keys(dependencies).some((name) => name.startsWith("@earendil-works/pi-"))).toBe(false);
 
     const webSource = readSourceTree(path.join(root, "apps/web"));
-    expect(webSource).not.toMatch(/@no-pi-no-gang\/(?:runtime-pi|web-bff)/);
+    expect(webSource).not.toMatch(/@no-pi-no-gang\/(?:runtime-pi|web-bff|agent-protocol)/);
     expect(webSource).not.toMatch(/@earendil-works\/pi-/);
     expect(webSource).not.toMatch(/\bPiSessionAdapter\b|\bAgentSessionWrapper\b|__piSessions|__piStartLocks/);
     expect(existsSync(path.join(root, "packages/web-bff/package.json"))).toBe(false);

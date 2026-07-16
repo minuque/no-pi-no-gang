@@ -1,6 +1,6 @@
 {
   "name": "@minuque/no-pi-no-gang",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Web UI for the pi coding agent",
   "license": "MIT",
   "workspaces": ["apps/*", "packages/*"],
@@ -26,7 +26,7 @@
     "package.json"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace @no-pi-no-gang/web",
+    "dev": "concurrently -r --kill-others --names web,host -c blue,magenta \"npm run dev --workspace @no-pi-no-gang/web\" \"npm run dev --workspace @no-pi-no-gang/agent-host\"",
     "agent-host": "npm run start --workspace @no-pi-no-gang/agent-host",
     "build": "npm run build --workspace @no-pi-no-gang/agent-protocol && npm run build --workspace @no-pi-no-gang/runtime-pi && npm run build --workspace @no-pi-no-gang/agent-host && npm run build --workspace @no-pi-no-gang/cli && npm run build --workspace @no-pi-no-gang/web",
     "start": "npm run start --workspace @no-pi-no-gang/web",
@@ -46,21 +46,9 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.80.6",
-    "@earendil-works/pi-coding-agent": "^0.78.0",
-    "@fontsource/jetbrains-mono": "^5.2.8",
-    "@lobehub/icons": "5.11.0",
-    "mammoth": "^1.12.0",
-    "mermaid": "^11.14.0",
-    "next": "16.2.10",
-    "next-intl": "^4.13.0",
-    "nprogress": "^0.2.0",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-markdown": "^10.1.0",
-    "react-syntax-highlighter": "^16.1.1",
-    "remark-gfm": "^4.0.1",
-    "sonner": "^2.0.7"
+    "@earendil-works/pi-ai": "0.80.7",
+    "@earendil-works/pi-coding-agent": "0.80.7",
+    "next": "16.2.10"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.4",
@@ -72,12 +60,14 @@
     "@types/nprogress": "^0.2.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "9.1.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.7",
     "postcss": "^8",
     "tailwindcss": "^4.3.2",
+    "tsx": "4.19.3",
     "typescript": "5.9.3",
     "vitest": "^4.1.9"
   },
