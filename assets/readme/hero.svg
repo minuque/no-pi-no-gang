@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
+  <title id="title">no-pi-no-gang: see the session, steer the run</title>
+  <desc id="desc">A dark technical hero showing the local Pi agent workbench and its Web, AgentHost, Pi SDK, and JSONL flow.</desc>
+
+  <rect width="1200" height="400" rx="24" fill="#0f0f0f"/>
+  <path d="M704 0v400M728 0v400M1008 0v400" stroke="#303030" stroke-width="1" opacity="0.6"/>
+  <path d="M56 316h1120M56 336h1120" stroke="#303030" stroke-width="1" opacity="0.55"/>
+  <path d="M56 36h1120" stroke="#007acc" stroke-width="2" opacity="0.9"/>
+
+  <g id="identity">
+    <path fill="#007acc" fill-rule="evenodd" d="M58 66h39v26H84v13H71v13H58zm13 13v13h13V79zM97 92h13v26H97z"/>
+    <text x="126" y="86" fill="#aaaaaa" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="16" font-weight="700" letter-spacing="2">LOCAL PI AGENT WORKBENCH</text>
+    <text x="56" y="154" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="46" font-weight="750" letter-spacing="-1.5">NO PI NO GANG</text>
+    <text x="56" y="204" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="30" font-weight="650">See the session. Steer the run.</text>
+    <text x="56" y="244" fill="#aaaaaa" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="18">Browse durable history, follow live RuntimeEvents,</text>
+    <text x="56" y="271" fill="#aaaaaa" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="18">and work in your files from one local browser UI.</text>
+    <text x="56" y="366" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14" letter-spacing="1.5">SESSION   ·   TURN   ·   BRANCH   ·   WORKSPACE</text>
+  </g>
+
+  <g id="project-proof" transform="translate(760 57)">
+    <text x="0" y="0" fill="#007acc" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13" font-weight="700" letter-spacing="1.5">ONE CONTROL PLANE</text>
+
+    <g transform="translate(0 27)">
+      <rect width="176" height="76" rx="12" fill="#1a1a1a" stroke="#303030"/>
+      <text x="18" y="30" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="18" font-weight="700">WEB</text>
+      <text x="18" y="54" fill="#aaaaaa" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14">UI + BFF</text>
+    </g>
+
+    <g transform="translate(224 27)">
+      <rect width="184" height="76" rx="12" fill="#1a1a1a" stroke="#007acc" stroke-width="1.5"/>
+      <text x="18" y="30" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="18" font-weight="700">AGENTHOST</text>
+      <text x="18" y="54" fill="#aaaaaa" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14">runtime owner</text>
+    </g>
+
+    <g transform="translate(224 147)">
+      <rect width="184" height="76" rx="12" fill="#1a1a1a" stroke="#303030"/>
+      <text x="18" y="30" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="18" font-weight="700">PI SDK</text>
+      <text x="18" y="54" fill="#aaaaaa" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14">runtime adapter</text>
+    </g>
+
+    <g transform="translate(0 147)">
+      <rect width="176" height="76" rx="12" fill="#1a1a1a" stroke="#303030"/>
+      <text x="18" y="30" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="18" font-weight="700">JSONL</text>
+      <text x="18" y="54" fill="#aaaaaa" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="14">durable history</text>
+    </g>
+
+    <path d="M176 65h44m-8-7 8 7-8 7M316 103v36m-7-8 7 8 7-8M224 185h-40m8-7-8 7 8 7M88 147V115" fill="none" stroke="#007acc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="177" y="116" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="12">HTTP + SSE</text>
+    <text x="326" y="126" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="12">HOST API</text>
+    <text x="112" y="137" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="12">history</text>
+
+    <text x="0" y="270" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13" letter-spacing="1">OBSERVE → DECIDE → CONTINUE</text>
+  </g>
+</svg>

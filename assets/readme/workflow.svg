@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+  <title id="title">A session workflow in no-pi-no-gang</title>
+  <desc id="desc">A five-step flow from browsing a durable session to observing a live Turn and continuing from a branch.</desc>
+
+  <rect width="1200" height="420" rx="24" fill="#0f0f0f"/>
+  <path d="M56 38h1088" stroke="#007acc" stroke-width="2"/>
+  <text x="56" y="82" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="28" font-weight="700">From history to the next Turn</text>
+  <text x="56" y="108" fill="#aaaaaa" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="16">Every step stays visible: the record, the context, the runtime, and the result.</text>
+
+  <path d="M134 222h930" stroke="#007acc" stroke-width="2" opacity="0.85"/>
+  <path d="M134 222h930" stroke="#007acc" stroke-width="8" stroke-linecap="round" opacity="0.08"/>
+
+  <g id="step-1" transform="translate(56 158)">
+    <circle cx="78" cy="64" r="30" fill="#1a1a1a" stroke="#007acc" stroke-width="2"/>
+    <text x="78" y="72" text-anchor="middle" fill="#f1f1f1" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="20" font-weight="700">01</text>
+    <text x="0" y="132" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="18" font-weight="700">Browse</text>
+    <text x="0" y="157" fill="#aaaaaa" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="15">find a Session</text>
+    <text x="0" y="180" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13">cwd · recent · JSONL</text>
+  </g>
+
+  <g id="step-2" transform="translate(280 158)">
+    <circle cx="78" cy="64" r="30" fill="#1a1a1a" stroke="#303030" stroke-width="2"/>
+    <text x="78" y="72" text-anchor="middle" fill="#f1f1f1" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="20" font-weight="700">02</text>
+    <text x="0" y="132" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="18" font-weight="700">Inspect</text>
+    <text x="0" y="157" fill="#aaaaaa" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="15">read messages</text>
+    <text x="0" y="180" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13">branch · tools · context</text>
+  </g>
+
+  <g id="step-3" transform="translate(504 158)">
+    <circle cx="78" cy="64" r="30" fill="#1a1a1a" stroke="#303030" stroke-width="2"/>
+    <text x="78" y="72" text-anchor="middle" fill="#f1f1f1" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="20" font-weight="700">03</text>
+    <text x="0" y="132" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="18" font-weight="700">Prepare</text>
+    <text x="0" y="157" fill="#aaaaaa" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="15">add file context</text>
+    <text x="0" y="180" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13">workspace · preview</text>
+  </g>
+
+  <g id="step-4" transform="translate(728 158)">
+    <circle cx="78" cy="64" r="30" fill="#1a1a1a" stroke="#303030" stroke-width="2"/>
+    <text x="78" y="72" text-anchor="middle" fill="#f1f1f1" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="20" font-weight="700">04</text>
+    <text x="0" y="132" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="18" font-weight="700">Prompt</text>
+    <text x="0" y="157" fill="#aaaaaa" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="15">start one Turn</text>
+    <text x="0" y="180" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13">AgentHost · Pi SDK</text>
+  </g>
+
+  <g id="step-5" transform="translate(952 158)">
+    <circle cx="78" cy="64" r="30" fill="#007acc" stroke="#007acc" stroke-width="2"/>
+    <text x="78" y="72" text-anchor="middle" fill="#ffffff" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="20" font-weight="700">05</text>
+    <text x="0" y="132" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="18" font-weight="700">Observe</text>
+    <text x="0" y="157" fill="#aaaaaa" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="15">follow the result</text>
+    <text x="0" y="180" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13">events · tools · recovery</text>
+  </g>
+
+  <text x="56" y="370" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13" letter-spacing="1">FORK FROM A RECORD WHEN THE NEXT TURN SHOULD START SOMEWHERE ELSE</text>
+</svg>

@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+  <title id="title">no-pi-no-gang 会话流程</title>
+  <desc id="desc">从浏览持久会话到观察实时 Turn，并从分支继续工作的五步流程。</desc>
+
+  <rect width="1200" height="420" rx="24" fill="#0f0f0f"/>
+  <path d="M56 38h1088" stroke="#007acc" stroke-width="2"/>
+  <text x="56" y="82" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif" font-size="28" font-weight="700">从历史走向下一次 Turn</text>
+  <text x="56" y="108" fill="#aaaaaa" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif" font-size="16">记录、上下文、运行时和结果，每一步都保持可见。</text>
+
+  <path d="M134 222h930" stroke="#007acc" stroke-width="2" opacity="0.85"/>
+  <path d="M134 222h930" stroke="#007acc" stroke-width="8" stroke-linecap="round" opacity="0.08"/>
+
+  <g id="step-1" transform="translate(56 158)">
+    <circle cx="78" cy="64" r="30" fill="#1a1a1a" stroke="#007acc" stroke-width="2"/>
+    <text x="78" y="72" text-anchor="middle" fill="#f1f1f1" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="20" font-weight="700">01</text>
+    <text x="0" y="132" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif" font-size="18" font-weight="700">浏览</text>
+    <text x="0" y="157" fill="#aaaaaa" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif" font-size="15">找到会话</text>
+    <text x="0" y="180" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13">cwd · 最近 · JSONL</text>
+  </g>
+  <g id="step-2" transform="translate(280 158)">
+    <circle cx="78" cy="64" r="30" fill="#1a1a1a" stroke="#303030" stroke-width="2"/>
+    <text x="78" y="72" text-anchor="middle" fill="#f1f1f1" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="20" font-weight="700">02</text>
+    <text x="0" y="132" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif" font-size="18" font-weight="700">检查</text>
+    <text x="0" y="157" fill="#aaaaaa" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif" font-size="15">读取消息</text>
+    <text x="0" y="180" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13">分支 · 工具 · 上下文</text>
+  </g>
+  <g id="step-3" transform="translate(504 158)">
+    <circle cx="78" cy="64" r="30" fill="#1a1a1a" stroke="#303030" stroke-width="2"/>
+    <text x="78" y="72" text-anchor="middle" fill="#f1f1f1" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="20" font-weight="700">03</text>
+    <text x="0" y="132" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif" font-size="18" font-weight="700">准备</text>
+    <text x="0" y="157" fill="#aaaaaa" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif" font-size="15">加入文件上下文</text>
+    <text x="0" y="180" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13">工作区 · 预览</text>
+  </g>
+  <g id="step-4" transform="translate(728 158)">
+    <circle cx="78" cy="64" r="30" fill="#1a1a1a" stroke="#303030" stroke-width="2"/>
+    <text x="78" y="72" text-anchor="middle" fill="#f1f1f1" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="20" font-weight="700">04</text>
+    <text x="0" y="132" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif" font-size="18" font-weight="700">Prompt</text>
+    <text x="0" y="157" fill="#aaaaaa" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif" font-size="15">启动一次 Turn</text>
+    <text x="0" y="180" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13">AgentHost · Pi SDK</text>
+  </g>
+  <g id="step-5" transform="translate(952 158)">
+    <circle cx="78" cy="64" r="30" fill="#007acc" stroke="#007acc" stroke-width="2"/>
+    <text x="78" y="72" text-anchor="middle" fill="#ffffff" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="20" font-weight="700">05</text>
+    <text x="0" y="132" fill="#f1f1f1" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif" font-size="18" font-weight="700">观察</text>
+    <text x="0" y="157" fill="#aaaaaa" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif" font-size="15">跟踪结果</text>
+    <text x="0" y="180" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13">事件 · 工具 · 恢复</text>
+  </g>
+
+  <text x="56" y="370" fill="#717171" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="13" letter-spacing="1">当下一次 TURN 需要从别处开始时，从对应 RECORD 创建 FORK</text>
+</svg>
