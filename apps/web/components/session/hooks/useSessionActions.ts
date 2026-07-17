@@ -2,15 +2,9 @@
 
 import { type Dispatch, type SetStateAction, startTransition, useCallback, useState } from "react";
 
-import type {
-  AgentPhase,
-  AgentStateTransition,
-  AgentStateTransitionResult,
-  StreamAction,
-} from "@/hooks/useAgentState";
 import type { NewSessionModel } from "@/hooks/useModelList";
-import type { AgentMessage, SessionInfo, SlashCommandItem } from "@/lib/types";
-
+import type { AgentMessage, SlashCommandItem } from "@/lib/types";
+import type { SessionActionCoreDeps } from "./session-action-deps";
 import { forkSessionAtEntry, resolveSlashCommand } from "./session-action-utils";
 import { useSessionMessageActions } from "./useSessionMessageActions";
 
@@ -26,54 +20,15 @@ export interface AttachedImage {
 
 type ToolPreset = "none" | "default" | "full";
 
-type SendAgentCommand = <T>(command: Record<string, unknown>, nextSessionId?: string) => Promise<T>;
-type TransitionAgentState = (transition: AgentStateTransition) => AgentStateTransitionResult;
-
-type CreateSession = (params: {
-  cwd: string;
-  message: string;
-  toolPreset: ToolPreset;
-  thinkingLevel: string;
-  model?: NewSessionModel;
-  images?: AttachedImage[];
-  commandName?: string;
-}) => Promise<{ sessionId: string }>;
-
-export type SessionActionsParams = {
-  session: SessionInfo | null;
-  isNew: boolean;
-  newSessionCwd: string | null;
-  newSessionModel: NewSessionModel;
-  toolPreset: ToolPreset;
+type SessionActionsParams = SessionActionCoreDeps & {
   thinkingLevel: ThinkingLevelOption;
-  agentRunning: boolean;
   isCompacting: boolean;
-  modelListRef: { current: unknown[] };
-  sessionIdRef: { current: string | null };
-  loadGenRef: { current: number };
-  createSession: CreateSession;
-  sendAgentCommand: SendAgentCommand;
-  connectEvents: (sid: string) => void;
-  loadSession: (sid: string, showLoading?: boolean, includeState?: boolean) => Promise<unknown>;
   loadContext: (sid: string, leafId: string | null) => Promise<void>;
-  onSessionCreated?: (session: SessionInfo) => void;
-  onSessionForked?: (newSessionId: string) => void;
-  setPendingModel: Dispatch<SetStateAction<NewSessionModel>>;
+  compact: () => Promise<void>;
   setCurrentModelOverride: Dispatch<SetStateAction<NewSessionModel>>;
   setNewSessionModel: (model: NewSessionModel) => void;
   setToolPresetState: (preset: ToolPreset) => void;
   setThinkingLevel: Dispatch<SetStateAction<ThinkingLevelOption>>;
-  transitionAgentState: TransitionAgentState;
-  setSessionExists?: Dispatch<SetStateAction<boolean>>;
-  setSessionDestroyed?: Dispatch<SetStateAction<boolean>>;
-  setMessages: Dispatch<SetStateAction<AgentMessage[]>>;
-  setAgentRunning?: Dispatch<SetStateAction<boolean>>;
-  setAgentStateRunning?: Dispatch<SetStateAction<boolean>>;
-  setAgentStateStreaming?: Dispatch<SetStateAction<boolean>>;
-  setAgentPhase?: Dispatch<SetStateAction<AgentPhase>>;
-  setIsCompacting?: Dispatch<SetStateAction<boolean>>;
-  setCompactError?: Dispatch<SetStateAction<string | null>>;
-  dispatch?: Dispatch<StreamAction>;
 };
 
 export function useSessionActions({
@@ -88,13 +43,13 @@ export function useSessionActions({
   modelListRef,
   sessionIdRef,
   loadGenRef,
+  invalidateLoads,
   createSession,
   sendAgentCommand,
   connectEvents,
-  loadSession,
   loadContext,
-  onSessionCreated,
-  onSessionForked,
+  compact,
+  onSessionEvent,
   setPendingModel,
   setCurrentModelOverride,
   setNewSessionModel,
@@ -139,10 +94,11 @@ export function useSessionActions({
     modelListRef,
     sessionIdRef,
     loadGenRef,
+    invalidateLoads,
     createSession,
     sendAgentCommand,
     connectEvents,
-    onSessionCreated,
+    onSessionEvent,
     setPendingModel,
     setMessages,
     transitionAgentState,
@@ -167,14 +123,16 @@ export function useSessionActions({
       try {
         const result = await forkSessionAtEntry(sid, entryId);
         const { cancelled, newSessionId } = result ?? {};
-        if (!cancelled && newSessionId) onSessionForked?.(newSessionId);
+        if (!cancelled && newSessionId) {
+          onSessionEvent?.({ type: "forked", sessionId: newSessionId });
+        }
       } catch (e) {
         console.error("Fork failed:", e);
       } finally {
         setForkingEntryId(null);
       }
     },
-    [onSessionForked, sessionIdRef],
+    [onSessionEvent, sessionIdRef],
   );
 
   const handleNavigate = useCallback(
@@ -222,8 +180,7 @@ export function useSessionActions({
     if (!sid || isCompacting) return;
     transitionAgentState({ type: "compaction_state", compacting: true, error: null });
     try {
-      await sendAgentCommand({ type: "compact" }, sid);
-      await loadSession(sid, true);
+      await compact();
     } catch (e) {
       transitionAgentState({
         type: "compaction_state",
@@ -233,12 +190,13 @@ export function useSessionActions({
     } finally {
       transitionAgentState({ type: "compaction_state", compacting: false });
     }
-  }, [isCompacting, loadSession, sendAgentCommand, sessionIdRef, transitionAgentState]);
+  }, [compact, isCompacting, sessionIdRef, transitionAgentState]);
 
   const handleSteer = useCallback(
     async (message: string, images?: AttachedImage[]) => {
       const sid = sessionIdRef.current;
       if (!sid) return;
+      invalidateLoads();
       setMessages((prev) => [
         ...prev,
         { role: "user", content: `[steer] ${message}`, timestamp: Date.now() } as AgentMessage,
@@ -261,13 +219,14 @@ export function useSessionActions({
         console.error("Failed to steer:", e);
       }
     },
-    [sendAgentCommand, sessionIdRef, setMessages],
+    [invalidateLoads, sendAgentCommand, sessionIdRef, setMessages],
   );
 
   const handleFollowUp = useCallback(
     async (message: string, images?: AttachedImage[]) => {
       const sid = sessionIdRef.current;
       if (!sid) return;
+      invalidateLoads();
       setMessages((prev) => [
         ...prev,
         { role: "user", content: message, timestamp: Date.now() } as AgentMessage,
@@ -290,7 +249,7 @@ export function useSessionActions({
         console.error("Failed to follow up:", e);
       }
     },
-    [sendAgentCommand, sessionIdRef, setMessages],
+    [invalidateLoads, sendAgentCommand, sessionIdRef, setMessages],
   );
 
   const handleAbortCompaction = useCallback(async () => {

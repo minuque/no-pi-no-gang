@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ChatInput } from "@/components/chat/input";
+import type { SessionViewEvent } from "@/components/session/hooks/session-view-controller";
 import { useAgentSession } from "@/components/session/hooks/useAgentSession";
 import { useChatScroll } from "@/hooks/useChatScroll";
 import { useDragDrop } from "@/hooks/useDragDrop";
@@ -37,6 +38,29 @@ export function useChatWindowState({
   onCwdSelect,
   onToolPresetChange,
 }: ChatWindowProps) {
+  const handleSessionEvent = useCallback(
+    (event: SessionViewEvent) => {
+      if (event.type === "ended") onAgentEnd?.();
+      if (event.type === "created" && event.session) onSessionCreated?.(event.session);
+      if (event.type === "forked") onSessionForked?.(event.sessionId);
+      if (event.type === "system-prompt-changed") onSystemPromptChange?.(event.prompt);
+      if (event.type === "branch-changed") {
+        onBranchDataChange?.(
+          event.tree,
+          event.activeLeafId,
+          event.onLeafChange ?? (() => {}),
+          event.agentRunning,
+        );
+      }
+    },
+    [onAgentEnd, onBranchDataChange, onSessionCreated, onSessionForked, onSystemPromptChange],
+  );
+  const { view, actions } = useAgentSession({
+    session,
+    newSessionCwd,
+    onSessionEvent: handleSessionEvent,
+    modelsRefreshKey,
+  });
   const {
     data,
     loading,
@@ -58,28 +82,17 @@ export function useChatWindowState({
     forkingEntryId,
     displayModel: displayModelValue,
     sessionStats,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 保留供阶段状态界面使用
-    agentPhase,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- 保留供会话状态界面使用
-    sessionStatus,
     activeLeafId,
     isNew,
+  } = view;
+  const {
     handleSend,
     handleAbort,
     handleFork,
     handleNavigate,
     handleModelChange,
     handleThinkingLevelChange,
-  } = useAgentSession({
-    session,
-    newSessionCwd,
-    onAgentEnd,
-    onSessionCreated,
-    onSessionForked,
-    modelsRefreshKey,
-    onBranchDataChange,
-    onSystemPromptChange,
-  });
+  } = actions;
   const { isDark } = useTheme();
   const statsKey = sessionStats
     ? `${sessionStats.tokens.input}|${sessionStats.tokens.output}|${sessionStats.tokens.cacheRead}|${sessionStats.tokens.cacheWrite}|${sessionStats.cost ?? 0}`

@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { sendAgentCommand as postAgentCommand } from "../lib/agent/agent-client";
-import type { AnyAgentEvent as AgentEvent, AgentEventStatus } from "../lib/events/event-types";
+import type { AnyAgentEvent as AgentEvent } from "../lib/events/event-types";
 import type { AgentMessage, EntryTreeNode, SessionInfo } from "../lib/types";
 
 export interface SessionData {
@@ -44,10 +44,13 @@ export interface SessionContextResult {
   context: { messages: AgentMessage[]; entryIds: string[] };
 }
 
+export type SessionConnectionEvent =
+  | { type: "connecting" }
+  | { type: "connected" }
+  | { type: "probe"; statusCode: number | null };
+
 interface UseSessionConnectionOptions {
-  isAgentRunning?: () => boolean;
-  onStatusChange?: (status: AgentEventStatus) => void;
-  onDestroyed?: () => void;
+  onConnectionEvent?: (event: SessionConnectionEvent) => void;
 }
 
 export function resolveSessionId(sessionId: string | null): string {
@@ -55,23 +58,11 @@ export function resolveSessionId(sessionId: string | null): string {
   return sessionId;
 }
 
-export function resolveConnectionFailureState(
-  statusCode: number | null,
-  isAgentRunning: boolean,
-): { status: AgentEventStatus; destroyed: boolean } {
-  if (statusCode === 404) return { status: "destroyed", destroyed: true };
-  return { status: isAgentRunning ? "reconnecting" : "readonly", destroyed: false };
+function shouldDisconnectConnection(statusCode: number | null): boolean {
+  return statusCode === 404;
 }
 
 export function useSessionConnection(sessionId: string | null, options: UseSessionConnectionOptions = {}) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [loadingError, setLoadingError] = useState<string | null>(null);
-  const [eventStatus, setEventStatusState] = useState<AgentEventStatus>("idle");
-  const [sessionExists, setSessionExists] = useState(sessionId !== null);
-  const [sessionDestroyed, setSessionDestroyed] = useState(false);
-  const [agentLastUpdated, setAgentLastUpdated] = useState<string | null>(null);
-
   const eventSourceRef = useRef<EventSource | null>(null);
   const connectionProbeRef = useRef<AbortController | null>(null);
   const onEventRef = useRef<((event: AgentEvent) => void) | null>(null);
@@ -81,13 +72,10 @@ export function useSessionConnection(sessionId: string | null, options: UseSessi
 
   useEffect(() => {
     sessionIdRef.current = sessionId;
-    setSessionExists(sessionId !== null);
-    if (sessionId) setSessionDestroyed(false);
   }, [sessionId]);
 
-  const setEventStatus = useCallback((status: AgentEventStatus) => {
-    setEventStatusState(status);
-    optionsRef.current.onStatusChange?.(status);
+  const report = useCallback((event: SessionConnectionEvent) => {
+    optionsRef.current.onConnectionEvent?.(event);
   }, []);
 
   const disconnectEvents = useCallback(() => {
@@ -103,18 +91,18 @@ export function useSessionConnection(sessionId: string | null, options: UseSessi
       if (!sid) return;
       sessionIdRef.current = sid;
       disconnectEvents();
-      setEventStatus("connecting");
+      report({ type: "connecting" });
       const es = new EventSource(`/api/agent/${encodeURIComponent(sid)}/events`);
       eventSourceRef.current = es;
       es.onopen = () => {
         if (eventSourceRef.current === es) {
           connectionProbeRef.current?.abort();
           connectionProbeRef.current = null;
-          setEventStatus("connected");
+          report({ type: "connected" });
         }
       };
       es.onmessage = (e) => {
-        if (eventSourceRef.current === es) setEventStatus("connected");
+        if (eventSourceRef.current === es) report({ type: "connected" });
         try {
           const event = JSON.parse(e.data) as AgentEvent;
           onEventRef.current?.(event);
@@ -133,90 +121,21 @@ export function useSessionConnection(sessionId: string | null, options: UseSessi
             if (eventSourceRef.current !== es || sessionIdRef.current !== sid || probe.signal.aborted) {
               return;
             }
-            const failure = resolveConnectionFailureState(
-              res.status,
-              optionsRef.current.isAgentRunning?.() ?? false,
-            );
-            if (failure.destroyed) {
+            if (shouldDisconnectConnection(res.status)) {
               es.close();
               eventSourceRef.current = null;
-              setSessionExists(false);
-              setSessionDestroyed(true);
-              setAgentLastUpdated(new Date().toISOString());
-              optionsRef.current.onDestroyed?.();
-              setEventStatus(failure.status);
-              return;
             }
-            setSessionExists(true);
-            setSessionDestroyed(false);
-            setEventStatus(failure.status);
+            report({ type: "probe", statusCode: res.status });
           })
           .catch(() => {
             if (eventSourceRef.current !== es || sessionIdRef.current !== sid || probe.signal.aborted) {
               return;
             }
-            const failure = resolveConnectionFailureState(
-              null,
-              optionsRef.current.isAgentRunning?.() ?? false,
-            );
-            setEventStatus(failure.status);
+            report({ type: "probe", statusCode: null });
           });
       };
     },
-    [disconnectEvents, setEventStatus],
-  );
-
-  const loadSession = useCallback(
-    async (showLoading = false, includeState = false, nextSessionId?: string): Promise<SessionLoadResult> => {
-      const sid = nextSessionId ?? sessionIdRef.current;
-      if (!sid) return null;
-      try {
-        if (showLoading) setLoading(true);
-        setLoadingError(null);
-        const url = includeState
-          ? `/api/sessions/${encodeURIComponent(sid)}?includeState`
-          : `/api/sessions/${encodeURIComponent(sid)}`;
-        const res = await fetch(url);
-        if (res.status === 404) {
-          setSessionExists(false);
-          setSessionDestroyed(true);
-          setAgentLastUpdated(new Date().toISOString());
-          setEventStatus("destroyed");
-          return null;
-        }
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setSessionExists(true);
-        setSessionDestroyed(false);
-        return (await res.json()) as SessionLoadResult;
-      } catch (e) {
-        const message = e instanceof Error ? e.message : String(e);
-        setError(message);
-        setLoadingError(message);
-        return null;
-      } finally {
-        if (showLoading) setLoading(false);
-      }
-    },
-    [setEventStatus],
-  );
-
-  const loadContext = useCallback(
-    async (leafId: string | null, nextSessionId?: string): Promise<SessionContextResult | null> => {
-      const sid = nextSessionId ?? sessionIdRef.current;
-      if (!sid) return null;
-      try {
-        const url = leafId
-          ? `/api/sessions/${encodeURIComponent(sid)}/context?leafId=${encodeURIComponent(leafId)}`
-          : `/api/sessions/${encodeURIComponent(sid)}/context`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return (await res.json()) as SessionContextResult;
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-        return null;
-      }
-    },
-    [],
+    [disconnectEvents, report],
   );
 
   const sendAgentCommand = useCallback(
@@ -228,19 +147,10 @@ export function useSessionConnection(sessionId: string | null, options: UseSessi
   );
 
   return {
-    loading,
-    error,
-    loadingError,
-    eventStatus,
-    sessionExists,
-    sessionDestroyed,
-    agentLastUpdated,
     eventSourceRef,
     onEventRef,
     connectEvents,
     disconnectEvents,
-    loadSession,
-    loadContext,
     sendAgentCommand,
   };
 }

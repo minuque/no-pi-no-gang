@@ -1,8 +1,9 @@
 import type { AgentPhase } from "@/hooks/useAgentState";
 import type { SessionData } from "@/hooks/useSessionConnection";
 import type { AgentEventStatus } from "@/lib/events/event-types";
-import type { EntryTreeNode, SessionInfo } from "@/lib/types";
+import type { SessionInfo } from "@/lib/types";
 
+import type { SessionViewEvent } from "./session-view-controller";
 import type { AttachedImage, ThinkingLevelOption } from "./useSessionActions";
 
 export type { AgentEventStatus, AgentPhase, AttachedImage, SessionData, ThinkingLevelOption };
@@ -64,18 +65,9 @@ export interface ChatInputHandle {
 export interface UseAgentSessionOptions {
   session: SessionInfo | null;
   newSessionCwd: string | null;
-  onAgentEnd?: () => void;
-  onSessionCreated?: (session: SessionInfo) => void;
-  onSessionForked?: (newSessionId: string) => void;
   modelsRefreshKey?: number;
   chatInputRef?: React.RefObject<ChatInputHandle | null>;
-  onBranchDataChange?: (
-    tree: EntryTreeNode[],
-    activeLeafId: string | null,
-    onLeafChange: (leafId: string | null) => void,
-    agentRunning: boolean,
-  ) => void;
-  onSystemPromptChange?: (prompt: string | null) => void;
+  onSessionEvent?: (event: SessionViewEvent) => void;
   setNewSessionModel?: (model: { provider: string; modelId: string } | null) => void;
   setToolPreset?: (preset: "none" | "default" | "full") => void;
 }

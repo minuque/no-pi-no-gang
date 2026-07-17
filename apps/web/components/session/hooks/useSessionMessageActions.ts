@@ -3,31 +3,12 @@
 import { useCallback } from "react";
 
 import { toast } from "sonner";
-import type { AgentMessage, AssistantMessage, SlashCommandItem } from "@/lib/types";
-
+import type { AgentMessage, AssistantMessage, SessionInfo, SlashCommandItem } from "@/lib/types";
+import type { SessionActionCoreDeps } from "./session-action-deps";
 import { resolveSlashCommand } from "./session-action-utils";
-import type { AttachedImage, SessionActionsParams } from "./useSessionActions";
+import type { AttachedImage } from "./useSessionActions";
 
-type SessionMessageActionsParams = Pick<
-  SessionActionsParams,
-  | "session"
-  | "isNew"
-  | "newSessionCwd"
-  | "newSessionModel"
-  | "toolPreset"
-  | "thinkingLevel"
-  | "agentRunning"
-  | "modelListRef"
-  | "sessionIdRef"
-  | "loadGenRef"
-  | "createSession"
-  | "sendAgentCommand"
-  | "connectEvents"
-  | "onSessionCreated"
-  | "setPendingModel"
-  | "setMessages"
-  | "transitionAgentState"
-> & { commands: SlashCommandItem[] };
+type SessionMessageActionsParams = SessionActionCoreDeps & { commands: SlashCommandItem[] };
 
 export function useSessionMessageActions({
   session,
@@ -40,10 +21,11 @@ export function useSessionMessageActions({
   modelListRef,
   sessionIdRef,
   loadGenRef,
+  invalidateLoads,
   createSession,
   sendAgentCommand,
   connectEvents,
-  onSessionCreated,
+  onSessionEvent,
   setPendingModel,
   setMessages,
   transitionAgentState,
@@ -58,6 +40,7 @@ export function useSessionMessageActions({
         return;
       }
       loadGenRef.current += 1;
+      invalidateLoads();
       const imageBlocks = images?.map((img) => ({
         type: "image" as const,
         source: { type: "base64" as const, media_type: img.mimeType, data: img.data },
@@ -130,7 +113,7 @@ export function useSessionMessageActions({
           sessionIdRef.current = result.sessionId;
           transitionAgentState({ type: "session_available" });
           connectEvents(result.sessionId);
-          onSessionCreated?.({
+          const createdSession = {
             id: result.sessionId,
             path: "",
             cwd: newSessionCwd,
@@ -139,7 +122,8 @@ export function useSessionMessageActions({
             modified: new Date().toISOString(),
             messageCount: 1,
             firstMessage: message,
-          });
+          } satisfies SessionInfo;
+          onSessionEvent?.({ type: "created", sessionId: result.sessionId, session: createdSession });
         } else if (session) {
           transitionAgentState({ type: "session_available" });
           connectEvents(session.id);
@@ -168,11 +152,12 @@ export function useSessionMessageActions({
       connectEvents,
       createSession,
       isNew,
+      invalidateLoads,
       loadGenRef,
       modelListRef,
       newSessionCwd,
       newSessionModel,
-      onSessionCreated,
+      onSessionEvent,
       sendAgentCommand,
       session,
       sessionIdRef,
@@ -197,6 +182,7 @@ export function useSessionMessageActions({
         return;
       }
       loadGenRef.current += 1;
+      invalidateLoads();
       const slashCommand = resolveSlashCommand(message, commands);
       if (slashCommand) {
         return handleCommand(slashCommand.commandName, slashCommand.message, images);
@@ -238,7 +224,7 @@ export function useSessionMessageActions({
           sessionIdRef.current = realId;
           transitionAgentState({ type: "session_available" });
           connectEvents(realId);
-          onSessionCreated?.({
+          const createdSession = {
             id: realId,
             path: "",
             cwd: newSessionCwd,
@@ -247,7 +233,8 @@ export function useSessionMessageActions({
             modified: new Date().toISOString(),
             messageCount: 1,
             firstMessage: message,
-          });
+          } satisfies SessionInfo;
+          onSessionEvent?.({ type: "created", sessionId: realId, session: createdSession });
         } else if (session) {
           transitionAgentState({ type: "session_available" });
           connectEvents(session.id);
@@ -273,11 +260,12 @@ export function useSessionMessageActions({
       createSession,
       handleCommand,
       isNew,
+      invalidateLoads,
       loadGenRef,
       modelListRef,
       newSessionCwd,
       newSessionModel,
-      onSessionCreated,
+      onSessionEvent,
       sendAgentCommand,
       session,
       sessionIdRef,
