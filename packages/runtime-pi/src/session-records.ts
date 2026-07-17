@@ -1,5 +1,5 @@
-import { buildSessionContext as buildPiSessionContext } from "@earendil-works/pi-coding-agent";
 import type { SessionEntry as PiSessionEntry } from "@earendil-works/pi-coding-agent";
+import { buildSessionContext as buildPiSessionContext } from "@earendil-works/pi-coding-agent";
 import type {
   JsonObject,
   JsonValue,

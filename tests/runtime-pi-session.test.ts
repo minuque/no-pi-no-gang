@@ -1,10 +1,10 @@
-import { buildSessionContext as buildPiSessionContext } from "@earendil-works/pi-coding-agent";
-import type { SessionEntry as PiSessionEntry } from "@earendil-works/pi-coding-agent";
-import type { JsonObject } from "@no-pi-no-gang/agent-protocol";
-import { PiSessionAdapter, mapPiSessionEntries, projectPiSessionRecords } from "@no-pi-no-gang/runtime-pi";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { SessionEntry as PiSessionEntry } from "@earendil-works/pi-coding-agent";
+import { buildSessionContext as buildPiSessionContext } from "@earendil-works/pi-coding-agent";
+import type { JsonObject } from "@no-pi-no-gang/agent-protocol";
+import { mapPiSessionEntries, PiSessionAdapter, projectPiSessionRecords } from "@no-pi-no-gang/runtime-pi";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { WorkspaceRegistry } from "../apps/agent-host/src/workspace-registry";

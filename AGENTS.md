@@ -14,9 +14,9 @@
 
 ## 验收标准
 
-### 每次改动后（快速循环，<10s）
+### 每次代码变更改动后，文档类除外
 
-```
+```Shell
 npm run verify:fast  # 类型、Lint（零 warning）、单元测试
 ```
 
@@ -26,13 +26,13 @@ npm run verify:fast  # 类型、Lint（零 warning）、单元测试
 
 ### 提交前（最终闸门）
 
-```
+```Shell
 npm run verify  # 格式、设计规范、快速检查、Turbopack 生产构建及 postbuild
 ```
 
 ### 发布前（发布闸门）
 
-```
+```Shell
 npm run verify:release  # 完整检查、生产 E2E、npm tarball 安装及 CLI smoke
 ```
 
