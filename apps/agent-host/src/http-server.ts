@@ -1,9 +1,9 @@
-import { type Server, createServer } from "node:http";
+import { createServer, type Server } from "node:http";
 
 import { AgentPool } from "./agent-pool.ts";
 import { createAgentHostRequestHandler } from "./host-routes.ts";
 import { RuntimeApi, type RuntimeServices } from "./runtime-api.ts";
-import { RuntimeRegistry, loadDefaultRuntimes } from "./runtime-registry.ts";
+import { loadDefaultRuntimes, RuntimeRegistry } from "./runtime-registry.ts";
 import { type ToolPermission, ToolRegistry } from "./tool-registry.ts";
 import { WorkspaceRegistry } from "./workspace-registry.ts";
 

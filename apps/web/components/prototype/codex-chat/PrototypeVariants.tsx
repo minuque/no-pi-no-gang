@@ -1,6 +1,6 @@
 import { ActivityRow, AnswerContent, Composer, DiffBlock, StatusDot, ThinkingBlock } from "./PrototypeAtoms";
-import { prototypeActivities } from "./prototype-data";
 import styles from "./prototype.module.css";
+import { prototypeActivities } from "./prototype-data";
 
 function UserPrompt() {
   return (

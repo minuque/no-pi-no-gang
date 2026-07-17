@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-
+import styles from "./prototype.module.css";
 import type { PrototypeActivity } from "./prototype-data";
 import { prototypeCode, prototypeDiff, prototypeRows, prototypeTasks } from "./prototype-data";
-import styles from "./prototype.module.css";
 
 export function StatusDot({ state }: { state: PrototypeActivity["state"] }) {
   return <span className={`${styles.statusDot} ${styles[state]}`} aria-label={state} />;

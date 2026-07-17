@@ -1,9 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useEffect, useState } from "react";
-
-import { useTranslations } from "next-intl";
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

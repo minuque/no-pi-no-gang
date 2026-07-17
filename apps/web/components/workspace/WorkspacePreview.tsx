@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-import { encodeFilePathForApi, getFileName, getRelativeFilePath } from "@/lib/file-paths";
-import { normalizeFilePathSlashes } from "@/lib/file-paths";
+import {
+  encodeFilePathForApi,
+  getFileName,
+  getRelativeFilePath,
+  normalizeFilePathSlashes,
+} from "@/lib/file-paths";
 import { FilePreviewContent, formatSize } from "@/lib/file-preview";
 
-import { WorkspaceDirectoryContent, fetchDirectoryEntries } from "./WorkspaceDirectoryContent";
+import { fetchDirectoryEntries, WorkspaceDirectoryContent } from "./WorkspaceDirectoryContent";
 
 interface Props {
   filePath: string | null;

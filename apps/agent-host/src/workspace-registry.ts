@@ -1,8 +1,8 @@
-import type { ResolveWorkspaceResponse, WorkspaceDescriptor } from "@no-pi-no-gang/agent-protocol";
 import { createHash } from "node:crypto";
 import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, isAbsolute, resolve } from "node:path";
+import type { ResolveWorkspaceResponse, WorkspaceDescriptor } from "@no-pi-no-gang/agent-protocol";
 
 export class InvalidWorkspaceError extends Error {}
 

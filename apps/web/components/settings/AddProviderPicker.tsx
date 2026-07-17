@@ -1,9 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-
-import { useTranslations } from "next-intl";
 
 import type { ApiKeyProvider, OAuthProvider } from "./ModelsConfigTypes";
 import { ProviderIcon } from "./ProviderIcon";

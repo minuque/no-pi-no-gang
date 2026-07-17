@@ -1,8 +1,8 @@
 import {
-  DefaultResourceLoader,
-  SessionManager,
   createAgentSession,
+  DefaultResourceLoader,
   getAgentDir,
+  SessionManager,
 } from "@earendil-works/pi-coding-agent";
 import type { ToolCapabilityView } from "@no-pi-no-gang/agent-protocol";
 

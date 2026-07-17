@@ -1,14 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-
 import fs from "fs";
+import { NextRequest, NextResponse } from "next/server";
 import path from "path";
 
 import {
   DOCX_PREVIEW_MAX_BYTES,
-  IGNORED_NAMES,
-  IGNORED_SUFFIXES,
-  IMAGE_PREVIEW_MAX_BYTES,
-  TEXT_PREVIEW_MAX_BYTES,
   documentPreviewKind,
   filePathFromSegments,
   getAllowedRoots,
@@ -17,8 +12,12 @@ import {
   getExt,
   getImageMime,
   getLanguage,
+  IGNORED_NAMES,
+  IGNORED_SUFFIXES,
+  IMAGE_PREVIEW_MAX_BYTES,
   isPathAllowed,
   streamFile,
+  TEXT_PREVIEW_MAX_BYTES,
   wrapDocxPreviewHtml,
 } from "@/lib/server/file-route";
 

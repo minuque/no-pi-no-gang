@@ -1,8 +1,11 @@
-import { SessionManager } from "@earendil-works/pi-coding-agent";
+import { createHash } from "node:crypto";
+import { existsSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import type {
   SessionEntry as PiSessionEntry,
   SessionInfo as PiSessionInfo,
 } from "@earendil-works/pi-coding-agent";
+import { SessionManager } from "@earendil-works/pi-coding-agent";
 import type {
   ForkSessionResult,
   JsonObject,
@@ -15,9 +18,6 @@ import type {
   SessionSnapshot,
   SessionSummary,
 } from "@no-pi-no-gang/agent-protocol";
-import { createHash } from "node:crypto";
-import { existsSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
 
 import { mapPiSessionEntries, projectPiSessionRecords } from "./session-records.ts";
 

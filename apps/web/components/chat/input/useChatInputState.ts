@@ -1,4 +1,6 @@
 "use client";
+
+import { useTranslations } from "next-intl";
 import {
   type ForwardedRef,
   KeyboardEvent,
@@ -9,18 +11,16 @@ import {
   useState,
 } from "react";
 
-import { useTranslations } from "next-intl";
-
 import type { SlashCommandItem } from "@/lib/types";
 
 import {
   type ChatInputHandle,
   type ChatInputProps,
-  type ModelOption,
-  THINKING_LEVELS,
-  THINKING_LEVEL_COLORS,
   getThinkingLevelAtPointer,
+  type ModelOption,
   normalizeCommandDescription,
+  THINKING_LEVEL_COLORS,
+  THINKING_LEVELS,
 } from "./chat-input-support";
 import { useAttachedImages } from "./useAttachedImages";
 import { useCwdPickerState } from "./useCwdPickerState";

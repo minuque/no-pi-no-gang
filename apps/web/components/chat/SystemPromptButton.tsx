@@ -1,8 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-
 import { useTranslations } from "next-intl";
+import { useRef, useState } from "react";
 
 interface Props {
   systemPrompt: string | null;

@@ -2,7 +2,7 @@ import type { AgentEventStatus, AnyAgentEvent, StreamAction } from "../events/ev
 import type { AgentMessage, AssistantMessage, ToolCallContent } from "../types";
 import { normalizeToolCalls } from "./normalize";
 
-export type { AnyAgentEvent as AgentEvent, AgentEventStatus, StreamAction } from "../events/event-types";
+export type { AgentEventStatus, AnyAgentEvent as AgentEvent, StreamAction } from "../events/event-types";
 
 export interface AgentEventState {
   messages: AgentMessage[];

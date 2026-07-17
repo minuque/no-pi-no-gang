@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { runNpx } from "@/lib/npx";
 
-import { type SkillSearchResult, formatInstalls, parseInstallCount, parseSearchOutput } from "./parser";
+import { formatInstalls, parseInstallCount, parseSearchOutput, type SkillSearchResult } from "./parser";
 
 export const dynamic = "force-dynamic";
 export type { SkillSearchResult } from "./parser";

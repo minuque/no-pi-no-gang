@@ -1,10 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { useTranslations } from "next-intl";
-
-import { type CwdSessionGroup, IconFolder, formatRelativeTime, getCwdLabel } from "./SessionSidebarSupport";
+import { type CwdSessionGroup, formatRelativeTime, getCwdLabel, IconFolder } from "./SessionSidebarSupport";
 
 export function CwdGroupSection({
   group,

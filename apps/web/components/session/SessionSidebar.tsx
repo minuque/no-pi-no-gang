@@ -6,7 +6,7 @@ import type { SessionInfo } from "@/lib/types";
 
 import { CwdGroupSection } from "./CwdGroupSection";
 import { SessionCard } from "./SessionCard";
-import { HeaderBtn, IconPlus, IconSearch, getCwdLabel } from "./SessionSidebarSupport";
+import { getCwdLabel, HeaderBtn, IconPlus, IconSearch } from "./SessionSidebarSupport";
 import { useSessionSidebarState } from "./useSessionSidebarState";
 
 interface Props {

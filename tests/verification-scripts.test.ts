@@ -24,12 +24,12 @@ describe("verification scripts", () => {
     expect(scripts["verify:fast"]).toBe("node scripts/verify-fast.mjs");
   });
 
-  it("caches both ESLint passes by content", () => {
+  it("caches ESLint web pass and uses Biome for the rest", () => {
     const scripts = readScripts();
 
     expect(scripts.lint).toContain("--cache-strategy content");
     expect(scripts.lint).toContain("eslint-web");
-    expect(scripts.lint).toContain("eslint-root");
+    expect(scripts.lint).toContain("biome lint --error-on-warnings");
   });
 
   it("typechecks test and tooling entrypoints explicitly", () => {

@@ -9,8 +9,7 @@ import type {
   StreamAction,
 } from "@/hooks/useAgentState";
 import type { NewSessionModel } from "@/hooks/useModelList";
-import type { SlashCommandItem } from "@/lib/types";
-import type { AgentMessage, SessionInfo } from "@/lib/types";
+import type { AgentMessage, SessionInfo, SlashCommandItem } from "@/lib/types";
 
 import { forkSessionAtEntry, resolveSlashCommand } from "./session-action-utils";
 import { useSessionMessageActions } from "./useSessionMessageActions";

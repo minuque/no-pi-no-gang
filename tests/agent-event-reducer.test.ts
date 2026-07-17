@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-
+import type { AgentEvent, AgentEventState } from "../apps/web/lib/agent/agent-event-reducer";
 import {
   agentEventInputReducer,
   agentEventReducer,
@@ -7,7 +7,6 @@ import {
   isToolCallOnly,
   mergeToolCallMessages,
 } from "../apps/web/lib/agent/agent-event-reducer";
-import type { AgentEvent, AgentEventState } from "../apps/web/lib/agent/agent-event-reducer";
 import type { AgentMessage, AssistantMessage, ToolCallContent } from "../apps/web/lib/types";
 
 // ---------------------------------------------------------------------------

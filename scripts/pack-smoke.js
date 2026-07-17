@@ -1,10 +1,7 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
-"use strict";
-
-const { execFileSync, spawn } = require("child_process");
-const { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } = require("fs");
-const { tmpdir } = require("os");
-const path = require("path");
+const { execFileSync, spawn } = require("node:child_process");
+const { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } = require("node:fs");
+const { tmpdir } = require("node:os");
+const path = require("node:path");
 
 const projectDir = path.resolve(__dirname, "..");
 const tempDir = mkdtempSync(path.join(tmpdir(), "no-pi-no-gang-smoke-"));

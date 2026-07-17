@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
 import dynamic from "next/dynamic";
-
 import { useTranslations } from "next-intl";
+import { useEffect, useRef, useState } from "react";
 
 import type { TextContent, ThinkingContent } from "@/lib/types";
 

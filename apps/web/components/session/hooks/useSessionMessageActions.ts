@@ -3,9 +3,7 @@
 import { useCallback } from "react";
 
 import { toast } from "sonner";
-
-import type { SlashCommandItem } from "@/lib/types";
-import type { AgentMessage, AssistantMessage } from "@/lib/types";
+import type { AgentMessage, AssistantMessage, SlashCommandItem } from "@/lib/types";
 
 import { resolveSlashCommand } from "./session-action-utils";
 import type { AttachedImage, SessionActionsParams } from "./useSessionActions";

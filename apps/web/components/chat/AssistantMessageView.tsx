@@ -1,8 +1,7 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-
 import { useTranslations } from "next-intl";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   AssistantContentBlock,

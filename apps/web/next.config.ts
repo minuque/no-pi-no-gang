@@ -1,6 +1,5 @@
-import type { NextConfig } from "next";
-
 import path from "node:path";
+import type { NextConfig } from "next";
 
 const workspaceRoot = path.resolve(__dirname, "../..");
 process.env.NO_PI_NO_GANG_ROOT_DIR ??= workspaceRoot;

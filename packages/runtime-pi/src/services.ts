@@ -1,18 +1,18 @@
-import { type ProviderResponse, getSupportedThinkingLevels } from "@earendil-works/pi-ai";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { getSupportedThinkingLevels, type ProviderResponse } from "@earendil-works/pi-ai";
 import { type AssistantMessage, completeSimple } from "@earendil-works/pi-ai/compat";
 import {
   AuthStorage,
   DefaultResourceLoader,
   ExtensionRunner,
+  getAgentDir,
   ModelRegistry,
+  parseFrontmatter,
   SessionManager,
   SettingsManager,
-  getAgentDir,
-  parseFrontmatter,
 } from "@earendil-works/pi-coding-agent";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
 
 import { dedupeSlashCommands, getProjectResourceLoaderOptions } from "./resources.ts";
 

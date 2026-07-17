@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import {
   AGENT_PROTOCOL_VERSION,
   type AgentDefinition,
@@ -7,17 +9,15 @@ import {
   type RuntimeCommand,
   type RuntimeImage,
 } from "@no-pi-no-gang/agent-protocol";
-import { randomUUID } from "node:crypto";
-import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { AgentPool, SessionBusyError } from "./agent-pool.ts";
-import { InvalidJsonBodyError, RequestBodyTooLargeError, json, readJson } from "./http-json.ts";
+import { type AgentPool, SessionBusyError } from "./agent-pool.ts";
+import { InvalidJsonBodyError, json, RequestBodyTooLargeError, readJson } from "./http-json.ts";
 import { contextToLegacy, sessionDetail, sessionInfo } from "./http-mappers.ts";
-import { RuntimeApi } from "./runtime-api.ts";
-import { RuntimeRegistry } from "./runtime-registry.ts";
+import type { RuntimeApi } from "./runtime-api.ts";
+import type { RuntimeRegistry } from "./runtime-registry.ts";
 import { streamRuntimeEvents } from "./sse-transport.ts";
 import { ToolPermissionDeniedError } from "./tool-registry.ts";
-import { InvalidWorkspaceError, WorkspaceRegistry } from "./workspace-registry.ts";
+import { InvalidWorkspaceError, type WorkspaceRegistry } from "./workspace-registry.ts";
 
 class SessionTargetNotFoundError extends Error {}
 

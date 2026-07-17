@@ -6,9 +6,8 @@ import { Toaster } from "sonner";
 import { SessionOverviewPanel } from "@/components/session/SessionOverviewPanel";
 import { SessionSearchDialog } from "@/components/session/SessionSearchDialog";
 import { IconPlus, IconSearch } from "@/components/session/SessionSidebarSupport";
-
-import { LocaleSwitcher } from "./LocaleSwitcher";
 import { ChatWindow, ModelsConfig, SkillsConfig } from "./app-shell-lazy";
+import { LocaleSwitcher } from "./LocaleSwitcher";
 import { useAppShellState } from "./useAppShellState";
 
 export function AppShell() {

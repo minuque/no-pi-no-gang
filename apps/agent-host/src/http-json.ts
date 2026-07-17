@@ -1,5 +1,5 @@
-import type { JsonObject } from "@no-pi-no-gang/agent-protocol";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { JsonObject } from "@no-pi-no-gang/agent-protocol";
 
 export class InvalidJsonBodyError extends Error {}
 export class RequestBodyTooLargeError extends Error {}

@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type {
   CreateOrResumeRuntimeRequest,
   RuntimeAdapter,
@@ -9,9 +12,6 @@ import type {
   SessionSummary,
 } from "@no-pi-no-gang/agent-protocol";
 import { PiRuntimeAdapter, type PiRuntimeSessionLike } from "@no-pi-no-gang/runtime-pi";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AgentPool } from "../apps/agent-host/src/agent-pool";
@@ -119,7 +119,11 @@ function controllableRuntime(sessionId = "session-1") {
   return {
     runtime,
     promptStarted: promptStarted.promise,
-    emit: (event: RuntimeEvent) => listeners.forEach((listener) => listener(event)),
+    emit: (event: RuntimeEvent) => {
+      listeners.forEach((listener) => {
+        listener(event);
+      });
+    },
   };
 }
 

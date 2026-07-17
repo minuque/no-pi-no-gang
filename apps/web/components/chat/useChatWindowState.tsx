@@ -9,12 +9,12 @@ import { useTheme } from "@/hooks/useTheme";
 import type { AgentMessage, AssistantMessage, EntryTreeNode, ToolResultMessage } from "@/lib/types";
 
 import {
-  USER_ANCHOR_MAX_VISIBLE,
-  USER_ANCHOR_PANEL_PADDING_Y,
-  USER_ANCHOR_ROW_HEIGHT,
   buildActivePathIds,
   getUserMessageTitle,
   summarizeUserMessage,
+  USER_ANCHOR_MAX_VISIBLE,
+  USER_ANCHOR_PANEL_PADDING_Y,
+  USER_ANCHOR_ROW_HEIGHT,
 } from "./ChatWindowSupport";
 import type { ChatWindowProps } from "./chat-window-types";
 

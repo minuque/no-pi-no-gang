@@ -1,7 +1,5 @@
 "use client";
 
-import type React from "react";
-
 import AnthropicIcon from "@lobehub/icons/es/Anthropic/components/Mono";
 import AwsColorIcon from "@lobehub/icons/es/Aws/components/Color";
 import AzureColorIcon from "@lobehub/icons/es/Azure/components/Color";
@@ -27,6 +25,7 @@ import TogetherColorIcon from "@lobehub/icons/es/Together/components/Color";
 import VercelIcon from "@lobehub/icons/es/Vercel/components/Mono";
 import XAIIcon from "@lobehub/icons/es/XAI/components/Mono";
 import ZhipuColorIcon from "@lobehub/icons/es/Zhipu/components/Color";
+import type React from "react";
 
 type IconComponent = React.ComponentType<{ size?: number | string; style?: React.CSSProperties }>;
 

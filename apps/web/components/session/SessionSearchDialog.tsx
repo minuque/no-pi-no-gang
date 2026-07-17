@@ -3,9 +3,8 @@
 import { useTranslations } from "next-intl";
 
 import type { SessionInfo } from "@/lib/types";
-
-import { IconFolder, IconSearch, formatRelativeTime, getCwdLabel } from "./SessionSidebarSupport";
 import type { CwdSessionGroup } from "./SessionSidebarSupport";
+import { formatRelativeTime, getCwdLabel, IconFolder, IconSearch } from "./SessionSidebarSupport";
 
 interface Props {
   open: boolean;

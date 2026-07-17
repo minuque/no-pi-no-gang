@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 import {
   AGENT_PROTOCOL_VERSION,
   type AgentDefinition,
@@ -18,8 +20,6 @@ import {
   type ToolResult,
   type Turn,
 } from "@no-pi-no-gang/agent-protocol";
-import { readFileSync, readdirSync } from "node:fs";
-import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("agent-protocol public boundary", () => {

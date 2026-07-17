@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-
 import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useState } from "react";
 
 import { AddSkillPanel, type Skill, SkillDetail, shortenPath, sourceLabel } from "./SkillPanels";
 

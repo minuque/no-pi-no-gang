@@ -1,6 +1,6 @@
+import { fileURLToPath } from "node:url";
 import coreWebVitals from "eslint-config-next/core-web-vitals";
 import typescript from "eslint-config-next/typescript";
-import { fileURLToPath } from "node:url";
 
 const webRoot = fileURLToPath(new URL("./apps/web", import.meta.url));
 

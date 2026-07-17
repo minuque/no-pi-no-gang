@@ -1,10 +1,10 @@
 import type { AgentDefinition, CreateOrResumeRuntimeRequest, Session } from "@no-pi-no-gang/agent-protocol";
 import {
+  adaptHostTools,
+  mapPiRuntimeEvent,
   PiRuntimeAdapter,
   PiRuntimeSession,
   type PiRuntimeSessionLike,
-  adaptHostTools,
-  mapPiRuntimeEvent,
 } from "@no-pi-no-gang/runtime-pi";
 import { describe, expect, it, vi } from "vitest";
 

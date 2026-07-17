@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-
 import { useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
 
 import type { SessionInfo } from "@/lib/types";
 
@@ -14,12 +13,12 @@ import {
   ChipRow,
   ContextBar,
   EmptyState,
-  SectionLabel,
-  StatCell,
-  TOOL_PRESET_TOOLS,
-  ThinkingBadge,
   fmtShortDate,
   formatTokens,
+  SectionLabel,
+  StatCell,
+  ThinkingBadge,
+  TOOL_PRESET_TOOLS,
 } from "./SessionOverviewParts";
 
 // ---------------------------------------------------------------------------

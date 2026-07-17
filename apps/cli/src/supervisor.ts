@@ -92,7 +92,8 @@ export async function supervise(options: SupervisorOptions): Promise<number> {
     ]);
   const cleanup = (): Promise<void> => {
     healthChecks.abort();
-    return (cleanupPromise ??= Promise.all(children.map((child) => options.terminate(child))).then(() => {}));
+    cleanupPromise ??= Promise.all(children.map((child) => options.terminate(child))).then(() => {});
+    return cleanupPromise;
   };
 
   try {

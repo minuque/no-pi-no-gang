@@ -15,8 +15,7 @@ import sql from "react-syntax-highlighter/dist/cjs/languages/prism/sql";
 import tsx from "react-syntax-highlighter/dist/cjs/languages/prism/tsx";
 import typescript from "react-syntax-highlighter/dist/cjs/languages/prism/typescript";
 import yaml from "react-syntax-highlighter/dist/cjs/languages/prism/yaml";
-import { vs } from "react-syntax-highlighter/dist/cjs/styles/prism";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { vs, vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
 
 SyntaxHighlighter.registerLanguage("tsx", tsx);
 SyntaxHighlighter.registerLanguage("typescript", typescript);

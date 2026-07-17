@@ -1,19 +1,18 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
-
 import { useTranslations } from "next-intl";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { PreviewDialog } from "@/components/shared/PreviewDialog";
 import type { ToolCallContent, ToolResultMessage } from "@/lib/types";
 
 import {
   BlockLine,
-  ToolStateDot,
   getStructuredToolError,
   getToolResultText,
   getToolState,
   isEmptyToolResult,
+  ToolStateDot,
 } from "./MessageToolState";
 
 export function ToolCallBlock({

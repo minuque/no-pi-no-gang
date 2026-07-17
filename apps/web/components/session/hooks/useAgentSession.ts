@@ -12,8 +12,8 @@ import type { AgentMessage } from "@/lib/types";
 
 import {
   type AgentSessionStatus,
-  type UseAgentSessionOptions,
   deriveAgentSessionStatus,
+  type UseAgentSessionOptions,
 } from "./agent-session-hook-types";
 import { requestSessionContext } from "./session-action-utils";
 import { type ThinkingLevelOption, useSessionActions } from "./useSessionActions";

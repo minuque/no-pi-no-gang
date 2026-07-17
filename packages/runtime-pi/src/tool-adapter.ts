@@ -1,4 +1,4 @@
-import { type ToolDefinition as PiToolDefinition, createCodingTools } from "@earendil-works/pi-coding-agent";
+import { createCodingTools, type ToolDefinition as PiToolDefinition } from "@earendil-works/pi-coding-agent";
 import type {
   JsonObject,
   JsonValue,

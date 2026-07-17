@@ -4,10 +4,10 @@ import { memo } from "react";
 import { createPortal } from "react-dom";
 
 import { TYPEWRITER_PHRASES, Typewriter } from "./ChatWindowSupport";
+import type { ChatWindowProps } from "./chat-window-types";
 import { MessageView } from "./MessageView";
 import { SessionLoading } from "./SessionLoading";
 import { UserMessageNav } from "./UserMessageNav";
-import type { ChatWindowProps } from "./chat-window-types";
 import { useChatWindowState } from "./useChatWindowState";
 
 export const ChatWindow = memo(function ChatWindow({

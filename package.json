@@ -35,9 +35,9 @@
     "test:e2e": "playwright install chromium && playwright test",
     "pack:smoke": "node scripts/pack-smoke.js",
     "typecheck": "npm run typecheck --workspace @no-pi-no-gang/web && node scripts/typecheck.mjs",
-    "format": "biome format --write .",
-    "format:check": "biome format .",
-    "lint": "npm run lint --workspace @no-pi-no-gang/web -- --cache --cache-strategy content --cache-location ../../node_modules/.cache/eslint-web/ && eslint apps/agent-host apps/cli packages tests scripts playwright.config.ts vitest.config.ts --max-warnings=0 --cache --cache-strategy content --cache-location node_modules/.cache/eslint-root/",
+    "format": "biome check --write .",
+    "format:check": "biome check .",
+    "lint": "npm run lint --workspace @no-pi-no-gang/web -- --cache --cache-strategy content --cache-location ../../node_modules/.cache/eslint-web/ && biome lint --error-on-warnings .",
     "lint:design": "node node_modules/@google/design.md/dist/index.js lint DESIGN.md",
     "verify:fast": "node scripts/verify-fast.mjs",
     "verify": "npm run format:check && npm run lint:design && npm run verify:fast && npm run build",
@@ -72,7 +72,8 @@
     "vitest": "^4.1.9"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx,mjs,cjs}": ["biome format --write", "eslint --fix"],
+    "apps/web/**/*.{ts,tsx,js,jsx,mjs,cjs}": ["biome check --write", "eslint --fix"],
+    "*.{ts,tsx,js,jsx,mjs,cjs}": ["biome check --write"],
     "*.{json,css}": ["biome format --write"],
     "DESIGN.md": ["node node_modules/@google/design.md/dist/index.js lint"]
   }

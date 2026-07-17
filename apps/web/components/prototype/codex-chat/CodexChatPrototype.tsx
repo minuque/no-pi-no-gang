@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
-
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect } from "react";
 
 import { LedgerVariant, NarrativeVariant, TranscriptVariant } from "./PrototypeVariants";
 import styles from "./prototype.module.css";

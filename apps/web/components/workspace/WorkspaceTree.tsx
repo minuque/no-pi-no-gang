@@ -9,9 +9,9 @@ import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
 import { FolderIcon, getFileIcon } from "./FileIcons";
 import {
   type FileNode,
-  WorkspaceTreeNode,
   fetchWorkspaceEntries,
   resolveWorkspacePath,
+  WorkspaceTreeNode,
 } from "./WorkspaceTreeNode";
 
 interface Props {

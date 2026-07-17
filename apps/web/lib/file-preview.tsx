@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import bash from "react-syntax-highlighter/dist/cjs/languages/prism/bash";
@@ -19,8 +18,7 @@ import sql from "react-syntax-highlighter/dist/cjs/languages/prism/sql";
 import tsx from "react-syntax-highlighter/dist/cjs/languages/prism/tsx";
 import typescript from "react-syntax-highlighter/dist/cjs/languages/prism/typescript";
 import yaml from "react-syntax-highlighter/dist/cjs/languages/prism/yaml";
-import { vs } from "react-syntax-highlighter/dist/cjs/styles/prism";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { vs, vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
 
 import { useTheme } from "@/hooks/useTheme";
 import { encodeFilePathForApi, getFileName } from "@/lib/file-paths";
