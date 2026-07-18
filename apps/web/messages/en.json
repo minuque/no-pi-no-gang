@@ -125,6 +125,7 @@
     "showMore": "Show {count} more",
     "noOutput": "(no output)",
     "retryAction": "Retry with the same prompt",
+    "branchAction": "Branch — switch conversation path within this .jsonl session",
     "copied": "Copied",
     "toolDetails": "Tool details",
     "expandDetails": "View details",

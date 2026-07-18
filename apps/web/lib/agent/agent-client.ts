@@ -2,10 +2,9 @@
 
 //
 
-export async function sendAgentCommand<T = unknown>(
-  sessionId: string,
-  command: Record<string, unknown>,
-): Promise<T> {
+import type { RuntimeCommand } from "./runtime-command";
+
+export async function sendAgentCommand<T = unknown>(sessionId: string, command: RuntimeCommand): Promise<T> {
   const res = await fetch(`/api/agent/${encodeURIComponent(sessionId)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -109,6 +109,7 @@ describe("agent_end", () => {
         agentStateRunning: true,
         agentStateStreaming: true,
         agentStateCompacting: true,
+        isCompacting: true,
         agentPhase: { kind: "running_tools", tools: [] },
         retryInfo: { attempt: 1, maxAttempts: 3 },
         eventStatus: "connected",
@@ -120,6 +121,7 @@ describe("agent_end", () => {
     expect(s.agentStateRunning).toBe(false);
     expect(s.agentStateStreaming).toBe(false);
     expect(s.agentStateCompacting).toBe(false);
+    expect(s.isCompacting).toBe(false);
     expect(s.agentPhase).toBeNull();
     expect(s.eventStatus).toBe("idle");
     expect(s.retryInfo).toBeNull();

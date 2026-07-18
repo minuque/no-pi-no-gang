@@ -87,6 +87,80 @@ function runtimeImages(value: unknown): RuntimeImage[] | null {
   return images.length === value.length ? images : null;
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function runtimeCommand(body: Record<string, unknown>): RuntimeCommand | null {
+  const type = body.type;
+  if (typeof type !== "string") return null;
+  const stringField = (name: string): string | null => (typeof body[name] === "string" ? body[name] : null);
+  const message = () => {
+    const value = stringField("message");
+    const images = runtimeImages(body.images);
+    return value !== null && images !== null
+      ? { message: value, ...(images.length ? { images } : {}) }
+      : null;
+  };
+
+  switch (type) {
+    case "prompt": {
+      const input = message();
+      return input ? { type, ...input } : null;
+    }
+    case "steer":
+    case "follow_up": {
+      const input = message();
+      return input ? { type, ...input } : null;
+    }
+    case "command": {
+      const input = message();
+      const command = stringField("command");
+      return input && command !== null ? { type, command, ...input } : null;
+    }
+    case "set_model": {
+      const provider = stringField("provider");
+      const modelId = stringField("modelId");
+      return provider !== null && modelId !== null ? { type, provider, modelId } : null;
+    }
+    case "fork": {
+      const entryId = stringField("entryId");
+      return entryId !== null ? { type, entryId } : null;
+    }
+    case "navigate_tree": {
+      const targetId = stringField("targetId");
+      return targetId !== null ? { type, targetId } : null;
+    }
+    case "set_thinking_level": {
+      const level = stringField("level");
+      return level !== null ? { type, level } : null;
+    }
+    case "compact": {
+      return body.customInstructions === undefined || typeof body.customInstructions === "string"
+        ? {
+            type,
+            ...(typeof body.customInstructions === "string"
+              ? { customInstructions: body.customInstructions }
+              : {}),
+          }
+        : null;
+    }
+    case "set_auto_compaction":
+    case "set_auto_retry":
+      return typeof body.enabled === "boolean" ? { type, enabled: body.enabled } : null;
+    case "set_tools":
+      return isStringArray(body.toolNames) ? { type, toolNames: body.toolNames } : null;
+    case "abort":
+    case "get_state":
+    case "get_tools":
+    case "abort_compaction":
+    case "get_commands":
+      return { type };
+    default:
+      return null;
+  }
+}
+
 export function createAgentHostRequestHandler(
   registry: RuntimeRegistry,
   workspaces: WorkspaceRegistry,
@@ -294,12 +368,10 @@ export function createAgentHostRequestHandler(
           json(response, 400, { error: "Command type is required" });
           return;
         }
-        const command = body as unknown as RuntimeCommand;
-        if (command.type === "prompt") {
-          if (typeof command.message !== "string" || runtimeImages(command.images) === null) {
-            json(response, 400, { error: "Prompt message is required" });
-            return;
-          }
+        const command = runtimeCommand(body);
+        if (!command) {
+          json(response, 400, { error: "Invalid runtime command" });
+          return;
         }
         const result = await pool.command(id, command);
         json(response, 200, { success: true, data: result.value ?? null });

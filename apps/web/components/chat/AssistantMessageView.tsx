@@ -17,6 +17,19 @@ import { ToolCallBlock } from "./MessageToolBlock";
 import { LINE_COLOR } from "./MessageToolState";
 import { copyText, formatTime } from "./message-utils";
 
+interface AssistantMessageViewProps {
+  message: AssistantMessage;
+  isStreaming?: boolean;
+  agentRunning?: boolean;
+  streamBlockStart?: number;
+  toolResults?: Map<string, ToolResultMessage>;
+  entryId?: string;
+  onNavigate?: (entryId: string) => void;
+  showTimestamp?: boolean;
+  prevTimestamp?: number;
+  onRetry?: () => void;
+}
+
 export function AssistantMessageView({
   message,
   isStreaming,
@@ -28,31 +41,17 @@ export function AssistantMessageView({
   showTimestamp,
   prevTimestamp,
   onRetry,
-}: {
-  message: AssistantMessage;
-  isStreaming?: boolean;
-  agentRunning?: boolean;
-  streamBlockStart?: number;
-  toolResults?: Map<string, ToolResultMessage>;
-  entryId?: string;
-  onNavigate?: (entryId: string) => void;
-  showTimestamp?: boolean;
-  prevTimestamp?: number;
-  onRetry?: () => void;
-}) {
+}: AssistantMessageViewProps) {
   const time = showTimestamp ? formatTime(message.timestamp) : null;
   const blocks = useMemo(() => message.content ?? [], [message.content]);
   const [hovered, setHovered] = useState(false);
   const [actionsFocused, setActionsFocused] = useState(false);
   const [copied, setCopied] = useState(false);
-  const blocksRef = useRef(blocks);
-  blocksRef.current = blocks;
   const t = useTranslations("MessageView");
+  const isIdle = !isStreaming && !agentRunning;
   const canNavigate = !!entryId && !!onNavigate && !isStreaming;
-  const actionsVisible = !agentRunning && !isStreaming && (hovered || actionsFocused || copied);
-
-  const blockStartTimesRef = useRef<Map<number, number>>(new Map());
-  const [streamingDurations, setStreamingDurations] = useState<Map<number, number>>(new Map());
+  const actionsVisible = isIdle && (hovered || actionsFocused || copied);
+  const streamingDurations = useStreamingDurations(blocks, isStreaming);
 
   const thinkingDurationFromFile = useMemo<number | undefined>(() => {
     if (!message.timestamp || !prevTimestamp) return undefined;
@@ -66,8 +65,8 @@ export function AssistantMessageView({
     for (const [callId, result] of toolResults) {
       if (result.timestamp) {
         const block = blocks.find(
-          (b) => b.type === "toolCall" && (b as ToolCallContent).toolCallId === callId,
-        ) as ToolCallContent | undefined;
+          (b): b is ToolCallContent => b.type === "toolCall" && b.toolCallId === callId,
+        );
         const startTs = block?._sourceTs ?? message.timestamp;
         const secs = Math.round((result.timestamp - startTs) / 1000);
         if (secs > 0) map.set(callId, secs);
@@ -87,44 +86,6 @@ export function AssistantMessageView({
       setTimeout(() => setCopied(false), 1500);
     });
   };
-
-  useEffect(() => {
-    if (!isStreaming) {
-      const now = Date.now();
-      setStreamingDurations((prev: Map<number, number>) => {
-        const next = new Map(prev);
-        for (const [idx, start] of blockStartTimesRef.current) {
-          if (!next.has(idx)) next.set(idx, Math.round((now - start) / 1000));
-        }
-        return next;
-      });
-      return;
-    }
-    const tick = () => {
-      const bs = blocksRef.current;
-      const now = Date.now();
-
-      bs.forEach((_, i) => {
-        if (!blockStartTimesRef.current.has(i)) blockStartTimesRef.current.set(i, now);
-      });
-
-      setStreamingDurations((prev: Map<number, number>) => {
-        let changed = false;
-        const next = new Map(prev);
-        for (let i = 0; i < bs.length - 1; i++) {
-          if (!next.has(i) && blockStartTimesRef.current.has(i)) {
-            const start = blockStartTimesRef.current.get(i)!;
-            const nextStart = blockStartTimesRef.current.get(i + 1) ?? now;
-            next.set(i, Math.round((nextStart - start) / 1000));
-            changed = true;
-          }
-        }
-        return changed ? next : prev;
-      });
-    };
-    const id = setInterval(tick, 300);
-    return () => clearInterval(id);
-  }, [isStreaming]);
 
   return (
     <div
@@ -158,42 +119,10 @@ export function AssistantMessageView({
           marginTop: 8,
         }}
       >
-        {time && !isStreaming && !agentRunning && (
-          <span style={{ fontSize: 12, color: "var(--text-dim)" }}>{time}</span>
-        )}
+        {time && isIdle && <span style={{ fontSize: 12, color: "var(--text-dim)" }}>{time}</span>}
         {onRetry && !isStreaming && (
-          <button
-            className="message-action-button"
-            onClick={onRetry}
-            title={t("retryAction")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
-              width: 24,
-              height: 22,
-              background: "none",
-              border: "none",
-              borderRadius: "var(--radius-sm)",
-              color: "var(--text-dim)",
-              cursor: "pointer",
-              fontSize: 12,
-              fontWeight: 400,
-              opacity: actionsVisible ? 1 : 0,
-              pointerEvents: actionsVisible ? "auto" : "none",
-              transition: "opacity 0.12s, color 0.12s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--accent)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-dim)";
-            }}
-          >
+          <ActionButton title={t("retryAction")} onClick={onRetry} visible={actionsVisible}>
             <svg
-              width="11"
-              height="11"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -204,42 +133,17 @@ export function AssistantMessageView({
               <polyline points="23 4 23 10 17 10" />
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
             </svg>
-          </button>
+          </ActionButton>
         )}
         {textContent && !isStreaming && (
-          <button
-            className="message-action-button"
-            onClick={copyContent}
+          <ActionButton
             title={t("copyMessage")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
-              width: 24,
-              height: 22,
-              background: "none",
-              border: "none",
-              borderRadius: "var(--radius-sm)",
-              color: copied ? "var(--accent)" : "var(--text-dim)",
-              cursor: "pointer",
-              fontSize: 12,
-              fontWeight: 400,
-              opacity: actionsVisible ? 1 : 0,
-              pointerEvents: actionsVisible ? "auto" : "none",
-              transition: "opacity 0.12s, color 0.12s",
-            }}
-            onMouseEnter={(e) => {
-              if (!copied) e.currentTarget.style.color = "var(--accent)";
-            }}
-            onMouseLeave={(e) => {
-              if (!copied) e.currentTarget.style.color = "var(--text-dim)";
-            }}
+            onClick={copyContent}
+            visible={actionsVisible}
+            active={copied}
           >
             {copied ? (
               <svg
-                width="9"
-                height="9"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -251,8 +155,6 @@ export function AssistantMessageView({
               </svg>
             ) : (
               <svg
-                width="9"
-                height="9"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -264,41 +166,15 @@ export function AssistantMessageView({
                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
               </svg>
             )}
-          </button>
+          </ActionButton>
         )}
         {canNavigate && (
-          <button
-            className="message-action-button"
-            onClick={() => onNavigate!(entryId!)}
-            title="Branch — switch conversation path within this .jsonl session"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: 0,
-              width: 24,
-              height: 22,
-              background: "none",
-              border: "none",
-              borderRadius: "var(--radius-sm)",
-              color: "var(--text-dim)",
-              cursor: "pointer",
-              fontSize: 12,
-              fontWeight: 400,
-              opacity: actionsVisible ? 1 : 0,
-              pointerEvents: actionsVisible ? "auto" : "none",
-              transition: "opacity 0.12s, color 0.12s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--accent)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--text-dim)";
-            }}
+          <ActionButton
+            title={t("branchAction")}
+            onClick={() => entryId && onNavigate?.(entryId)}
+            visible={actionsVisible}
           >
             <svg
-              width="11"
-              height="11"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -309,11 +185,141 @@ export function AssistantMessageView({
               <polyline points="15 10 20 15 15 20" />
               <path d="M4 4v7a4 4 0 0 0 4 4h12" />
             </svg>
-          </button>
+          </ActionButton>
         )}
       </div>
     </div>
   );
+}
+
+// Styles not set here live in .message-action-button (globals.css): size, radius,
+// transition and hover/active colors. That class sets them with !important, so
+// duplicating them inline (as the old code did) never took effect.
+function ActionButton({
+  title,
+  onClick,
+  visible,
+  active = false,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  visible: boolean;
+  active?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      className="message-action-button"
+      onClick={onClick}
+      title={title}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 0,
+        background: "none",
+        border: "none",
+        color: active ? "var(--accent)" : "var(--text-dim)",
+        cursor: "pointer",
+        opacity: visible ? 1 : 0,
+        pointerEvents: visible ? "auto" : "none",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// Measures per-block streaming durations: while streaming, a 300ms tick stamps
+// each block's start time and freezes the previous block's elapsed seconds.
+function useStreamingDurations(blocks: AssistantContentBlock[], isStreaming?: boolean) {
+  const blockStartTimesRef = useRef<Map<number, number>>(new Map());
+  const [streamingDurations, setStreamingDurations] = useState<Map<number, number>>(new Map());
+  const blocksRef = useRef(blocks);
+
+  useEffect(() => {
+    blocksRef.current = blocks;
+  });
+
+  useEffect(() => {
+    if (!isStreaming) {
+      const now = Date.now();
+      setStreamingDurations((prev) => {
+        const next = new Map(prev);
+        for (const [idx, start] of blockStartTimesRef.current) {
+          if (!next.has(idx)) next.set(idx, Math.round((now - start) / 1000));
+        }
+        return next;
+      });
+      return;
+    }
+    const tick = () => {
+      const bs = blocksRef.current;
+      const now = Date.now();
+
+      bs.forEach((_, i) => {
+        if (!blockStartTimesRef.current.has(i)) blockStartTimesRef.current.set(i, now);
+      });
+
+      setStreamingDurations((prev) => {
+        let changed = false;
+        const next = new Map(prev);
+        for (let i = 0; i < bs.length - 1; i++) {
+          if (!next.has(i) && blockStartTimesRef.current.has(i)) {
+            const start = blockStartTimesRef.current.get(i)!;
+            const nextStart = blockStartTimesRef.current.get(i + 1) ?? now;
+            next.set(i, Math.round((nextStart - start) / 1000));
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    };
+    const id = setInterval(tick, 300);
+    return () => clearInterval(id);
+  }, [isStreaming]);
+
+  return streamingDurations;
+}
+
+// Duration shown on a thinking block: persisted on the block if available, else
+// file-derived for blocks loaded from disk, else measured live, else the
+// whole-message fallback (shared across blocks, so flagged as such).
+function resolveThinkingDuration(
+  block: ThinkingContent,
+  index: number,
+  blockCount: number,
+  ctx: {
+    streamBlockStart?: number;
+    streamingDurations: Map<number, number>;
+    thinkingDurationFromFile?: number;
+  },
+): { duration?: number; isSharedTotalDuration: boolean } {
+  if (block._duration !== undefined) {
+    return { duration: block._duration, isSharedTotalDuration: false };
+  }
+  if (ctx.streamBlockStart !== undefined && index < ctx.streamBlockStart) {
+    return { duration: ctx.thinkingDurationFromFile, isSharedTotalDuration: false };
+  }
+  const measured = ctx.streamingDurations.get(index);
+  if (measured !== undefined) {
+    return { duration: measured, isSharedTotalDuration: false };
+  }
+  return {
+    duration: ctx.thinkingDurationFromFile,
+    isSharedTotalDuration: index < blockCount - 1,
+  };
+}
+
+interface BlockViewProps {
+  blocks: AssistantContentBlock[];
+  toolResults?: Map<string, ToolResultMessage>;
+  isStreaming?: boolean;
+  streamBlockStart?: number;
+  streamingDurations: Map<number, number>;
+  thinkingDurationFromFile?: number;
+  toolCallDurations: Map<string, number>;
 }
 
 function BlockView({
@@ -324,15 +330,7 @@ function BlockView({
   streamingDurations,
   thinkingDurationFromFile,
   toolCallDurations,
-}: {
-  blocks: AssistantContentBlock[];
-  toolResults?: Map<string, ToolResultMessage>;
-  isStreaming?: boolean;
-  streamBlockStart?: number;
-  streamingDurations: Map<number, number>;
-  thinkingDurationFromFile?: number;
-  toolCallDurations: Map<string, number>;
-}) {
+}: BlockViewProps) {
   const elements: ReactNode[] = [];
 
   for (let i = 0; i < blocks.length; i++) {
@@ -342,40 +340,30 @@ function BlockView({
     const toolBlockIsStreaming = isStreaming && (streamBlockStart === undefined || i >= streamBlockStart);
 
     if (block.type === "toolCall") {
-      const toolBlock = block as ToolCallContent;
-      const result = toolResults?.get(toolBlock.toolCallId);
+      const result = toolResults?.get(block.toolCallId);
       elements.push(
         <ToolCallBlock
           key={i}
-          block={toolBlock}
+          block={block}
           result={result}
           isRunning={toolBlockIsStreaming && !result}
-          duration={toolCallDurations?.get(toolBlock.toolCallId)}
+          duration={toolCallDurations.get(block.toolCallId)}
           isLast={isLast}
         />,
       );
     } else if (block.type === "text") {
-      elements.push(
-        <TextBlock key={i} block={block as TextContent} isStreaming={blockIsStreaming} isLast={isLast} />,
-      );
+      elements.push(<TextBlock key={i} block={block} isStreaming={blockIsStreaming} isLast={isLast} />);
     } else if (block.type === "thinking") {
-      const thinkingBlock = block as ThinkingContent;
-      const hasPersistedDuration = thinkingBlock._duration !== undefined;
-      const dur =
-        thinkingBlock._duration ??
-        (streamBlockStart !== undefined && i < streamBlockStart
-          ? thinkingDurationFromFile
-          : (streamingDurations.get(i) ?? thinkingDurationFromFile));
-      const isFallbackDuration =
-        !hasPersistedDuration &&
-        !(streamBlockStart !== undefined && i < streamBlockStart) &&
-        !streamingDurations.has(i);
-      const isSharedTotalDuration = isFallbackDuration && i < blocks.length - 1;
+      const { duration, isSharedTotalDuration } = resolveThinkingDuration(block, i, blocks.length, {
+        streamBlockStart,
+        streamingDurations,
+        thinkingDurationFromFile,
+      });
       elements.push(
         <ThinkingBlock
           key={i}
-          block={thinkingBlock}
-          duration={dur}
+          block={block}
+          duration={duration}
           isSharedTotalDuration={isSharedTotalDuration}
           isStreaming={blockIsStreaming}
           isLast={isLast}

@@ -125,6 +125,7 @@
     "showMore": "显示剩余 {count} 个",
     "noOutput": "(无输出)",
     "retryAction": "以相同提示重试",
+    "branchAction": "分支 — 切换此 .jsonl 会话中的对话路径",
     "copied": "已复制",
     "toolDetails": "工具详情",
     "expandDetails": "查看详情",

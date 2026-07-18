@@ -235,7 +235,7 @@ export type AgentEventInput =
   | { kind: "compaction_state"; compacting: boolean; error?: string | null; eventAt?: string }
   | { kind: "compaction_error"; errorMessage: string; eventAt?: string };
 
-function emptyAgentEventEffects(): AgentEventEffects {
+export function emptyAgentEventEffects(): AgentEventEffects {
   return {
     streamAction: null,
     bumpLoadGen: false,
@@ -286,6 +286,7 @@ function reduceRunStart(
 function reduceRunEnd(
   state: AgentEventState,
   eventAt?: string,
+  eventStatus?: AgentEventStatus,
 ): { state: AgentEventState; effects: AgentEventEffects } {
   return {
     state: {
@@ -297,6 +298,7 @@ function reduceRunEnd(
       isCompacting: false,
       lastEventAt: eventAt ?? state.lastEventAt,
       agentPhase: null,
+      eventStatus: eventStatus ?? state.eventStatus,
       retryInfo: null,
       loadGen: state.loadGen + 1,
     },
@@ -462,26 +464,7 @@ export function agentEventReducer(
       };
     }
     case "agent_end": {
-      return {
-        state: {
-          ...state,
-          agentRunning: false,
-          agentStateRunning: false,
-          agentStateStreaming: false,
-          agentStateCompacting: false,
-          lastEventAt: eventAt,
-          agentPhase: null,
-          eventStatus: "idle" as AgentEventStatus,
-          retryInfo: null,
-          loadGen: state.loadGen + 1,
-        },
-        effects: {
-          ...effects,
-          streamAction: { type: "end" },
-          bumpLoadGen: true,
-          agentEnded: true,
-        },
-      };
+      return reduceRunEnd(state, eventAt, "idle");
     }
     case "message_start":
     case "message_update": {

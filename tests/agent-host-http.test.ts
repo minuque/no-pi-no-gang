@@ -732,6 +732,24 @@ describe("AgentHost public HTTP boundary", () => {
     expect(command).toHaveBeenCalledTimes(controls.length);
   });
 
+  it("rejects malformed runtime commands before dispatch", async () => {
+    const { adapter } = await fixture();
+    const controlled = controllableRuntime();
+    const command = vi.spyOn(controlled.runtime, "command");
+    adapter.createOrResume = async () => controlled.runtime;
+    const host = await startWith(adapter);
+
+    const response = await fetch(`${host.url}/v1/runtimes/session-1/command`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "set_model", provider: "test" }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({ error: "Invalid runtime command" });
+    expect(command).not.toHaveBeenCalled();
+  });
+
   it("routes provider tools through session-isolated host capability views", async () => {
     const { adapter, cwd } = await fixture();
     const views = new Map<string, NonNullable<CreateOrResumeRuntimeRequest["tools"]>>();

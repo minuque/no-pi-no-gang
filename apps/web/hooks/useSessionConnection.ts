@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-
 import { sendAgentCommand as postAgentCommand } from "../lib/agent/agent-client";
+import type { RuntimeCommand } from "../lib/agent/runtime-command";
 import type { AnyAgentEvent as AgentEvent } from "../lib/events/event-types";
 import type { AgentMessage, EntryTreeNode, SessionInfo } from "../lib/types";
 
@@ -139,7 +139,7 @@ export function useSessionConnection(sessionId: string | null, options: UseSessi
   );
 
   const sendAgentCommand = useCallback(
-    async <T>(command: Record<string, unknown>, nextSessionId?: string): Promise<T> => {
+    async <T>(command: RuntimeCommand, nextSessionId?: string): Promise<T> => {
       const sid = resolveSessionId(nextSessionId ?? sessionIdRef.current);
       return postAgentCommand<T>(sid, command);
     },

@@ -70,17 +70,7 @@ export class RuntimeApi {
 
   async handle(request: IncomingMessage, response: ServerResponse, url: URL): Promise<boolean> {
     if (request.method === "GET" && url.pathname === "/v1/models") {
-      try {
-        json(response, 200, this.services.getModels());
-      } catch {
-        json(response, 200, {
-          models: {},
-          modelList: [],
-          defaultModel: null,
-          thinkingLevels: {},
-          thinkingLevelMaps: {},
-        });
-      }
+      json(response, 200, this.services.getModels());
       return true;
     }
 

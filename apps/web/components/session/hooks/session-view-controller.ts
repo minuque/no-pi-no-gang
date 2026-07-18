@@ -4,6 +4,7 @@ import type {
   SessionLoadResult,
 } from "../../../hooks/useSessionConnection";
 import { mergeToolCallMessages } from "../../../lib/agent/agent-event-reducer";
+import type { RuntimeCommand } from "../../../lib/agent/runtime-command";
 import type { AnyAgentEvent as AgentEvent, AgentEventStatus } from "../../../lib/events/event-types";
 import type { AgentMessage, EntryTreeNode, SessionInfo } from "../../../lib/types";
 
@@ -24,7 +25,7 @@ export type SessionViewEvent =
 export interface SessionViewClient {
   loadSession(sessionId: string, includeState?: boolean): Promise<SessionLoadResult>;
   loadContext(sessionId: string, leafId: string | null): Promise<SessionContextResult>;
-  sendAgentCommand<T>(sessionId: string, command: Record<string, unknown>): Promise<T>;
+  sendAgentCommand<T>(sessionId: string, command: RuntimeCommand): Promise<T>;
 }
 
 export interface SessionView {

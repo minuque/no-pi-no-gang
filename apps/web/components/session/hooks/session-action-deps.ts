@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { AgentStateTransition, AgentStateTransitionResult } from "@/hooks/useAgentState";
 import type { NewSessionModel } from "@/hooks/useModelList";
+import type { RuntimeCommand } from "@/lib/agent/runtime-command";
 import type { AgentMessage, SessionInfo } from "@/lib/types";
 
 import type { SessionViewEvent } from "./session-view-controller";
@@ -25,7 +26,7 @@ export interface SessionActionCoreDeps {
     images?: { data: string; mimeType: string; previewUrl: string }[];
     commandName?: string;
   }) => Promise<{ sessionId: string }>;
-  sendAgentCommand: <T>(command: Record<string, unknown>, nextSessionId?: string) => Promise<T>;
+  sendAgentCommand: <T>(command: RuntimeCommand, nextSessionId?: string) => Promise<T>;
   connectEvents: (sid: string) => void;
   invalidateLoads: () => void;
   onSessionEvent?: (event: SessionViewEvent) => void;

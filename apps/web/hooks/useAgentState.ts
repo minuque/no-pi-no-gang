@@ -17,6 +17,7 @@ import {
   type AgentPhase,
   type AgentRuntimeSnapshot,
   agentEventInputReducer,
+  emptyAgentEventEffects,
   initialAgentEventState,
 } from "../lib/agent/agent-event-reducer";
 import type { AgentEventStatus, AnyAgentEvent, StreamAction } from "../lib/events/event-types";
@@ -84,15 +85,6 @@ export function initialAgentEventOwnerState(initialSessionExists = true): AgentE
       sessionDestroyed: false,
       agentLastUpdated: null,
     },
-  };
-}
-
-function emptyAgentEventEffects(): AgentEventEffects {
-  return {
-    streamAction: null,
-    bumpLoadGen: false,
-    agentEnded: false,
-    compactionEndedClean: false,
   };
 }
 

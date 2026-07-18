@@ -46,6 +46,19 @@ async function startWith(services: RuntimeServices): Promise<AgentHostServer> {
 }
 
 describe("AgentHost runtime service boundary", () => {
+  it("maps model service failures to an HTTP error", async () => {
+    const services = runtimeServices();
+    services.getModels = vi.fn(() => {
+      throw new Error("models unavailable");
+    });
+    const host = await startWith(services);
+
+    const response = await fetch(`${host.url}/v1/models`);
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: "models unavailable" });
+  });
+
   it("serves models, auth and model configuration without a Next runtime dependency", async () => {
     const services = runtimeServices();
     const host = await startWith(services);
